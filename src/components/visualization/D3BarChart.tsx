@@ -17,12 +17,12 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || array.length === 0) return;
 
-    const width = containerRef.current.clientWidth || 600;
-    const height = containerRef.current.clientHeight || 300;
+    const width = containerRef.current.clientWidth || 700;
+    const height = containerRef.current.clientHeight || 340;
 
-    const margin = { top: 20, right: 25, bottom: 35, left: 35 };
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
+    const margin = { top: 25, right: 30, bottom: 40, left: 40 };
+    const innerWidth = Math.max(100, width - margin.left - margin.right);
+    const innerHeight = Math.max(100, height - margin.top - margin.bottom);
 
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
@@ -34,6 +34,39 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
 
     const defs = svg.append('defs');
     
+    // Gradiente default
+    const gradDefault = defs.append('linearGradient')
+      .attr('id', 'grad-default')
+      .attr('x1', '0%').attr('y1', '0%')
+      .attr('x2', '0%').attr('y2', '100%');
+    gradDefault.append('stop').attr('offset', '0%').attr('stop-color', '#6366f1');
+    gradDefault.append('stop').attr('offset', '100%').attr('stop-color', '#4338ca');
+
+    // Gradiente comparing
+    const gradComparing = defs.append('linearGradient')
+      .attr('id', 'grad-comparing')
+      .attr('x1', '0%').attr('y1', '0%')
+      .attr('x2', '0%').attr('y2', '100%');
+    gradComparing.append('stop').attr('offset', '0%').attr('stop-color', '#fbbf24');
+    gradComparing.append('stop').attr('offset', '100%').attr('stop-color', '#d97706');
+
+    // Gradiente sorted
+    const gradSorted = defs.append('linearGradient')
+      .attr('id', 'grad-sorted')
+      .attr('x1', '0%').attr('y1', '0%')
+      .attr('x2', '0%').attr('y2', '100%');
+    gradSorted.append('stop').attr('offset', '0%').attr('stop-color', '#34d399');
+    gradSorted.append('stop').attr('offset', '100%').attr('stop-color', '#059669');
+
+    // Gradiente swapped
+    const gradSwapped = defs.append('linearGradient')
+      .attr('id', 'grad-swapped')
+      .attr('x1', '0%').attr('y1', '0%')
+      .attr('x2', '0%').attr('y2', '100%');
+    gradSwapped.append('stop').attr('offset', '0%').attr('stop-color', '#a78bfa');
+    gradSwapped.append('stop').attr('offset', '100%').attr('stop-color', '#7c3aed');
+
+    // Patrón rayado para accesibilidad (RF-05)
     const patternComparing = defs
       .append('pattern')
       .attr('id', 'hatch-comparing')
@@ -66,11 +99,11 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
       .scaleBand<string>()
       .domain(array.map((_, idx) => String(idx)))
       .range([0, innerWidth])
-      .padding(0.24);
+      .padding(0.20);
 
     const yAxis = d3
       .axisLeft(yScale)
-      .ticks(9)
+      .ticks(8)
       .tickSize(-innerWidth)
       .tickFormat(d => `${d}`);
 
@@ -82,26 +115,24 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
     yAxisG.select('.domain').remove();
     yAxisG
       .selectAll('.tick line')
-      .attr('stroke', '#232537')
-      .attr('stroke-dasharray', '2,2');
+      .attr('stroke', '#242738')
+      .attr('stroke-dasharray', '3,3');
     yAxisG
       .selectAll('.tick text')
       .attr('fill', '#64748b')
-      .attr('font-size', '10px')
+      .attr('font-size', '11px')
       .attr('font-family', 'JetBrains Mono, monospace');
 
-    const getColor = (state: ArrayElement['state']) => {
+    const getFill = (state: ArrayElement['state']) => {
       switch (state) {
         case 'comparing':
-          return '#f59e0b';
+          return 'url(#grad-comparing)';
         case 'swapped':
-          return '#818cf8';
+          return 'url(#grad-swapped)';
         case 'sorted':
-          return '#10b981';
-        case 'selected':
-          return '#ec4899';
+          return 'url(#grad-sorted)';
         default:
-          return '#5c60c8';
+          return 'url(#grad-default)';
       }
     };
 
@@ -113,60 +144,64 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
       .attr('class', 'bar-group')
       .attr('transform', (_, i) => `translate(${xScale(String(i)) || 0}, 0)`);
 
+    // Rectángulos de las barras
     barGroups
       .append('rect')
       .attr('class', 'bar-rect')
       .attr('x', 0)
       .attr('y', d => yScale(d.value))
       .attr('width', xScale.bandwidth())
-      .attr('height', d => innerHeight - yScale(d.value))
-      .attr('rx', 4)
-      .attr('ry', 4)
-      .attr('fill', d => getColor(d.state))
-      .attr('stroke', d => (d.state === 'comparing' ? '#fbbf24' : d.state === 'sorted' ? '#34d399' : '#4338ca'))
-      .attr('stroke-width', d => (d.state === 'comparing' || d.state === 'sorted' ? 1.5 : 0))
-      .style('transition', 'all 0.15s ease-out');
+      .attr('height', d => Math.max(4, innerHeight - yScale(d.value)))
+      .attr('rx', 6)
+      .attr('ry', 6)
+      .attr('fill', d => getFill(d.state))
+      .attr('stroke', d => (d.state === 'comparing' ? '#fef08a' : d.state === 'sorted' ? '#6ee7b7' : '#818cf8'))
+      .attr('stroke-width', d => (d.state === 'comparing' || d.state === 'sorted' ? 2 : 1))
+      .style('transition', 'all 0.18s ease-out');
 
+    // Textura rayada para daltónicos en estado comparing
     barGroups
       .filter(d => d.state === 'comparing')
       .append('rect')
       .attr('x', 0)
       .attr('y', d => yScale(d.value))
       .attr('width', xScale.bandwidth())
-      .attr('height', d => innerHeight - yScale(d.value))
-      .attr('rx', 4)
-      .attr('ry', 4)
+      .attr('height', d => Math.max(4, innerHeight - yScale(d.value)))
+      .attr('rx', 6)
+      .attr('ry', 6)
       .attr('fill', 'url(#hatch-comparing)')
       .attr('pointer-events', 'none');
 
+    // Etiquetas X inferiores (Letras A-N)
     barGroups
       .append('text')
       .attr('class', 'x-label')
       .attr('x', xScale.bandwidth() / 2)
-      .attr('y', innerHeight + 18)
+      .attr('y', innerHeight + 20)
       .attr('text-anchor', 'middle')
-      .attr('fill', d => (d.state === 'comparing' ? '#f59e0b' : d.state === 'sorted' ? '#10b981' : '#64748b'))
-      .attr('font-size', '10px')
-      .attr('font-weight', d => (d.state === 'comparing' || d.state === 'sorted' ? 'bold' : 'normal'))
+      .attr('fill', d => (d.state === 'comparing' ? '#fbbf24' : d.state === 'sorted' ? '#34d399' : '#94a3b8'))
+      .attr('font-size', '11px')
+      .attr('font-weight', d => (d.state === 'comparing' || d.state === 'sorted' ? 'bold' : '500'))
       .attr('font-family', 'Inter, sans-serif')
       .text(d => d.label || '');
 
+    // Valores numéricos encima de las barras
     barGroups
       .append('text')
       .attr('class', 'val-label')
       .attr('x', xScale.bandwidth() / 2)
-      .attr('y', d => Math.max(12, yScale(d.value) - 4))
+      .attr('y', d => Math.max(14, yScale(d.value) - 6))
       .attr('text-anchor', 'middle')
-      .attr('fill', d => (d.state === 'comparing' ? '#fbbf24' : d.state === 'sorted' ? '#34d399' : '#94a3b8'))
-      .attr('font-size', '9px')
-      .attr('font-weight', '600')
+      .attr('fill', d => (d.state === 'comparing' ? '#fef08a' : d.state === 'sorted' ? '#a7f3d0' : '#e2e8f0'))
+      .attr('font-size', '11px')
+      .attr('font-weight', '700')
       .attr('font-family', 'JetBrains Mono, monospace')
       .text(d => d.value);
 
   }, [array, maxVal]);
 
   return (
-    <div ref={containerRef} className="w-full h-full min-h-[220px] relative">
+    <div ref={containerRef} className="w-full h-full min-h-[240px] relative flex-1 flex items-center justify-center">
       <svg ref={svgRef} className="w-full h-full overflow-visible" />
     </div>
   );

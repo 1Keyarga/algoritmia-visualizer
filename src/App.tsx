@@ -1,6 +1,6 @@
 ﻿import { useState, useMemo } from 'react';
 import { ALGORITHMS_CATALOG } from './core/algorithms/registry';
-import type { AlgorithmMetadata } from './types/algorithm';
+import type { AlgorithmMetadata, SupportedLanguage } from './types/algorithm';
 import { generateBubbleSortTrace } from './core/algorithms/bubbleSort';
 import { generateRandomDataset } from './core/utils/generator';
 import { usePlayback } from './hooks/usePlayback';
@@ -16,6 +16,15 @@ export function App() {
     ALGORITHMS_CATALOG[0]
   );
 
+  // Lenguaje activo para el visor de código: Pseudocódigo (Español) por defecto
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('pseudocode');
+
+  // Estados de visibilidad de paneles colapsables
+  const [isPseudocodeOpen, setIsPseudocodeOpen] = useState(true);
+  const [isMemoryOpen, setIsMemoryOpen] = useState(true);
+  const [isVisualizerFullscreen, setIsVisualizerFullscreen] = useState(false);
+
+  // Dataset inicial idéntico a la captura de referencia
   const [dataset, setDataset] = useState<number[]>([
     12, 23, 67, 12, 56, 11, 45, 23, 78, 56, 78, 89, 98, 45
   ]);
@@ -51,8 +60,21 @@ export function App() {
     setDataset(customData);
   };
 
+  const handleToggleFullscreen = () => {
+    if (isVisualizerFullscreen) {
+      setIsVisualizerFullscreen(false);
+      setIsPseudocodeOpen(true);
+      setIsMemoryOpen(true);
+    } else {
+      setIsVisualizerFullscreen(true);
+      setIsPseudocodeOpen(false);
+      setIsMemoryOpen(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#111217] text-slate-100 overflow-hidden font-sans">
+    <div className="flex flex-col h-screen w-screen bg-[#111217] text-slate-100 overflow-hidden font-sans select-none">
+      {/* Top Navigation Bar */}
       <Navbar
         selectedAlgorithm={selectedAlgorithm}
         onSelectAlgorithm={(algo) => {
@@ -64,27 +86,49 @@ export function App() {
         onGenerateRandom={() => handleGenerateRandom(dataset.length)}
         onApplyCustomDataset={handleApplyCustomDataset}
         currentDataset={dataset}
+        isPseudocodeOpen={isPseudocodeOpen}
+        onTogglePseudocode={() => setIsPseudocodeOpen(!isPseudocodeOpen)}
+        isMemoryOpen={isMemoryOpen}
+        onToggleMemory={() => setIsMemoryOpen(!isMemoryOpen)}
+        isVisualizerFullscreen={isVisualizerFullscreen}
+        onToggleFullscreen={handleToggleFullscreen}
       />
 
+      {/* Main Workspace Area */}
       <main className="flex-1 flex min-h-0 overflow-hidden">
+        {/* Left Panel: Pseudocode / Python / C++ / Java */}
         <PseudocodePanel
           algorithm={selectedAlgorithm}
           currentStep={playback.currentStep}
           stepIndex={playback.currentStepIndex}
           totalSteps={playback.totalSteps}
+          selectedLanguage={selectedLanguage}
+          onChangeLanguage={setSelectedLanguage}
+          isOpen={isPseudocodeOpen}
+          onToggleOpen={() => setIsPseudocodeOpen(!isPseudocodeOpen)}
         />
 
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          <MemoryPanel currentStep={playback.currentStep} />
+        {/* Right Area: Memory (Top) + Visualization (Bottom) */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#12131b]">
+          {/* Memory Panel: Stack Frames + Array Grid + Metrics */}
+          <MemoryPanel
+            currentStep={playback.currentStep}
+            isOpen={isMemoryOpen}
+            onToggleOpen={() => setIsMemoryOpen(!isMemoryOpen)}
+          />
 
+          {/* D3 Bar Chart Visualization Panel */}
           <VisualizerPanel
             currentStep={playback.currentStep}
             stepIndex={playback.currentStepIndex}
             totalSteps={playback.totalSteps}
+            isFullscreen={isVisualizerFullscreen}
+            onToggleFullscreen={handleToggleFullscreen}
           />
         </div>
       </main>
 
+      {/* Bottom Playback & Scrubber Controls */}
       <PlaybackFooter
         currentStepIndex={playback.currentStepIndex}
         totalSteps={playback.totalSteps}
