@@ -43,7 +43,6 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
   const percent = totalSteps > 1 ? Math.round(((currentStepIndex + 1) / totalSteps) * 100) : 0;
 
   return (
-      <div className="absolute -top-1 left-0 right-0 h-2 group cursor-pointer">
     <footer className="bg-[#13141e] border-t border-[#232532] flex flex-col shrink-0 select-none z-20">
       {/* Dedicated Interactive Scrubber Timeline (RF-18) */}
       <div className="w-full px-6 pt-2 pb-1 bg-[#101119] flex items-center gap-3 border-b border-[#1c1d29]">
