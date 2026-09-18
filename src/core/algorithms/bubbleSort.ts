@@ -17,70 +17,76 @@ export const BUBBLE_SORT_METADATA: AlgorithmMetadata = {
   },
   codeByLanguage: {
     pseudocode: [
-      { lineNumber: 1, code: 'algoritmo ordenamiento_burbuja(arr):', indent: 0 },
-      { lineNumber: 2, code: '    n ← longitud(arr)', indent: 1 },
-      { lineNumber: 3, code: '    para i ← 0 hasta n - 1 hacer:', indent: 1 },
-      { lineNumber: 4, code: '        intercambiado ← Falso', indent: 2 },
-      { lineNumber: 5, code: '        para j ← 0 hasta n - i - 2 hacer:', indent: 2 },
-      { lineNumber: 6, code: '            // Comparar adyacentes', indent: 3 },
-      { lineNumber: 7, code: '            si arr[j] > arr[j + 1] entonces:', indent: 3 },
-      { lineNumber: 8, code: '                intercambiar(arr[j], arr[j + 1])', indent: 4 },
-      { lineNumber: 9, code: '                intercambiado ← Verdadero', indent: 4 },
-      { lineNumber: 10, code: '', indent: 0 },
-      { lineNumber: 11, code: '        // Si no hubo intercambios', indent: 2 },
-      { lineNumber: 12, code: '        si no intercambiado entonces:', indent: 2 },
-      { lineNumber: 13, code: '            interrumpir', indent: 3 },
-      { lineNumber: 14, code: '', indent: 0 },
-      { lineNumber: 15, code: '    retornar arr', indent: 1 },
+      { lineNumber: 1, code: 'funcion intercambiar(arr, i, j):', indent: 0 },
+      { lineNumber: 2, code: '    temp ← arr[i]', indent: 1 },
+      { lineNumber: 3, code: '    arr[i] ← arr[j]', indent: 1 },
+      { lineNumber: 4, code: '    arr[j] ← temp', indent: 1 },
+      { lineNumber: 5, code: '', indent: 0 },
+      { lineNumber: 6, code: 'algoritmo ordenamiento_burbuja(arr):', indent: 0 },
+      { lineNumber: 7, code: '    n ← longitud(arr)', indent: 1 },
+      { lineNumber: 8, code: '    para i ← 0 hasta n - 1 hacer:', indent: 1 },
+      { lineNumber: 9, code: '        intercambiado ← Falso', indent: 2 },
+      { lineNumber: 10, code: '        para j ← 0 hasta n - i - 2 hacer:', indent: 2 },
+      { lineNumber: 11, code: '            si arr[j] > arr[j + 1] entonces:', indent: 3 },
+      { lineNumber: 12, code: '                intercambiar(arr, j, j + 1)', indent: 4 },
+      { lineNumber: 13, code: '                intercambiado ← Verdadero', indent: 4 },
+      { lineNumber: 14, code: '        si no intercambiado entonces:', indent: 2 },
+      { lineNumber: 15, code: '            interrumpir', indent: 3 },
+      { lineNumber: 16, code: '    retornar arr', indent: 1 },
     ],
     python: [
-      { lineNumber: 1, code: 'def bubble_sort(arr):', indent: 0 },
-      { lineNumber: 2, code: '    n = len(arr)', indent: 1 },
-      { lineNumber: 3, code: '    for i in range(n):', indent: 1 },
-      { lineNumber: 4, code: '        swapped = False', indent: 2 },
-      { lineNumber: 5, code: '        for j in range(n - i - 1):', indent: 2 },
-      { lineNumber: 6, code: '            # Comparar elementos adyacentes', indent: 3 },
-      { lineNumber: 7, code: '            if arr[j] > arr[j + 1]:', indent: 3 },
-      { lineNumber: 8, code: '                swap(arr[j], arr[j + 1])', indent: 4 },
-      { lineNumber: 9, code: '                swapped = True', indent: 4 },
-      { lineNumber: 10, code: '', indent: 0 },
-      { lineNumber: 11, code: '        # Si no hubo intercambios, terminar', indent: 2 },
+      { lineNumber: 1, code: 'def swap(arr, i, j):', indent: 0 },
+      { lineNumber: 2, code: '    arr[i], arr[j] = arr[j], arr[i]', indent: 1 },
+      { lineNumber: 3, code: '', indent: 0 },
+      { lineNumber: 4, code: 'def bubble_sort(arr):', indent: 0 },
+      { lineNumber: 5, code: '    n = len(arr)', indent: 1 },
+      { lineNumber: 6, code: '    for i in range(n):', indent: 1 },
+      { lineNumber: 7, code: '        swapped = False', indent: 2 },
+      { lineNumber: 8, code: '        for j in range(n - i - 1):', indent: 2 },
+      { lineNumber: 9, code: '            if arr[j] > arr[j + 1]:', indent: 3 },
+      { lineNumber: 10, code: '                swap(arr, j, j + 1)', indent: 4 },
+      { lineNumber: 11, code: '                swapped = True', indent: 4 },
       { lineNumber: 12, code: '        if not swapped:', indent: 2 },
       { lineNumber: 13, code: '            break', indent: 3 },
-      { lineNumber: 14, code: '', indent: 0 },
-      { lineNumber: 15, code: '    return arr', indent: 1 },
+      { lineNumber: 14, code: '    return arr', indent: 1 },
     ],
     cpp: [
-      { lineNumber: 1, code: 'void bubbleSort(vector<int>& arr) {', indent: 0 },
-      { lineNumber: 2, code: '    int n = arr.size();', indent: 1 },
-      { lineNumber: 3, code: '    for (int i = 0; i < n; i++) {', indent: 1 },
-      { lineNumber: 4, code: '        bool swapped = false;', indent: 2 },
-      { lineNumber: 5, code: '        for (int j = 0; j < n - i - 1; j++) {', indent: 2 },
-      { lineNumber: 6, code: '            // Comparar adyacentes', indent: 3 },
-      { lineNumber: 7, code: '            if (arr[j] > arr[j + 1]) {', indent: 3 },
-      { lineNumber: 8, code: '                swap(arr[j], arr[j + 1]);', indent: 4 },
-      { lineNumber: 9, code: '                swapped = true;', indent: 4 },
-      { lineNumber: 10, code: '            }', indent: 3 },
-      { lineNumber: 11, code: '        }', indent: 2 },
-      { lineNumber: 12, code: '        if (!swapped) break;', indent: 2 },
-      { lineNumber: 13, code: '    }', indent: 1 },
-      { lineNumber: 14, code: '}', indent: 0 },
+      { lineNumber: 1, code: 'void swap(int& a, int& b) {', indent: 0 },
+      { lineNumber: 2, code: '    int temp = a; a = b; b = temp;', indent: 1 },
+      { lineNumber: 3, code: '}', indent: 0 },
+      { lineNumber: 4, code: '', indent: 0 },
+      { lineNumber: 5, code: 'void bubbleSort(vector<int>& arr) {', indent: 0 },
+      { lineNumber: 6, code: '    int n = arr.size();', indent: 1 },
+      { lineNumber: 7, code: '    for (int i = 0; i < n; i++) {', indent: 1 },
+      { lineNumber: 8, code: '        bool swapped = false;', indent: 2 },
+      { lineNumber: 9, code: '        for (int j = 0; j < n - i - 1; j++) {', indent: 2 },
+      { lineNumber: 10, code: '            if (arr[j] > arr[j + 1]) {', indent: 3 },
+      { lineNumber: 11, code: '                swap(arr[j], arr[j + 1]);', indent: 4 },
+      { lineNumber: 12, code: '                swapped = true;', indent: 4 },
+      { lineNumber: 13, code: '            }', indent: 3 },
+      { lineNumber: 14, code: '        }', indent: 2 },
+      { lineNumber: 15, code: '        if (!swapped) break;', indent: 2 },
+      { lineNumber: 16, code: '    }', indent: 1 },
+      { lineNumber: 17, code: '}', indent: 0 },
     ],
     java: [
-      { lineNumber: 1, code: 'public static void bubbleSort(int[] arr) {', indent: 0 },
-      { lineNumber: 2, code: '    int n = arr.length;', indent: 1 },
-      { lineNumber: 3, code: '    for (int i = 0; i < n; i++) {', indent: 1 },
-      { lineNumber: 4, code: '        boolean swapped = false;', indent: 2 },
-      { lineNumber: 5, code: '        for (int j = 0; j < n - i - 1; j++) {', indent: 2 },
-      { lineNumber: 6, code: '            // Comparar adyacentes', indent: 3 },
-      { lineNumber: 7, code: '            if (arr[j] > arr[j + 1]) {', indent: 3 },
-      { lineNumber: 8, code: '                swap(arr, j, j + 1);', indent: 4 },
-      { lineNumber: 9, code: '                swapped = true;', indent: 4 },
-      { lineNumber: 10, code: '            }', indent: 3 },
-      { lineNumber: 11, code: '        }', indent: 2 },
-      { lineNumber: 12, code: '        if (!swapped) break;', indent: 2 },
-      { lineNumber: 13, code: '    }', indent: 1 },
-      { lineNumber: 14, code: '}', indent: 0 },
+      { lineNumber: 1, code: 'static void swap(int[] arr, int i, int j) {', indent: 0 },
+      { lineNumber: 2, code: '    int temp = arr[i]; arr[i] = arr[j]; arr[j] = temp;', indent: 1 },
+      { lineNumber: 3, code: '}', indent: 0 },
+      { lineNumber: 4, code: '', indent: 0 },
+      { lineNumber: 5, code: 'public static void bubbleSort(int[] arr) {', indent: 0 },
+      { lineNumber: 6, code: '    int n = arr.length;', indent: 1 },
+      { lineNumber: 7, code: '    for (int i = 0; i < n; i++) {', indent: 1 },
+      { lineNumber: 8, code: '        boolean swapped = false;', indent: 2 },
+      { lineNumber: 9, code: '        for (int j = 0; j < n - i - 1; j++) {', indent: 2 },
+      { lineNumber: 10, code: '            if (arr[j] > arr[j + 1]) {', indent: 3 },
+      { lineNumber: 11, code: '                swap(arr, j, j + 1);', indent: 4 },
+      { lineNumber: 12, code: '                swapped = true;', indent: 4 },
+      { lineNumber: 13, code: '            }', indent: 3 },
+      { lineNumber: 14, code: '        }', indent: 2 },
+      { lineNumber: 15, code: '        if (!swapped) break;', indent: 2 },
+      { lineNumber: 16, code: '    }', indent: 1 },
+      { lineNumber: 17, code: '}', indent: 0 },
     ],
   },
 };
@@ -164,18 +170,18 @@ export function generateBubbleSortTrace(initialData: number[]): Step[] {
     });
   };
 
-  // 1: Inicio
+  // Inicio
   pushStep(
-    { pseudocode: 1, python: 1, cpp: 1, java: 1 },
-    [{ lineNumber: 1, type: 'active', lineByLanguage: { pseudocode: 1, python: 1, cpp: 1, java: 1 } }],
+    { pseudocode: 6, python: 4, cpp: 5, java: 5 },
+    [{ lineNumber: 6, type: 'active', lineByLanguage: { pseudocode: 6, python: 4, cpp: 5, java: 5 } }],
     `Iniciando ejecución de Bubble Sort con ${n} elementos.`,
     'init'
   );
 
-  // 2: Asignación de n
+  // Asignación de n
   pushStep(
-    { pseudocode: 2, python: 2, cpp: 2, java: 2 },
-    [{ lineNumber: 2, type: 'active', lineByLanguage: { pseudocode: 2, python: 2, cpp: 2, java: 2 } }],
+    { pseudocode: 7, python: 5, cpp: 6, java: 6 },
+    [{ lineNumber: 7, type: 'active', lineByLanguage: { pseudocode: 7, python: 5, cpp: 6, java: 6 } }],
     `Obteniendo la longitud del arreglo: n = ${n}.`,
     'assign'
   );
@@ -183,20 +189,20 @@ export function generateBubbleSortTrace(initialData: number[]): Step[] {
   const sortedIndices = new Set<number>();
 
   for (let i = 0; i < n; i++) {
-    // 3: Bucle exterior
+    // Bucle exterior
     pushStep(
-      { pseudocode: 3, python: 3, cpp: 3, java: 3 },
-      [{ lineNumber: 3, type: 'active', lineByLanguage: { pseudocode: 3, python: 3, cpp: 3, java: 3 } }],
+      { pseudocode: 8, python: 6, cpp: 7, java: 7 },
+      [{ lineNumber: 8, type: 'active', lineByLanguage: { pseudocode: 8, python: 6, cpp: 7, java: 7 } }],
       `Iniciando pasada exterior i = ${i}. En esta pasada se colocará el elemento mayor en su posición final.`,
       'iterate_outer',
       i
     );
 
     let swapped = false;
-    // 4: swapped = false
+    // swapped = false
     pushStep(
-      { pseudocode: 4, python: 4, cpp: 4, java: 4 },
-      [{ lineNumber: 4, type: 'active', lineByLanguage: { pseudocode: 4, python: 4, cpp: 4, java: 4 } }],
+      { pseudocode: 9, python: 7, cpp: 8, java: 8 },
+      [{ lineNumber: 9, type: 'active', lineByLanguage: { pseudocode: 9, python: 7, cpp: 8, java: 8 } }],
       `Inicializando bandera intercambiado = Falso.`,
       'assign',
       i,
@@ -213,10 +219,10 @@ export function generateBubbleSortTrace(initialData: number[]): Step[] {
         return { ...item, state: 'default', nonColorIndicator: undefined };
       });
 
-      // 5: for j in range
+      // for j in range
       pushStep(
-        { pseudocode: 5, python: 5, cpp: 5, java: 5 },
-        [{ lineNumber: 5, type: 'active', lineByLanguage: { pseudocode: 5, python: 5, cpp: 5, java: 5 } }],
+        { pseudocode: 10, python: 8, cpp: 9, java: 9 },
+        [{ lineNumber: 10, type: 'active', lineByLanguage: { pseudocode: 10, python: 8, cpp: 9, java: 9 } }],
         `Bucle interno: evaluando posición j = ${j} frente a j + 1 = ${j + 1}.`,
         'iterate_inner',
         i,
@@ -230,12 +236,12 @@ export function generateBubbleSortTrace(initialData: number[]): Step[] {
       const needsSwap = valJ > valJ1;
 
       if (needsSwap) {
-        // 7: if condition
+        // if condition
         pushStep(
-          { pseudocode: 7, python: 7, cpp: 7, java: 7 },
+          { pseudocode: 11, python: 9, cpp: 10, java: 10 },
           [
-            { lineNumber: 7, type: 'active', lineByLanguage: { pseudocode: 7, python: 7, cpp: 7, java: 7 } },
-            { lineNumber: 8, type: 'next', badgeText: 'siguiente', lineByLanguage: { pseudocode: 8, python: 8, cpp: 8, java: 8 } },
+            { lineNumber: 11, type: 'active', lineByLanguage: { pseudocode: 11, python: 9, cpp: 10, java: 10 } },
+            { lineNumber: 12, type: 'next', badgeText: 'siguiente', lineByLanguage: { pseudocode: 12, python: 10, cpp: 11, java: 11 } },
           ],
           `Comparando arr[${j}] (${valJ}) > arr[${j + 1}] (${valJ1}): Condición VERDADERA. Se requiere intercambio.`,
           'compare',
@@ -244,7 +250,7 @@ export function generateBubbleSortTrace(initialData: number[]): Step[] {
           swapped
         );
 
-        // 8: swap
+        // swap
         swapsCount++;
         const temp = currentArray[j];
         currentArray[j] = currentArray[j + 1];
@@ -253,11 +259,11 @@ export function generateBubbleSortTrace(initialData: number[]): Step[] {
         currentArray[j + 1].state = 'swapped';
 
         pushStep(
-          { pseudocode: 8, python: 8, cpp: 8, java: 8 },
+          { pseudocode: 12, python: 10, cpp: 11, java: 11 },
           [
-            { lineNumber: 7, type: 'evaluating', lineByLanguage: { pseudocode: 7, python: 7, cpp: 7, java: 7 } },
-            { lineNumber: 8, type: 'executed', badgeText: 'ejecutado', lineByLanguage: { pseudocode: 8, python: 8, cpp: 8, java: 8 } },
-            { lineNumber: 9, type: 'next', badgeText: 'siguiente', lineByLanguage: { pseudocode: 9, python: 9, cpp: 9, java: 9 } },
+            { lineNumber: 11, type: 'evaluating', lineByLanguage: { pseudocode: 11, python: 9, cpp: 10, java: 10 } },
+            { lineNumber: 12, type: 'executed', badgeText: 'ejecutado', lineByLanguage: { pseudocode: 12, python: 10, cpp: 11, java: 11 } },
+            { lineNumber: 13, type: 'next', badgeText: 'siguiente', lineByLanguage: { pseudocode: 13, python: 11, cpp: 12, java: 12 } },
           ],
           `Intercambiando arr[${j}] y arr[${j + 1}]: ${valJ} se desplaza hacia la derecha.`,
           'swap',
@@ -266,13 +272,13 @@ export function generateBubbleSortTrace(initialData: number[]): Step[] {
           swapped
         );
 
-        // 9: swapped = true
+        // swapped = true
         swapped = true;
         pushStep(
-          { pseudocode: 9, python: 9, cpp: 9, java: 9 },
+          { pseudocode: 13, python: 11, cpp: 12, java: 12 },
           [
-            { lineNumber: 8, type: 'executed', badgeText: 'ejecutado', lineByLanguage: { pseudocode: 8, python: 8, cpp: 8, java: 8 } },
-            { lineNumber: 9, type: 'active', lineByLanguage: { pseudocode: 9, python: 9, cpp: 9, java: 9 } },
+            { lineNumber: 12, type: 'executed', badgeText: 'ejecutado', lineByLanguage: { pseudocode: 12, python: 10, cpp: 11, java: 11 } },
+            { lineNumber: 13, type: 'active', lineByLanguage: { pseudocode: 13, python: 11, cpp: 12, java: 12 } },
           ],
           `Marcando intercambiado = Verdadero.`,
           'assign',
@@ -282,8 +288,8 @@ export function generateBubbleSortTrace(initialData: number[]): Step[] {
         );
       } else {
         pushStep(
-          { pseudocode: 7, python: 7, cpp: 7, java: 7 },
-          [{ lineNumber: 7, type: 'active', lineByLanguage: { pseudocode: 7, python: 7, cpp: 7, java: 7 } }],
+          { pseudocode: 11, python: 9, cpp: 10, java: 10 },
+          [{ lineNumber: 11, type: 'active', lineByLanguage: { pseudocode: 11, python: 9, cpp: 10, java: 10 } }],
           `Comparando arr[${j}] (${valJ}) > arr[${j + 1}] (${valJ1}): Condición FALSA (${valJ} <= ${valJ1}). No hay intercambio.`,
           'compare',
           i,
@@ -306,10 +312,10 @@ export function generateBubbleSortTrace(initialData: number[]): Step[] {
       nonColorIndicator: '✔',
     };
 
-    // 12: if not swapped
+    // if not swapped
     pushStep(
-      { pseudocode: 12, python: 12, cpp: 12, java: 12 },
-      [{ lineNumber: 12, type: 'active', lineByLanguage: { pseudocode: 12, python: 12, cpp: 12, java: 12 } }],
+      { pseudocode: 14, python: 12, cpp: 15, java: 15 },
+      [{ lineNumber: 14, type: 'active', lineByLanguage: { pseudocode: 14, python: 12, cpp: 15, java: 15 } }],
       `Fin de la pasada i = ${i}. El elemento en índice ${sortedIdx} (${currentArray[sortedIdx].value}) queda fijado como ORDENADO.`,
       'check',
       i,
@@ -324,8 +330,8 @@ export function generateBubbleSortTrace(initialData: number[]): Step[] {
       }
 
       pushStep(
-        { pseudocode: 13, python: 13, cpp: 12, java: 12 },
-        [{ lineNumber: 13, type: 'active', lineByLanguage: { pseudocode: 13, python: 13, cpp: 12, java: 12 } }],
+        { pseudocode: 15, python: 13, cpp: 15, java: 15 },
+        [{ lineNumber: 15, type: 'active', lineByLanguage: { pseudocode: 15, python: 13, cpp: 15, java: 15 } }],
         `Optimización: No se realizaron intercambios. El arreglo completo ya está ordenado.`,
         'finish',
         i,
@@ -343,8 +349,8 @@ export function generateBubbleSortTrace(initialData: number[]): Step[] {
   }));
 
   pushStep(
-    { pseudocode: 15, python: 15, cpp: 14, java: 14 },
-    [{ lineNumber: 15, type: 'active', lineByLanguage: { pseudocode: 15, python: 15, cpp: 14, java: 14 } }],
+    { pseudocode: 16, python: 14, cpp: 16, java: 16 },
+    [{ lineNumber: 16, type: 'active', lineByLanguage: { pseudocode: 16, python: 14, cpp: 16, java: 16 } }],
     `Algoritmo completado. Comparaciones: ${comparisonsCount}, Intercambios: ${swapsCount}.`,
     'finish',
     n,

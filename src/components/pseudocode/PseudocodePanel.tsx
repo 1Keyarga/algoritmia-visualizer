@@ -41,7 +41,7 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
     }
 
     const tokens = code.split(
-      /(\balgoritmo\b|\bfuncion\b|\bpara\b|\bhacer\b|\bdesde\b|\bhasta\b|\bsi\b|\bentonces\b|\bno\b|\binterrumpir\b|\bretornar\b|\bintercambiar\b|\blongitud\b|\bVerdadero\b|\bFalso\b|\bdef\b|\bin\b|\brange\b|\blen\b|\bswap\b|\bTrue\b|\bFalse\b|\bvoid\b|\bint\b|\bbool\b|\bvector\b|\bpublic\b|\bstatic\b|\bbreak\b|\breturn\b|\bwhile\b|\bfor\b|\bif\b|\belse\b|[←(),:><=+\-\[\];{}])/g
+      /(\balgoritmo\b|\bfuncion\b|\bpara\b|\bhacer\b|\bdesde\b|\bhasta\b|\bsi\b|\bentonces\b|\bno\b|\binterrumpir\b|\bretornar\b|\bintercambiar\b|\blongitud\b|\bVerdadero\b|\bFalso\b|\bdef\b|\bin\b|\brange\b|\blen\b|\bswap\b|\bTrue\b|\bFalse\b|\bvoid\b|\bint\b|\bbool\b|\bvector\b|\bpublic\b|\bstatic\b|\bbreak\b|\breturn\b|\bwhile\b|\bfor\b|\bif\b|\belse\b|[←(),:><=+\-\[\];{}&])/g
     );
 
     return tokens.map((token, i) => {
@@ -57,7 +57,7 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
       if (['Verdadero', 'Falso', 'True', 'False', 'true', 'false'].includes(token)) {
         return <span key={i} className="text-emerald-400 font-semibold">{token}</span>;
       }
-      if (['←', '=', '==', '!=', '<', '>', '<=', '>=', '+', '-', '+=', '-='].includes(token)) {
+      if (['←', '=', '==', '!=', '<', '>', '<=', '>=', '+', '-', '+=', '-=', '&'].includes(token)) {
         return <span key={i} className="text-amber-300 font-medium">{token}</span>;
       }
       if (['(', ')', '[', ']', '{', '}', ';', ':', ','].includes(token)) {
@@ -66,7 +66,7 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
       if (['arr', 'bubble_sort', 'bubbleSort'].includes(token)) {
         return <span key={i} className="text-amber-200">{token}</span>;
       }
-      if (['i', 'j', 'n', 'swapped', 'intercambiado', 'temp', 'key', 'clave'].includes(token)) {
+      if (['i', 'j', 'n', 'swapped', 'intercambiado', 'temp', 'a', 'b'].includes(token)) {
         return <span key={i} className="text-slate-200 font-medium">{token}</span>;
       }
       return <span key={i} className="text-slate-300">{token}</span>;
@@ -113,7 +113,7 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
   }
 
   return (
-    <div className="w-[460px] xl:w-[500px] bg-[#161722] border-r border-[#232532] flex flex-col justify-between shrink-0 h-full overflow-hidden select-none transition-all">
+    <div className="w-[500px] xl:w-[560px] bg-[#161722] border-r border-[#232532] flex flex-col justify-between shrink-0 h-full overflow-hidden select-none transition-all">
       {/* Header with Language Tabs and Collapse Button */}
       <div className="bg-[#13141d] border-b border-[#232532] p-2.5 flex flex-col gap-2">
         <div className="flex items-center justify-between px-2 pt-0.5">

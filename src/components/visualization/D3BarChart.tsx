@@ -4,13 +4,9 @@ import type { ArrayElement } from '../../types/trace';
 
 interface D3BarChartProps {
   array: ArrayElement[];
-  maxVal?: number;
 }
 
-export const D3BarChart: React.FC<D3BarChartProps> = ({
-  array,
-  maxVal = 100,
-}) => {
+export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -20,8 +16,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
     const width = containerRef.current.clientWidth || 700;
     const height = containerRef.current.clientHeight || 340;
 
-    // Margen superior generoso para dar espacio a los números altos (ej. 98)
-    const margin = { top: 38, right: 30, bottom: 40, left: 40 };
+    const margin = { top: 28, right: 25, bottom: 35, left: 35 };
     const innerWidth = Math.max(100, width - margin.left - margin.right);
     const innerHeight = Math.max(100, height - margin.top - margin.bottom);
 
@@ -35,7 +30,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
 
     const defs = svg.append('defs');
     
-    // Gradiente default (índigo / púrpura)
+    // Gradiente default
     const gradDefault = defs.append('linearGradient')
       .attr('id', 'grad-default')
       .attr('x1', '0%').attr('y1', '0%')
@@ -43,7 +38,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
     gradDefault.append('stop').attr('offset', '0%').attr('stop-color', '#6366f1');
     gradDefault.append('stop').attr('offset', '100%').attr('stop-color', '#4338ca');
 
-    // Gradiente comparing (ámbar / dorado)
+    // Gradiente comparing
     const gradComparing = defs.append('linearGradient')
       .attr('id', 'grad-comparing')
       .attr('x1', '0%').attr('y1', '0%')
@@ -51,7 +46,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
     gradComparing.append('stop').attr('offset', '0%').attr('stop-color', '#fbbf24');
     gradComparing.append('stop').attr('offset', '100%').attr('stop-color', '#d97706');
 
-    // Gradiente sorted (esmeralda)
+    // Gradiente sorted
     const gradSorted = defs.append('linearGradient')
       .attr('id', 'grad-sorted')
       .attr('x1', '0%').attr('y1', '0%')
@@ -59,7 +54,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
     gradSorted.append('stop').attr('offset', '0%').attr('stop-color', '#34d399');
     gradSorted.append('stop').attr('offset', '100%').attr('stop-color', '#059669');
 
-    // Gradiente swapped (violeta)
+    // Gradiente swapped
     const gradSwapped = defs.append('linearGradient')
       .attr('id', 'grad-swapped')
       .attr('x1', '0%').attr('y1', '0%')
@@ -67,7 +62,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
     gradSwapped.append('stop').attr('offset', '0%').attr('stop-color', '#a78bfa');
     gradSwapped.append('stop').attr('offset', '100%').attr('stop-color', '#7c3aed');
 
-    // Patrón rayado para accesibilidad daltónica (RF-05)
+    // Patrón rayado para accesibilidad
     const patternComparing = defs
       .append('pattern')
       .attr('id', 'hatch-comparing')
@@ -89,14 +84,14 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
 
-    // Calcular máximo con 15% de holgura superior para que las barras nunca toquen el borde
-    const rawMax = Math.max(maxVal, ...array.map(d => d.value), 90);
-    const domainMax = Math.ceil((rawMax * 1.15) / 10) * 10;
+    // Cálculo dinámico natural basado estrictamente en el valor máximo del dataset
+    const maxDataVal = d3.max(array, d => d.value) || 100;
 
     const yScale = d3
       .scaleLinear()
-      .domain([0, domainMax])
-      .range([innerHeight, 0]);
+      .domain([0, maxDataVal])
+      .range([innerHeight, 0])
+      .nice();
 
     const xScale = d3
       .scaleBand<string>()
@@ -104,7 +99,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
       .range([0, innerWidth])
       .padding(0.20);
 
-    // Eje Y con líneas de cuadrícula punteadas
+    // Eje Y estándar con líneas de referencia
     const yAxis = d3
       .axisLeft(yScale)
       .ticks(6)
@@ -148,7 +143,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
       .attr('class', 'bar-group')
       .attr('transform', (_, i) => `translate(${xScale(String(i)) || 0}, 0)`);
 
-    // Rectángulos de las barras
+    // Barras
     barGroups
       .append('rect')
       .attr('class', 'bar-rect')
@@ -163,7 +158,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
       .attr('stroke-width', d => (d.state === 'comparing' || d.state === 'sorted' ? 2 : 1))
       .style('transition', 'all 0.18s ease-out');
 
-    // Textura de accesibilidad para daltónicos
+    // Patrón accesible
     barGroups
       .filter(d => d.state === 'comparing')
       .append('rect')
@@ -176,7 +171,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
       .attr('fill', 'url(#hatch-comparing)')
       .attr('pointer-events', 'none');
 
-    // Etiquetas X inferiores (Letras A-N)
+    // Letras A-N
     barGroups
       .append('text')
       .attr('class', 'x-label')
@@ -189,12 +184,12 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
       .attr('font-family', 'Inter, sans-serif')
       .text(d => d.label || '');
 
-    // Valores numéricos consistentemente SOBRE las barras (con holgura segura)
+    // Valores arriba de cada barra
     barGroups
       .append('text')
       .attr('class', 'val-label')
       .attr('x', xScale.bandwidth() / 2)
-      .attr('y', d => yScale(d.value) - 8)
+      .attr('y', d => yScale(d.value) - 6)
       .attr('text-anchor', 'middle')
       .attr('fill', d => (d.state === 'comparing' ? '#fef08a' : d.state === 'sorted' ? '#a7f3d0' : '#e2e8f0'))
       .attr('font-size', '11px')
@@ -202,7 +197,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
       .attr('font-family', 'JetBrains Mono, monospace')
       .text(d => d.value);
 
-  }, [array, maxVal]);
+  }, [array]);
 
   return (
     <div ref={containerRef} className="w-full h-full min-h-[240px] relative flex-1 flex items-center justify-center">
