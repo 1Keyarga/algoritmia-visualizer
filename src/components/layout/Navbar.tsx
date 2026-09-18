@@ -1,7 +1,7 @@
 ﻿import React, { useState } from 'react';
 import { ALGORITHMS_CATALOG } from '../../core/algorithms/registry';
 import type { AlgorithmMetadata } from '../../types/algorithm';
-import { ChevronDown, Sparkles, Settings, Sliders, Layers, Code2, Cpu, BarChart3 } from 'lucide-react';
+import { ChevronDown, Sparkles, Settings, Sliders, Layers } from 'lucide-react';
 import { DatasetModal } from './DatasetModal';
 
 interface NavbarProps {
@@ -12,12 +12,6 @@ interface NavbarProps {
   onGenerateRandom: () => void;
   onApplyCustomDataset: (data: number[]) => void;
   currentDataset: number[];
-  isPseudocodeOpen: boolean;
-  onTogglePseudocode: () => void;
-  isMemoryOpen: boolean;
-  onToggleMemory: () => void;
-  isVisualizerFullscreen: boolean;
-  onToggleFullscreen: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -28,12 +22,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onGenerateRandom,
   onApplyCustomDataset,
   currentDataset,
-  isPseudocodeOpen,
-  onTogglePseudocode,
-  isMemoryOpen,
-  onToggleMemory,
-  isVisualizerFullscreen,
-  onToggleFullscreen,
 }) => {
   const [isAlgoMenuOpen, setIsAlgoMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -155,59 +143,16 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
 
-        {/* Right: Quick Panel Visibility Toggles & Profile */}
+        {/* Right: Settings & Student Avatar (Clean like Figma) */}
         <div className="flex items-center gap-3">
-          {/* Panel Visibility Buttons */}
-          <div className="flex items-center bg-[#171824] border border-[#26283a] p-0.5 rounded-lg">
-            <button
-              onClick={onTogglePseudocode}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-md transition-colors cursor-pointer ${
-                isPseudocodeOpen
-                  ? 'bg-indigo-600/30 text-indigo-300 font-semibold border border-indigo-500/40'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-              title="Mostrar / Ocultar panel de Código"
-            >
-              <Code2 className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Código</span>
-            </button>
-
-            <button
-              onClick={onToggleMemory}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-md transition-colors cursor-pointer ${
-                isMemoryOpen
-                  ? 'bg-indigo-600/30 text-indigo-300 font-semibold border border-indigo-500/40'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-              title="Mostrar / Ocultar panel de Memoria"
-            >
-              <Cpu className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Memoria</span>
-            </button>
-
-            <button
-              onClick={onToggleFullscreen}
-              className={`flex items-center gap-1 px-2.5 py-1 text-xs rounded-md transition-colors cursor-pointer ${
-                isVisualizerFullscreen
-                  ? 'bg-indigo-600/30 text-indigo-300 font-semibold border border-indigo-500/40'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-              title="Maximizar Gráfico D3"
-            >
-              <BarChart3 className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">Gráfico</span>
-            </button>
-          </div>
-
           <button
             onClick={() => setIsModalOpen(true)}
             className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#202232] rounded-lg transition-colors cursor-pointer"
-            title="Opciones"
+            title="Configuración de Dataset"
           >
             <Settings className="w-4 h-4" />
           </button>
 
-          {/* Student Profile avatar */}
           <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 p-[1.5px] cursor-pointer shadow-md">
             <div className="w-full h-full rounded-full bg-[#171821] flex items-center justify-center overflow-hidden">
               <span className="text-[11px] font-bold text-indigo-300">EST</span>

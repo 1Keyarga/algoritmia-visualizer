@@ -97,14 +97,14 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
       <div
         onClick={onToggleOpen}
         className="w-10 bg-[#161722] hover:bg-[#1c1e2d] border-r border-[#232532] flex flex-col items-center py-4 cursor-pointer transition-colors shrink-0 group select-none"
-        title="Expandir panel de código"
+        title="Expandir panel"
       >
         <button className="p-1.5 rounded-lg bg-[#222434] text-slate-400 group-hover:text-white mb-4 transition-colors">
           <ChevronRight className="w-4 h-4" />
         </button>
         <div className="flex-1 flex items-center justify-center">
           <span className="text-[11px] font-bold tracking-widest text-slate-400 group-hover:text-indigo-300 uppercase [writing-mode:vertical-rl] rotate-180">
-            Código / Pseudocódigo
+            Pseudocódigo
           </span>
         </div>
         <Code2 className="w-4 h-4 text-indigo-400/70 mt-4" />
@@ -114,21 +114,17 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
 
   return (
     <div className="w-[500px] xl:w-[560px] bg-[#161722] border-r border-[#232532] flex flex-col justify-between shrink-0 h-full overflow-hidden select-none transition-all">
-      {/* Header with Language Tabs and Collapse Button */}
+      {/* Header with Language Tabs and Clean Chevron Button */}
       <div className="bg-[#13141d] border-b border-[#232532] p-2.5 flex flex-col gap-2">
         <div className="flex items-center justify-between px-2 pt-0.5">
-          <div className="flex items-center gap-2">
-            <Code2 className="w-4 h-4 text-indigo-400" />
-            <span className="text-xs font-bold tracking-wider text-slate-300 uppercase">
-              Código / Algoritmo
-            </span>
-          </div>
+          <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
+            Pseudocódigo
+          </span>
           <button
             onClick={onToggleOpen}
-            className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1"
+            className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
             title="Colapsar panel"
           >
-            <span className="text-[11px] text-slate-400">Ocultar</span>
             <ChevronLeft className="w-4 h-4" />
           </button>
         </div>

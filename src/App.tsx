@@ -16,15 +16,12 @@ export function App() {
     ALGORITHMS_CATALOG[0]
   );
 
-  // Lenguaje activo para el visor de código: Pseudocódigo (Español) por defecto
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('pseudocode');
 
-  // Estados de visibilidad de paneles colapsables
   const [isPseudocodeOpen, setIsPseudocodeOpen] = useState(true);
   const [isMemoryOpen, setIsMemoryOpen] = useState(true);
   const [isVisualizerFullscreen, setIsVisualizerFullscreen] = useState(false);
 
-  // Dataset inicial idéntico a la captura de referencia
   const [dataset, setDataset] = useState<number[]>([
     12, 23, 67, 12, 56, 11, 45, 23, 78, 56, 78, 89, 98, 45
   ]);
@@ -86,12 +83,6 @@ export function App() {
         onGenerateRandom={() => handleGenerateRandom(dataset.length)}
         onApplyCustomDataset={handleApplyCustomDataset}
         currentDataset={dataset}
-        isPseudocodeOpen={isPseudocodeOpen}
-        onTogglePseudocode={() => setIsPseudocodeOpen(!isPseudocodeOpen)}
-        isMemoryOpen={isMemoryOpen}
-        onToggleMemory={() => setIsMemoryOpen(!isMemoryOpen)}
-        isVisualizerFullscreen={isVisualizerFullscreen}
-        onToggleFullscreen={handleToggleFullscreen}
       />
 
       {/* Main Workspace Area */}
