@@ -20,7 +20,8 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
     const width = containerRef.current.clientWidth || 700;
     const height = containerRef.current.clientHeight || 340;
 
-    const margin = { top: 25, right: 30, bottom: 40, left: 40 };
+    // Margen superior generoso para dar espacio a los números altos (ej. 98)
+    const margin = { top: 38, right: 30, bottom: 40, left: 40 };
     const innerWidth = Math.max(100, width - margin.left - margin.right);
     const innerHeight = Math.max(100, height - margin.top - margin.bottom);
 
@@ -34,7 +35,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
 
     const defs = svg.append('defs');
     
-    // Gradiente default
+    // Gradiente default (índigo / púrpura)
     const gradDefault = defs.append('linearGradient')
       .attr('id', 'grad-default')
       .attr('x1', '0%').attr('y1', '0%')
@@ -42,7 +43,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
     gradDefault.append('stop').attr('offset', '0%').attr('stop-color', '#6366f1');
     gradDefault.append('stop').attr('offset', '100%').attr('stop-color', '#4338ca');
 
-    // Gradiente comparing
+    // Gradiente comparing (ámbar / dorado)
     const gradComparing = defs.append('linearGradient')
       .attr('id', 'grad-comparing')
       .attr('x1', '0%').attr('y1', '0%')
@@ -50,7 +51,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
     gradComparing.append('stop').attr('offset', '0%').attr('stop-color', '#fbbf24');
     gradComparing.append('stop').attr('offset', '100%').attr('stop-color', '#d97706');
 
-    // Gradiente sorted
+    // Gradiente sorted (esmeralda)
     const gradSorted = defs.append('linearGradient')
       .attr('id', 'grad-sorted')
       .attr('x1', '0%').attr('y1', '0%')
@@ -58,7 +59,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
     gradSorted.append('stop').attr('offset', '0%').attr('stop-color', '#34d399');
     gradSorted.append('stop').attr('offset', '100%').attr('stop-color', '#059669');
 
-    // Gradiente swapped
+    // Gradiente swapped (violeta)
     const gradSwapped = defs.append('linearGradient')
       .attr('id', 'grad-swapped')
       .attr('x1', '0%').attr('y1', '0%')
@@ -66,7 +67,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
     gradSwapped.append('stop').attr('offset', '0%').attr('stop-color', '#a78bfa');
     gradSwapped.append('stop').attr('offset', '100%').attr('stop-color', '#7c3aed');
 
-    // Patrón rayado para accesibilidad (RF-05)
+    // Patrón rayado para accesibilidad daltónica (RF-05)
     const patternComparing = defs
       .append('pattern')
       .attr('id', 'hatch-comparing')
@@ -88,12 +89,14 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
 
-    const actualMax = Math.max(maxVal, ...array.map(d => d.value), 90);
+    // Calcular máximo con 15% de holgura superior para que las barras nunca toquen el borde
+    const rawMax = Math.max(maxVal, ...array.map(d => d.value), 90);
+    const domainMax = Math.ceil((rawMax * 1.15) / 10) * 10;
+
     const yScale = d3
       .scaleLinear()
-      .domain([0, actualMax])
-      .range([innerHeight, 0])
-      .nice();
+      .domain([0, domainMax])
+      .range([innerHeight, 0]);
 
     const xScale = d3
       .scaleBand<string>()
@@ -101,9 +104,10 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
       .range([0, innerWidth])
       .padding(0.20);
 
+    // Eje Y con líneas de cuadrícula punteadas
     const yAxis = d3
       .axisLeft(yScale)
-      .ticks(8)
+      .ticks(6)
       .tickSize(-innerWidth)
       .tickFormat(d => `${d}`);
 
@@ -159,7 +163,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
       .attr('stroke-width', d => (d.state === 'comparing' || d.state === 'sorted' ? 2 : 1))
       .style('transition', 'all 0.18s ease-out');
 
-    // Textura rayada para daltónicos en estado comparing
+    // Textura de accesibilidad para daltónicos
     barGroups
       .filter(d => d.state === 'comparing')
       .append('rect')
@@ -185,12 +189,12 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({
       .attr('font-family', 'Inter, sans-serif')
       .text(d => d.label || '');
 
-    // Valores numéricos encima de las barras
+    // Valores numéricos consistentemente SOBRE las barras (con holgura segura)
     barGroups
       .append('text')
       .attr('class', 'val-label')
       .attr('x', xScale.bandwidth() / 2)
-      .attr('y', d => Math.max(14, yScale(d.value) - 6))
+      .attr('y', d => yScale(d.value) - 8)
       .attr('text-anchor', 'middle')
       .attr('fill', d => (d.state === 'comparing' ? '#fef08a' : d.state === 'sorted' ? '#a7f3d0' : '#e2e8f0'))
       .attr('font-size', '11px')

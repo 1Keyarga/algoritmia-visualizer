@@ -34,7 +34,6 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
 
   const lines = algorithm.codeByLanguage[selectedLanguage] || [];
 
-  // Resaltado de sintaxis enriquecido para Pseudocódigo en Español, Python, C++ y Java
   const renderCodeWithSyntax = (code: string) => {
     if (!code) return <span>&nbsp;</span>;
     if (code.trim().startsWith('//') || code.trim().startsWith('#')) {
@@ -46,31 +45,24 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
     );
 
     return tokens.map((token, i) => {
-      // Palabras clave de control
       if (['algoritmo', 'funcion', 'def', 'void', 'public', 'static', 'retornar', 'return', 'interrumpir', 'break'].includes(token)) {
         return <span key={i} className="text-purple-400 font-semibold">{token}</span>;
       }
-      // Bucles y condicionales
       if (['para', 'hacer', 'desde', 'hasta', 'si', 'entonces', 'no', 'for', 'in', 'while', 'if', 'else'].includes(token)) {
         return <span key={i} className="text-pink-400 font-semibold">{token}</span>;
       }
-      // Tipos y funciones integradas
       if (['longitud', 'intercambiar', 'range', 'len', 'swap', 'size', 'length', 'int', 'bool', 'vector'].includes(token)) {
         return <span key={i} className="text-cyan-400 font-medium">{token}</span>;
       }
-      // Booleanos
       if (['Verdadero', 'Falso', 'True', 'False', 'true', 'false'].includes(token)) {
         return <span key={i} className="text-emerald-400 font-semibold">{token}</span>;
       }
-      // Operadores especiales
       if (['←', '=', '==', '!=', '<', '>', '<=', '>=', '+', '-', '+=', '-='].includes(token)) {
         return <span key={i} className="text-amber-300 font-medium">{token}</span>;
       }
-      // Paréntesis y delimitadores
       if (['(', ')', '[', ']', '{', '}', ';', ':', ','].includes(token)) {
         return <span key={i} className="text-slate-400">{token}</span>;
       }
-      // Variables
       if (['arr', 'bubble_sort', 'bubbleSort'].includes(token)) {
         return <span key={i} className="text-amber-200">{token}</span>;
       }
@@ -84,7 +76,6 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
   const getLineHighlight = (lineNum: number) => {
     if (!currentStep) return null;
     
-    // Buscar en highlights detallados
     const customHighlight = currentStep.highlights?.find(h => {
       if (h.lineByLanguage) {
         return h.lineByLanguage[selectedLanguage] === lineNum;
@@ -101,7 +92,6 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
     return null;
   };
 
-  // Barra colapsada
   if (!isOpen) {
     return (
       <div
@@ -114,7 +104,7 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
         </button>
         <div className="flex-1 flex items-center justify-center">
           <span className="text-[11px] font-bold tracking-widest text-slate-400 group-hover:text-indigo-300 uppercase [writing-mode:vertical-rl] rotate-180">
-            Pseudocódigo / Código
+            Código / Pseudocódigo
           </span>
         </div>
         <Code2 className="w-4 h-4 text-indigo-400/70 mt-4" />
@@ -123,10 +113,10 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
   }
 
   return (
-    <div className="w-[420px] xl:w-[460px] bg-[#161722] border-r border-[#232532] flex flex-col justify-between shrink-0 h-full overflow-hidden select-none transition-all">
+    <div className="w-[460px] xl:w-[500px] bg-[#161722] border-r border-[#232532] flex flex-col justify-between shrink-0 h-full overflow-hidden select-none transition-all">
       {/* Header with Language Tabs and Collapse Button */}
-      <div className="bg-[#13141d] border-b border-[#232532] p-2 flex flex-col gap-2">
-        <div className="flex items-center justify-between px-2 pt-1">
+      <div className="bg-[#13141d] border-b border-[#232532] p-2.5 flex flex-col gap-2">
+        <div className="flex items-center justify-between px-2 pt-0.5">
           <div className="flex items-center gap-2">
             <Code2 className="w-4 h-4 text-indigo-400" />
             <span className="text-xs font-bold tracking-wider text-slate-300 uppercase">
@@ -135,9 +125,10 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
           </div>
           <button
             onClick={onToggleOpen}
-            className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
+            className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1"
             title="Colapsar panel"
           >
+            <span className="text-[11px] text-slate-400">Ocultar</span>
             <ChevronLeft className="w-4 h-4" />
           </button>
         </div>
@@ -150,9 +141,9 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
               <button
                 key={lang.id}
                 onClick={() => onChangeLanguage(lang.id)}
-                className={`flex-1 py-1 px-2 text-[11px] font-medium rounded-md transition-all cursor-pointer text-center ${
+                className={`flex-1 py-1.5 px-2 text-[11px] font-medium rounded-md transition-all cursor-pointer text-center ${
                   isSelected
-                    ? 'bg-indigo-600 text-white font-semibold shadow-xs'
+                    ? 'bg-indigo-600 text-white font-bold shadow-xs'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-[#232537]'
                 }`}
               >
@@ -164,7 +155,7 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
       </div>
 
       {/* Code Viewer Container */}
-      <div className="flex-1 overflow-y-auto py-3 font-mono-code text-[13px] leading-relaxed">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 font-mono-code text-[13px] leading-relaxed">
         {lines.map((line) => {
           const highlight = getLineHighlight(line.lineNumber);
           
@@ -177,12 +168,12 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
             if (highlight.type === 'executed') {
               rowClass = 'bg-emerald-950/40 text-emerald-200';
               borderClass = 'border-l-4 border-emerald-500';
-              badge = <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-900/80 text-emerald-300 border border-emerald-600/50">ejecutado</span>;
+              badge = <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-900/80 text-emerald-300 border border-emerald-600/50 shrink-0">ejecutado</span>;
               icon = <span className="w-2 h-2 rounded-[2px] bg-emerald-400 shrink-0 inline-block mr-1.5 shadow-sm shadow-emerald-500" />;
             } else if (highlight.type === 'next') {
               rowClass = 'bg-amber-950/40 text-amber-200';
               borderClass = 'border-l-4 border-amber-500';
-              badge = <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-900/80 text-amber-300 border border-amber-600/50">siguiente</span>;
+              badge = <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-amber-900/80 text-amber-300 border border-amber-600/50 shrink-0">siguiente</span>;
               icon = <span className="w-2 h-2 rounded-[2px] bg-amber-400 shrink-0 inline-block mr-1.5 shadow-sm shadow-amber-500" />;
             } else if (highlight.type === 'evaluating') {
               rowClass = 'bg-indigo-950/60 text-indigo-200';
@@ -198,20 +189,17 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
           return (
             <div
               key={line.lineNumber}
-              className={`flex items-center px-3 py-1 border-l-4 ${borderClass} ${rowClass}`}
+              className={`flex items-center px-3 py-1 border-l-4 ${borderClass} ${rowClass} min-w-0`}
             >
-              {/* Line number + marker icon */}
-              <div className="w-10 text-slate-500 text-right pr-3 select-none flex items-center justify-end text-xs">
+              <div className="w-9 text-slate-500 text-right pr-3 select-none flex items-center justify-end text-xs shrink-0">
                 {icon}
                 <span>{line.lineNumber}</span>
               </div>
 
-              {/* Code content */}
-              <div className="flex-1 overflow-x-auto whitespace-pre pl-1">
+              <div className="flex-1 whitespace-pre pl-1 min-w-0 overflow-hidden text-ellipsis">
                 {renderCodeWithSyntax(line.code)}
               </div>
 
-              {/* Status Badge */}
               {badge && (
                 <div className="shrink-0 pl-2">
                   {badge}
