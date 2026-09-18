@@ -1,7 +1,7 @@
 ﻿import React, { useState } from 'react';
 import { ALGORITHMS_CATALOG } from '../../core/algorithms/registry';
 import type { AlgorithmMetadata } from '../../types/algorithm';
-import { ChevronDown, Sparkles, Settings, Sliders, Layers } from 'lucide-react';
+import { ChevronDown, Sparkles, Settings, Sliders, Layers, Zap, Clock } from 'lucide-react';
 import { DatasetModal } from './DatasetModal';
 
 interface NavbarProps {
@@ -31,6 +31,17 @@ export const Navbar: React.FC<NavbarProps> = ({
     { key: 'searching', label: 'Algoritmos de Búsqueda' },
     { key: 'divide_and_conquer', label: 'Divide y Vencerás' },
   ];
+
+  const isBubbleSort = selectedAlgorithm.id.startsWith('bubble-sort');
+  const isOptimizedBubble = selectedAlgorithm.id === 'bubble-sort';
+
+  const handleToggleBubbleVariant = (targetOptimized: boolean) => {
+    const targetId = targetOptimized ? 'bubble-sort' : 'bubble-sort-classic';
+    const targetAlgo = ALGORITHMS_CATALOG.find(a => a.id === targetId);
+    if (targetAlgo) {
+      onSelectAlgorithm(targetAlgo);
+    }
+  };
 
   return (
     <>
@@ -90,9 +101,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                               }`}
                             >
                               <span>{algo.name}</span>
-                              {algo.id === 'bubble-sort' && (
+                              {algo.id.startsWith('bubble-sort') && (
                                 <span className="text-[10px] bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 px-1.5 py-0.5 rounded font-mono">
-                                  Activo
+                                  {algo.id === 'bubble-sort' ? 'O(n)' : 'O(n²)'}
                                 </span>
                               )}
                             </button>
@@ -105,6 +116,37 @@ export const Navbar: React.FC<NavbarProps> = ({
               </>
             )}
           </div>
+
+          {/* Quick Variant Toggle for Bubble Sort */}
+          {isBubbleSort && (
+            <div className="flex items-center bg-[#171824] border border-[#282a3c] p-0.5 rounded-lg">
+              <button
+                onClick={() => handleToggleBubbleVariant(true)}
+                className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer ${
+                  isOptimizedBubble
+                    ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Versión con bandera booleana (Mejor caso O(n))"
+              >
+                <Zap className="w-3 h-3 text-amber-300" />
+                <span>Optimizado</span>
+              </button>
+
+              <button
+                onClick={() => handleToggleBubbleVariant(false)}
+                className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer ${
+                  !isOptimizedBubble
+                    ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+                title="Versión original completa (Mejor caso O(n²))"
+              >
+                <Clock className="w-3 h-3 text-slate-400" />
+                <span>Clásico</span>
+              </button>
+            </div>
+          )}
 
           {/* Dataset size slider */}
           <div className="flex items-center gap-2.5 bg-[#171824] border border-[#26283a] px-3 py-1 rounded-lg">
@@ -143,7 +185,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
         </div>
 
-        {/* Right: Settings & Student Avatar (Clean like Figma) */}
+        {/* Right: Settings & Student Avatar */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsModalOpen(true)}

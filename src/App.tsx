@@ -26,12 +26,14 @@ export function App() {
     12, 23, 67, 12, 56, 11, 45, 23, 78, 56, 78, 89, 98, 45
   ]);
 
+  const isOptimized = selectedAlgorithm.id === 'bubble-sort';
+
   const steps = useMemo(() => {
-    if (selectedAlgorithm.id === 'bubble-sort') {
-      return generateBubbleSortTrace(dataset);
+    if (selectedAlgorithm.id.startsWith('bubble-sort')) {
+      return generateBubbleSortTrace(dataset, isOptimized);
     }
-    return generateBubbleSortTrace(dataset);
-  }, [dataset, selectedAlgorithm]);
+    return generateBubbleSortTrace(dataset, isOptimized);
+  }, [dataset, selectedAlgorithm, isOptimized]);
 
   const playback = usePlayback(steps);
 

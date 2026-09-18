@@ -1,8 +1,9 @@
 ﻿import type { AlgorithmMetadata } from '../../types/algorithm';
-import { BUBBLE_SORT_METADATA } from './bubbleSort';
+import { BUBBLE_SORT_OPTIMIZED_METADATA, BUBBLE_SORT_CLASSIC_METADATA } from './bubbleSort';
 
 export const ALGORITHMS_CATALOG: AlgorithmMetadata[] = [
-  BUBBLE_SORT_METADATA,
+  BUBBLE_SORT_OPTIMIZED_METADATA,
+  BUBBLE_SORT_CLASSIC_METADATA,
   {
     id: 'insertion-sort',
     name: 'Insertion Sort',
