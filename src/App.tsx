@@ -12,6 +12,7 @@ import { VisualizerPanel } from './components/visualization/VisualizerPanel';
 import { PlaybackFooter } from './components/controls/PlaybackFooter';
 
 export function App() {
+  // Inicializar por defecto con Bubble Sort Clásico (ALGORITHMS_CATALOG[0])
   const [selectedAlgorithm, setSelectedAlgorithm] = useState<AlgorithmMetadata>(
     ALGORITHMS_CATALOG[0]
   );

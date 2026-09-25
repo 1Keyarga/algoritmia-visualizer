@@ -1,7 +1,7 @@
 ﻿import React, { useState } from 'react';
 import { ALGORITHMS_CATALOG } from '../../core/algorithms/registry';
 import type { AlgorithmMetadata } from '../../types/algorithm';
-import { ChevronDown, Sparkles, Settings, Sliders, Layers, Zap, Clock } from 'lucide-react';
+import { ChevronDown, Sparkles, Settings, Sliders, Layers } from 'lucide-react';
 import { DatasetModal } from './DatasetModal';
 
 interface NavbarProps {
@@ -117,33 +117,31 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
 
-          {/* Quick Variant Toggle for Bubble Sort */}
+          {/* Quick Variant Toggle for Bubble Sort: Clásico on left (default), Optimizado on right */}
           {isBubbleSort && (
             <div className="flex items-center bg-[#171824] border border-[#282a3c] p-0.5 rounded-lg">
               <button
-                onClick={() => handleToggleBubbleVariant(true)}
-                className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer ${
-                  isOptimizedBubble
-                    ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                onClick={() => handleToggleBubbleVariant(false)}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                  !isOptimizedBubble
+                    ? 'bg-indigo-600 text-white font-semibold shadow-xs'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
-                title="Versión con bandera booleana (Mejor caso O(n))"
+                title="Versión clásica: ejecuta todas las pasadas completas"
               >
-                <Zap className="w-3 h-3 text-amber-300" />
-                <span>Optimizado</span>
+                Clásico
               </button>
 
               <button
-                onClick={() => handleToggleBubbleVariant(false)}
-                className={`flex items-center gap-1 px-2.5 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer ${
-                  !isOptimizedBubble
-                    ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                onClick={() => handleToggleBubbleVariant(true)}
+                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                  isOptimizedBubble
+                    ? 'bg-indigo-600 text-white font-semibold shadow-xs'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
-                title="Versión original completa (Mejor caso O(n²))"
+                title="Versión optimizada: detección temprana por bandera"
               >
-                <Clock className="w-3 h-3 text-slate-400" />
-                <span>Clásico</span>
+                Optimizado
               </button>
             </div>
           )}
