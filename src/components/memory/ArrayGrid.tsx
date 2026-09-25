@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import type { ArrayElement } from '../../types/trace';
 
 interface ArrayGridProps {
@@ -6,6 +6,7 @@ interface ArrayGridProps {
   activeIndices?: {
     i?: number;
     j?: number;
+    min?: number;
     [key: string]: number | undefined;
   };
 }
@@ -16,6 +17,9 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
 }) => {
   const jIndex = activeIndices?.j;
   const iIndex = activeIndices?.i;
+  const minIndex = activeIndices?.min;
+  const keyVal = activeIndices?.keyVal;
+  const keyIndex = activeIndices?.keyIndex;
 
   const sortedIndices = array
     .map((item, idx) => item.state === 'sorted' ? idx : -1)
@@ -24,10 +28,6 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
   const sortedLegendText = sortedIndices.length > 0
     ? `Ordenados (${sortedIndices.length})`
     : 'Ordenados';
-
-  const comparingLegendText = jIndex !== undefined
-    ? `Comparando (j = ${jIndex}, j+1 = ${jIndex + 1})`
-    : 'Comparando';
 
   return (
     <div className="flex-1 flex flex-col justify-between font-mono-code min-w-0">
@@ -43,25 +43,45 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
         {/* Array Grid Container */}
         <div className="overflow-x-auto pb-3 pt-1">
           <div className="inline-flex flex-col min-w-full">
-            {/* Pointer Indicators Row (i, j) */}
+            {/* Pointer Indicators Row (i, j, min, clave) */}
             <div className="flex items-center h-6 mb-1">
               {array.map((_, idx) => {
                 const isJ = jIndex === idx;
-                const isJ1 = jIndex !== undefined && idx === jIndex + 1;
-                const isI = iIndex === idx && jIndex === undefined;
+                const isJ1 = jIndex !== undefined && idx === jIndex + 1 && minIndex === undefined && keyVal === undefined && keyIndex === undefined;
+                const isI = iIndex === idx;
+                const isMin = minIndex === idx;
+                const isKey = (keyIndex !== undefined && keyIndex === idx) || (keyVal !== undefined && isI && jIndex !== undefined);
 
                 let indicator = null;
-                if (isJ) indicator = 'j ▼';
-                else if (isJ1) indicator = 'j+1 ▼';
-                else if (isI) indicator = 'i ▼';
+                let badgeStyle = 'bg-amber-500/30 text-amber-300 border-amber-500/60 shadow-amber-500/20';
+
+                if (isMin && isI && jIndex !== undefined) {
+                  indicator = 'i, min ▼';
+                  badgeStyle = 'bg-purple-500/30 text-purple-300 border-purple-500/60 shadow-purple-500/20';
+                } else if (isMin) {
+                  indicator = 'min ▼';
+                  badgeStyle = 'bg-purple-500/30 text-purple-300 border-purple-500/60 shadow-purple-500/20';
+                } else if (isKey) {
+                  indicator = 'clave ▼';
+                  badgeStyle = 'bg-purple-500/30 text-purple-300 border-purple-500/60 shadow-purple-500/20';
+                } else if (isJ) {
+                  indicator = 'j ▼';
+                  badgeStyle = 'bg-amber-500/30 text-amber-300 border-amber-500/60 shadow-amber-500/20';
+                } else if (isJ1) {
+                  indicator = 'j+1 ▼';
+                  badgeStyle = 'bg-amber-500/30 text-amber-300 border-amber-500/60 shadow-amber-500/20';
+                } else if (isI) {
+                  indicator = 'i ▼';
+                  badgeStyle = 'bg-blue-500/30 text-blue-300 border-blue-500/60 shadow-blue-500/20';
+                }
 
                 return (
                   <div
                     key={idx}
-                    className="w-12 xl:w-14 text-center shrink-0 text-[11px] font-black text-amber-400 flex items-center justify-center"
+                    className="w-12 xl:w-14 text-center shrink-0 text-[10px] font-black flex items-center justify-center"
                   >
                     {indicator && (
-                      <span className="bg-amber-500/30 text-amber-300 px-1.5 py-0.5 rounded-md border border-amber-500/60 shadow-md shadow-amber-500/20 animate-pulse">
+                      <span className={`px-1.5 py-0.5 rounded-md border shadow-md animate-pulse ${badgeStyle}`}>
                         {indicator}
                       </span>
                     )}
@@ -73,7 +93,12 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
             {/* Indices Row */}
             <div className="flex items-center">
               {array.map((_, idx) => {
-                const isHighlighted = (jIndex !== undefined && (idx === jIndex || idx === jIndex + 1)) || (iIndex === idx);
+                const isHighlighted = 
+                  (jIndex !== undefined && (idx === jIndex || (minIndex === undefined && keyVal === undefined && keyIndex === undefined && idx === jIndex + 1))) || 
+                  (iIndex === idx) || 
+                  (minIndex === idx) ||
+                  (keyIndex === idx);
+
                 return (
                   <div
                     key={idx}
@@ -98,6 +123,9 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
                 if (item.state === 'comparing') {
                   cellBg = 'bg-amber-500/25 text-amber-200 border-amber-500 ring-2 ring-amber-500/30 font-black shadow-lg shadow-amber-500/10';
                   indicatorColor = 'text-amber-400 font-black';
+                } else if (item.state === 'selected') {
+                  cellBg = 'bg-purple-500/30 text-purple-200 border-purple-500 ring-2 ring-purple-500/40 font-black shadow-lg shadow-purple-500/10';
+                  indicatorColor = 'text-purple-300 font-bold';
                 } else if (item.state === 'swapped') {
                   cellBg = 'bg-indigo-500/35 text-indigo-100 border-indigo-500 ring-2 ring-indigo-500/40 font-black';
                   indicatorColor = 'text-indigo-300 font-bold';
@@ -124,10 +152,28 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
 
         {/* Accessible Legend */}
         <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 mt-1 font-sans">
-          <div className="flex items-center gap-1.5 bg-[#1d1f2d] px-2.5 py-1 rounded-md border border-[#2b2d42]">
-            <span className="w-3 h-3 rounded-[3px] bg-amber-500 border border-amber-300" />
-            <span className="text-amber-300 font-medium">{comparingLegendText}</span>
-          </div>
+          {minIndex !== undefined && (
+            <div className="flex items-center gap-1.5 bg-[#1d1f2d] px-2.5 py-1 rounded-md border border-[#2b2d42]">
+              <span className="w-3 h-3 rounded-[3px] bg-purple-500 border border-purple-300" />
+              <span className="text-purple-300 font-medium">Mínimo (min = {minIndex})</span>
+            </div>
+          )}
+
+          {keyVal !== undefined && (
+            <div className="flex items-center gap-1.5 bg-[#1d1f2d] px-2.5 py-1 rounded-md border border-[#2b2d42]">
+              <span className="w-3 h-3 rounded-[3px] bg-purple-500 border border-purple-300" />
+              <span className="text-purple-300 font-medium">Clave (valor = {keyVal})</span>
+            </div>
+          )}
+
+          {jIndex !== undefined && (
+            <div className="flex items-center gap-1.5 bg-[#1d1f2d] px-2.5 py-1 rounded-md border border-[#2b2d42]">
+              <span className="w-3 h-3 rounded-[3px] bg-amber-500 border border-amber-300" />
+              <span className="text-amber-300 font-medium">
+                {minIndex !== undefined || keyVal !== undefined ? `Comparando (j = ${jIndex})` : `Comparando (j = ${jIndex}, j+1 = ${jIndex + 1})`}
+              </span>
+            </div>
+          )}
 
           <div className="flex items-center gap-1.5 bg-[#1d1f2d] px-2.5 py-1 rounded-md border border-[#2b2d42]">
             <span className="w-3 h-3 rounded-[3px] bg-emerald-500 border border-emerald-300" />

@@ -71,6 +71,9 @@ export interface Step {
   activeIndices: {
     i?: number;
     j?: number;
+    min?: number;
+    keyVal?: number;
+    keyIndex?: number;
     pivot?: number;
     [key: string]: number | undefined;
   };

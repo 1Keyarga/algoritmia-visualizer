@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import type { MemoryFrame } from '../../types/trace';
 import { Globe, Layers } from 'lucide-react';
 
@@ -36,6 +36,8 @@ export const StackFrames: React.FC<StackFramesProps> = ({ frames }) => {
                 <span className={`font-bold font-mono ${
                   key === 'j' || key === 'i' 
                     ? 'text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-800/60' 
+                    : key === 'min' || key === 'clave' || key === 'key'
+                    ? 'text-purple-300 bg-purple-950/60 px-2 py-0.5 rounded border border-purple-800/60'
                     : key === 'swapped' && (val === 'Verdadero' || val === 'True')
                     ? 'text-emerald-400 bg-emerald-950/50 px-1.5 py-0.5 rounded border border-emerald-700/50'
                     : 'text-slate-100'

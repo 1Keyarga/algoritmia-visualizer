@@ -2,6 +2,8 @@
 import { ALGORITHMS_CATALOG } from './core/algorithms/registry';
 import type { AlgorithmMetadata, SupportedLanguage } from './types/algorithm';
 import { generateBubbleSortTrace } from './core/algorithms/bubbleSort';
+import { generateSelectionSortTrace } from './core/algorithms/selectionSort';
+import { generateInsertionSortTrace } from './core/algorithms/insertionSort';
 import { generateRandomDataset } from './core/utils/generator';
 import { usePlayback } from './hooks/usePlayback';
 import { useKeyboard } from './hooks/useKeyboard';
@@ -12,7 +14,6 @@ import { VisualizerPanel } from './components/visualization/VisualizerPanel';
 import { PlaybackFooter } from './components/controls/PlaybackFooter';
 
 export function App() {
-  // Inicializar por defecto con Bubble Sort Clásico (ALGORITHMS_CATALOG[0])
   const [selectedAlgorithm, setSelectedAlgorithm] = useState<AlgorithmMetadata>(
     ALGORITHMS_CATALOG[0]
   );
@@ -30,6 +31,12 @@ export function App() {
   const isOptimized = selectedAlgorithm.id === 'bubble-sort';
 
   const steps = useMemo(() => {
+    if (selectedAlgorithm.id === 'insertion-sort') {
+      return generateInsertionSortTrace(dataset);
+    }
+    if (selectedAlgorithm.id === 'selection-sort') {
+      return generateSelectionSortTrace(dataset);
+    }
     if (selectedAlgorithm.id.startsWith('bubble-sort')) {
       return generateBubbleSortTrace(dataset, isOptimized);
     }
