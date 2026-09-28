@@ -1,4 +1,4 @@
-﻿import type { SupportedLanguage } from './algorithm';
+import type { SupportedLanguage } from './algorithm';
 
 export type ElementState = 
   | 'default'
@@ -75,8 +75,73 @@ export interface Step {
     keyVal?: number;
     keyIndex?: number;
     pivot?: number;
+    left?: number;
+    right?: number;
+    mid?: number;
     [key: string]: number | undefined;
   };
   operationType: OperationType;
   isSorted?: boolean;
+  divideAndConquer?: DivideAndConquerState;
+}
+
+export type RecursionNodeState = 
+  | 'idle'
+  | 'dividing'
+  | 'processing'
+  | 'base_case'
+  | 'combining'
+  | 'solved'
+  | 'completed';
+
+export interface RecursionTreeNode {
+  id: string;
+  parentId?: string;
+  depth: number;
+  range: [number, number]; // [start, end]
+  values: number[];
+  currentValues?: number[];
+  state: RecursionNodeState;
+  leftId?: string;
+  rightId?: string;
+  label: string;
+  isLeftChild?: boolean;
+}
+
+export interface ParallelWorkerTask {
+  id: string;
+  workerId: number;
+  range: [number, number];
+  values: number[];
+  status: 'idle' | 'working' | 'merging' | 'done';
+  description: string;
+}
+
+export interface ParallelQueueItem {
+  id: string;
+  range: [number, number];
+  values: number[];
+  action: 'divide' | 'conquer' | 'merge';
+  description: string;
+}
+
+export interface ParallelWorkerState {
+  id: number;
+  name: string;
+  status: 'idle' | 'active' | 'merging';
+  currentTask?: ParallelWorkerTask;
+}
+
+export interface ParallelState {
+  taskQueue: ParallelQueueItem[];
+  workers: ParallelWorkerState[];
+  completedTasks: string[];
+}
+
+export interface DivideAndConquerState {
+  nodes: Record<string, RecursionTreeNode>;
+  activeNodeId?: string;
+  activePhase: 'divide' | 'conquer' | 'combine' | 'completed';
+  phaseDescription?: string;
+  parallel: ParallelState;
 }

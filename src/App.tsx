@@ -1,9 +1,10 @@
-﻿import { useState, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { ALGORITHMS_CATALOG } from './core/algorithms/registry';
 import type { AlgorithmMetadata, SupportedLanguage } from './types/algorithm';
 import { generateBubbleSortTrace } from './core/algorithms/bubbleSort';
 import { generateSelectionSortTrace } from './core/algorithms/selectionSort';
 import { generateInsertionSortTrace } from './core/algorithms/insertionSort';
+import { generateMergeSortTrace } from './core/algorithms/mergeSort';
 import { generateRandomDataset } from './core/utils/generator';
 import { usePlayback } from './hooks/usePlayback';
 import { useKeyboard } from './hooks/useKeyboard';
@@ -25,12 +26,15 @@ export function App() {
   const [isVisualizerFullscreen, setIsVisualizerFullscreen] = useState(false);
 
   const [dataset, setDataset] = useState<number[]>([
-    12, 23, 67, 12, 56, 11, 45, 23, 78, 56, 78, 89, 98, 45
+    38, 27, 43, 3, 9, 82, 10, 19
   ]);
 
   const isOptimized = selectedAlgorithm.id === 'bubble-sort';
 
   const steps = useMemo(() => {
+    if (selectedAlgorithm.id === 'merge-sort') {
+      return generateMergeSortTrace(dataset);
+    }
     if (selectedAlgorithm.id === 'insertion-sort') {
       return generateInsertionSortTrace(dataset);
     }

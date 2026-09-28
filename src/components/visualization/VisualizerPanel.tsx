@@ -1,7 +1,8 @@
-﻿import React from 'react';
+import React from 'react';
 import type { Step } from '../../types/trace';
 import { D3BarChart } from './D3BarChart';
-import { BarChart3, Maximize2, Minimize2 } from 'lucide-react';
+import { DivideAndConquerContainer } from './divide_and_conquer/DivideAndConquerContainer';
+import { BarChart3, GitFork, Maximize2, Minimize2 } from 'lucide-react';
 
 interface VisualizerPanelProps {
   currentStep: Step | null;
@@ -18,14 +19,22 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
   isFullscreen,
   onToggleFullscreen,
 }) => {
+  const isDivideAndConquer = !!currentStep?.divideAndConquer;
+
   return (
     <div className="flex-1 bg-[#151622] p-4 flex flex-col min-h-0 select-none relative">
       {/* Header */}
       <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-[#232534] shrink-0">
         <div className="flex items-center gap-2">
-          <BarChart3 className="w-4 h-4 text-indigo-400" />
+          {isDivideAndConquer ? (
+            <GitFork className="w-4 h-4 text-amber-400" />
+          ) : (
+            <BarChart3 className="w-4 h-4 text-indigo-400" />
+          )}
           <span className="text-xs font-bold tracking-wider text-slate-300 uppercase">
-            Visualización Gráfica (D3.js)
+            {isDivideAndConquer
+              ? 'Visualización Divide y Vencerás (Árbol de Recursión)'
+              : 'Visualización Gráfica (D3.js)'}
           </span>
         </div>
 
@@ -38,7 +47,7 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
             </span>
           </div>
 
-          {/* Fullscreen toggle (RF-21) */}
+          {/* Fullscreen toggle */}
           <button
             onClick={onToggleFullscreen}
             className="p-1.5 rounded-lg bg-[#1c1d2c] hover:bg-[#25283d] text-slate-400 hover:text-white border border-[#2b2d42] transition-colors cursor-pointer"
@@ -53,10 +62,14 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
         </div>
       </div>
 
-      {/* D3 Canvas Container */}
-      <div className="flex-1 min-h-0 flex items-center justify-center pt-2">
+      {/* Main Canvas Container */}
+      <div className="flex-1 min-h-0 flex flex-col items-center justify-center">
         {currentStep ? (
-          <D3BarChart array={currentStep.array} />
+          isDivideAndConquer && currentStep.divideAndConquer ? (
+            <DivideAndConquerContainer dcState={currentStep.divideAndConquer} />
+          ) : (
+            <D3BarChart array={currentStep.array} />
+          )
         ) : (
           <div className="text-slate-500 text-xs">Cargando visualización...</div>
         )}

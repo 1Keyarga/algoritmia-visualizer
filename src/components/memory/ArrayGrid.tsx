@@ -20,6 +20,9 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
   const minIndex = activeIndices?.min;
   const keyVal = activeIndices?.keyVal;
   const keyIndex = activeIndices?.keyIndex;
+  const leftIndex = activeIndices?.left;
+  const rightIndex = activeIndices?.right;
+  const midIndex = activeIndices?.mid;
 
   const sortedIndices = array
     .map((item, idx) => item.state === 'sorted' ? idx : -1)
@@ -43,14 +46,17 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
         {/* Array Grid Container */}
         <div className="overflow-x-auto pb-3 pt-1">
           <div className="inline-flex flex-col min-w-full">
-            {/* Pointer Indicators Row (i, j, min, clave) */}
+            {/* Pointer Indicators Row (i, j, min, clave, inicio, medio, fin) */}
             <div className="flex items-center h-6 mb-1">
               {array.map((_, idx) => {
                 const isJ = jIndex === idx;
-                const isJ1 = jIndex !== undefined && idx === jIndex + 1 && minIndex === undefined && keyVal === undefined && keyIndex === undefined;
+                const isJ1 = jIndex !== undefined && idx === jIndex + 1 && minIndex === undefined && keyVal === undefined && keyIndex === undefined && leftIndex === undefined;
                 const isI = iIndex === idx;
                 const isMin = minIndex === idx;
                 const isKey = (keyIndex !== undefined && keyIndex === idx) || (keyVal !== undefined && isI && jIndex !== undefined);
+                const isLeft = leftIndex === idx;
+                const isRight = rightIndex === idx;
+                const isMid = midIndex === idx;
 
                 let indicator = null;
                 let badgeStyle = 'bg-amber-500/30 text-amber-300 border-amber-500/60 shadow-amber-500/20';
@@ -64,6 +70,21 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
                 } else if (isKey) {
                   indicator = 'clave ▼';
                   badgeStyle = 'bg-purple-500/30 text-purple-300 border-purple-500/60 shadow-purple-500/20';
+                } else if (isMid && isLeft) {
+                  indicator = 'ini, med ▼';
+                  badgeStyle = 'bg-amber-500/30 text-amber-300 border-amber-500/60 shadow-amber-500/20';
+                } else if (isMid) {
+                  indicator = 'medio ▼';
+                  badgeStyle = 'bg-amber-500/30 text-amber-300 border-amber-500/60 shadow-amber-500/20';
+                } else if (isLeft && isRight) {
+                  indicator = 'ini, fin ▼';
+                  badgeStyle = 'bg-indigo-500/30 text-indigo-300 border-indigo-500/60 shadow-indigo-500/20';
+                } else if (isLeft) {
+                  indicator = 'inicio ▼';
+                  badgeStyle = 'bg-blue-500/30 text-blue-300 border-blue-500/60 shadow-blue-500/20';
+                } else if (isRight) {
+                  indicator = 'fin ▼';
+                  badgeStyle = 'bg-indigo-500/30 text-indigo-300 border-indigo-500/60 shadow-indigo-500/20';
                 } else if (isJ) {
                   indicator = 'j ▼';
                   badgeStyle = 'bg-amber-500/30 text-amber-300 border-amber-500/60 shadow-amber-500/20';
@@ -94,10 +115,13 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
             <div className="flex items-center">
               {array.map((_, idx) => {
                 const isHighlighted = 
-                  (jIndex !== undefined && (idx === jIndex || (minIndex === undefined && keyVal === undefined && keyIndex === undefined && idx === jIndex + 1))) || 
+                  (jIndex !== undefined && (idx === jIndex || (minIndex === undefined && keyVal === undefined && keyIndex === undefined && leftIndex === undefined && idx === jIndex + 1))) || 
                   (iIndex === idx) || 
                   (minIndex === idx) ||
-                  (keyIndex === idx);
+                  (keyIndex === idx) ||
+                  (leftIndex === idx) ||
+                  (rightIndex === idx) ||
+                  (midIndex === idx);
 
                 return (
                   <div
@@ -163,6 +187,13 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
             <div className="flex items-center gap-1.5 bg-[#1d1f2d] px-2.5 py-1 rounded-md border border-[#2b2d42]">
               <span className="w-3 h-3 rounded-[3px] bg-purple-500 border border-purple-300" />
               <span className="text-purple-300 font-medium">Clave (valor = {keyVal})</span>
+            </div>
+          )}
+
+          {leftIndex !== undefined && rightIndex !== undefined && (
+            <div className="flex items-center gap-1.5 bg-[#1d1f2d] px-2.5 py-1 rounded-md border border-[#2b2d42]">
+              <span className="w-3 h-3 rounded-[3px] bg-indigo-500 border border-indigo-300" />
+              <span className="text-indigo-300 font-medium">Subproblema [{leftIndex}..{rightIndex}]</span>
             </div>
           )}
 
