@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ALGORITHMS_CATALOG } from './core/algorithms/registry';
 import type { AlgorithmMetadata, SupportedLanguage } from './types/algorithm';
 import { generateBubbleSortTrace } from './core/algorithms/bubbleSort';
@@ -30,6 +30,17 @@ export function App() {
   ]);
 
   const isOptimized = selectedAlgorithm.id === 'bubble-sort';
+
+  const isDivideAndConquer = selectedAlgorithm.family === 'divide_and_conquer';
+
+  // Auto-collapse Memory Panel for Divide & Conquer, open for sorting/searching
+  useEffect(() => {
+    if (isDivideAndConquer) {
+      setIsMemoryOpen(false);
+    } else {
+      setIsMemoryOpen(true);
+    }
+  }, [isDivideAndConquer]);
 
   const steps = useMemo(() => {
     if (selectedAlgorithm.id === 'merge-sort') {
@@ -75,7 +86,7 @@ export function App() {
     if (isVisualizerFullscreen) {
       setIsVisualizerFullscreen(false);
       setIsPseudocodeOpen(true);
-      setIsMemoryOpen(true);
+      if (!isDivideAndConquer) setIsMemoryOpen(true);
     } else {
       setIsVisualizerFullscreen(true);
       setIsPseudocodeOpen(false);
@@ -114,15 +125,17 @@ export function App() {
         />
 
         {/* Right Area: Memory (Top) + Visualization (Bottom) */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#12131b]">
-          {/* Memory Panel: Stack Frames + Array Grid + Metrics */}
-          <MemoryPanel
-            currentStep={playback.currentStep}
-            isOpen={isMemoryOpen}
-            onToggleOpen={() => setIsMemoryOpen(!isMemoryOpen)}
-          />
+        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden bg-[#12131b]">
+          {/* Memory Panel */}
+          {!isDivideAndConquer && (
+            <MemoryPanel
+              currentStep={playback.currentStep}
+              isOpen={isMemoryOpen}
+              onToggleOpen={() => setIsMemoryOpen(!isMemoryOpen)}
+            />
+          )}
 
-          {/* D3 Bar Chart Visualization Panel */}
+          {/* Visualization Panel */}
           <VisualizerPanel
             currentStep={playback.currentStep}
             stepIndex={playback.currentStepIndex}

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import type { ArrayElement } from '../../types/trace';
 
@@ -9,12 +9,27 @@ interface D3BarChartProps {
 export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
-    if (!svgRef.current || !containerRef.current || array.length === 0) return;
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setDimensions({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        });
+      }
+    });
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
-    const width = containerRef.current.clientWidth || 700;
-    const height = containerRef.current.clientHeight || 340;
+  useEffect(() => {
+    if (!svgRef.current || !containerRef.current || array.length === 0 || dimensions.width === 0) return;
+
+    const width = dimensions.width;
+    const height = dimensions.height;
 
     const margin = { top: 28, right: 25, bottom: 35, left: 35 };
     const innerWidth = Math.max(100, width - margin.left - margin.right);
@@ -148,7 +163,11 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       .append('rect')
       .attr('class', 'bar-rect')
       .attr('x', 0)
-      .attr('y', d => yScale(d.value))
+      .attr('y', d => {
+        const rawHeight = innerHeight - yScale(d.value);
+        const height = Math.max(4, rawHeight);
+        return innerHeight - height;
+      })
       .attr('width', xScale.bandwidth())
       .attr('height', d => Math.max(4, innerHeight - yScale(d.value)))
       .attr('rx', 6)
@@ -163,7 +182,11 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       .filter(d => d.state === 'comparing')
       .append('rect')
       .attr('x', 0)
-      .attr('y', d => yScale(d.value))
+      .attr('y', d => {
+        const rawHeight = innerHeight - yScale(d.value);
+        const height = Math.max(4, rawHeight);
+        return innerHeight - height;
+      })
       .attr('width', xScale.bandwidth())
       .attr('height', d => Math.max(4, innerHeight - yScale(d.value)))
       .attr('rx', 6)
@@ -189,7 +212,11 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       .append('text')
       .attr('class', 'val-label')
       .attr('x', xScale.bandwidth() / 2)
-      .attr('y', d => yScale(d.value) - 6)
+      .attr('y', d => {
+        const rawHeight = innerHeight - yScale(d.value);
+        const height = Math.max(4, rawHeight);
+        return innerHeight - height - 6;
+      })
       .attr('text-anchor', 'middle')
       .attr('fill', d => (d.state === 'comparing' ? '#fef08a' : d.state === 'sorted' ? '#a7f3d0' : '#e2e8f0'))
       .attr('font-size', '11px')
@@ -197,7 +224,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       .attr('font-family', 'JetBrains Mono, monospace')
       .text(d => d.value);
 
-  }, [array]);
+  }, [array, dimensions]);
 
   return (
     <div ref={containerRef} className="w-full h-full min-h-[240px] relative flex-1 flex items-center justify-center">

@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import type { Step } from '../../types/trace';
 import { StackFrames } from './StackFrames';
 import { ArrayGrid } from './ArrayGrid';
@@ -41,9 +41,9 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
   }
 
   return (
-    <div className="bg-[#171824] border-b border-[#232532] p-4 flex flex-col justify-between shrink-0 select-none shadow-sm transition-all">
+    <div className="bg-[#171824] border-b border-[#232532] p-3 flex flex-col justify-between shrink-0 select-none shadow-sm transition-all">
       {/* Header */}
-      <div className="flex items-center justify-between pb-2 mb-3 border-b border-[#242638]">
+      <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[#242638]">
         <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
           Memoria
         </span>
@@ -52,12 +52,12 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
           className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
           title="Colapsar panel"
         >
-          <ChevronUp className="w-4 h-4" />
+          <ChevronUp className="w-3.5 h-3.5" />
         </button>
       </div>
 
       {/* Content: Frames + Objetos */}
-      <div className="flex gap-6 items-start">
+      <div className="flex gap-4 items-start">
         <StackFrames frames={currentStep.frames} />
 
         <div className="flex-1 flex flex-col justify-between min-w-0">

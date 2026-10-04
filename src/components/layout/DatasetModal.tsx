@@ -1,6 +1,6 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { parseCustomDataset, generateRandomDataset } from '../../core/utils/generator';
-import { X, Sparkles, AlertCircle } from 'lucide-react';
+import { X, Sparkles, AlertCircle, Dices, TrendingDown, TrendingUp } from 'lucide-react';
 
 interface DatasetModalProps {
   isOpen: boolean;
@@ -90,23 +90,23 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPreset('random')}
-                className="px-3 py-1.5 text-xs font-medium bg-[#222433] hover:bg-[#2b2e40] text-slate-200 border border-[#36394d] rounded-md transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#222433] hover:bg-[#2b2e40] text-slate-200 border border-[#36394d] rounded-md transition-colors"
               >
-                🎲 Aleatorio (14 elementos)
+                <Dices className="w-3.5 h-3.5" /> Aleatorio (14 elementos)
               </button>
               <button
                 type="button"
                 onClick={() => setPreset('reversed')}
-                className="px-3 py-1.5 text-xs font-medium bg-[#222433] hover:bg-[#2b2e40] text-slate-200 border border-[#36394d] rounded-md transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#222433] hover:bg-[#2b2e40] text-slate-200 border border-[#36394d] rounded-md transition-colors"
               >
-                📉 Invertido (Peor Caso)
+                <TrendingDown className="w-3.5 h-3.5" /> Invertido (Peor Caso)
               </button>
               <button
                 type="button"
                 onClick={() => setPreset('nearly_sorted')}
-                className="px-3 py-1.5 text-xs font-medium bg-[#222433] hover:bg-[#2b2e40] text-slate-200 border border-[#36394d] rounded-md transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#222433] hover:bg-[#2b2e40] text-slate-200 border border-[#36394d] rounded-md transition-colors"
               >
-                📈 Casi Ordenado (Mejor Caso)
+                <TrendingUp className="w-3.5 h-3.5" /> Casi Ordenado (Mejor Caso)
               </button>
             </div>
           </div>

@@ -1,7 +1,7 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { ALGORITHMS_CATALOG } from '../../core/algorithms/registry';
 import type { AlgorithmMetadata } from '../../types/algorithm';
-import { ChevronDown, Sparkles, Settings, Sliders, Layers } from 'lucide-react';
+import { ChevronDown, Sparkles, Settings, Sliders, Layers, User } from 'lucide-react';
 import { DatasetModal } from './DatasetModal';
 
 interface NavbarProps {
@@ -148,15 +148,17 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Dataset size slider */}
           <div className="flex items-center gap-2.5 bg-[#171824] border border-[#26283a] px-3 py-1 rounded-lg">
-            <span className="text-xs text-slate-400 font-medium">Dataset</span>
+            <span className="text-xs text-slate-400 font-medium hidden md:inline">Dataset</span>
+            <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">5</span>
             <input
               type="range"
               min={5}
               max={25}
               value={datasetSize}
               onChange={(e) => onChangeDatasetSize(Number(e.target.value))}
-              className="w-20 h-1.5 bg-[#2a2c3f] rounded-lg appearance-none cursor-pointer accent-indigo-500"
+              className="w-16 md:w-20 h-1.5 bg-[#2a2c3f] rounded-lg appearance-none cursor-pointer accent-indigo-500"
             />
+            <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">25</span>
             <span className="text-xs font-mono font-bold text-amber-300 w-5 text-center">
               {datasetSize}
             </span>
@@ -169,7 +171,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             title="Generar nuevo arreglo aleatorio"
           >
             <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Nuevo Dataset</span>
+            <span className="hidden sm:inline">Nuevo Dataset</span>
           </button>
 
           {/* Custom dataset modal trigger */}
@@ -193,9 +195,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Settings className="w-4 h-4" />
           </button>
 
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 p-[1.5px] cursor-pointer shadow-md">
-            <div className="w-full h-full rounded-full bg-[#171821] flex items-center justify-center overflow-hidden">
-              <span className="text-[11px] font-bold text-indigo-300">EST</span>
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 p-[1.5px] cursor-pointer shadow-md" title="Perfil de Estudiante">
+            <div className="w-full h-full rounded-full bg-[#171821] flex items-center justify-center overflow-hidden hover:bg-[#222433] transition-colors">
+              <User className="w-4 h-4 text-indigo-300" />
             </div>
           </div>
         </div>
