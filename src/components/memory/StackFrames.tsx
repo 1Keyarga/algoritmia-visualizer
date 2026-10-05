@@ -8,7 +8,7 @@ interface StackFramesProps {
 
 export const StackFrames: React.FC<StackFramesProps> = ({ frames }) => {
   const activeFrame = frames.find(f => f.isActive) || frames[0];
-  const globalFrame = frames.find(f => !f.isActive && f.name.includes('Global') || f.name.includes('Entorno')) || frames[1];
+  const globalFrame = frames.find(f => !f.isActive && (f.name.includes('Global') || f.name.includes('Entorno'))) || frames[1];
 
   return (
     <div className="flex flex-col gap-2 w-[220px] shrink-0 font-mono-code text-xs">

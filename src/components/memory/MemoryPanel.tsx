@@ -41,9 +41,9 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
   }
 
   return (
-    <div className="bg-[#171824] border-b border-[#232532] p-3 flex flex-col justify-between shrink-0 select-none shadow-sm transition-all">
+    <div className="bg-[#171824] border-b border-[#232532] p-3 flex flex-col justify-between select-none shadow-sm transition-all">
       {/* Header */}
-      <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[#242638]">
+      <div className="flex items-center justify-between pb-1.5 mb-2 border-b border-[#242638] shrink-0">
         <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
           Memoria
         </span>
@@ -57,7 +57,7 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
       </div>
 
       {/* Content: Frames + Objetos */}
-      <div className="flex gap-4 items-start">
+      <div className="flex gap-4 items-start min-h-0">
         <StackFrames frames={currentStep.frames} />
 
         <div className="flex-1 flex flex-col justify-between min-w-0">

@@ -113,9 +113,9 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
   }
 
   return (
-    <div className="w-[500px] xl:w-[560px] bg-[#161722] border-r border-[#232532] flex flex-col justify-between shrink-0 h-full overflow-hidden select-none transition-all">
+    <div className="w-[360px] sm:w-[420px] md:w-[480px] lg:w-[500px] xl:w-[560px] bg-[#161722] border-r border-[#232532] flex flex-col justify-between shrink-0 h-full overflow-hidden select-none transition-all">
       {/* Header with Language Tabs and Clean Chevron Button */}
-      <div className="bg-[#13141d] border-b border-[#232532] p-2.5 flex flex-col gap-2">
+      <div className="bg-[#13141d] border-b border-[#232532] p-2 flex flex-col gap-1.5">
         <div className="flex items-center justify-between px-2 pt-0.5">
           <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
             Pseudocódigo
@@ -137,7 +137,7 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
               <button
                 key={lang.id}
                 onClick={() => onChangeLanguage(lang.id)}
-                className={`flex-1 py-1.5 px-2 text-[11px] font-medium rounded-md transition-all cursor-pointer text-center ${
+                className={`flex-1 py-1 px-1.5 text-[10px] sm:text-[11px] font-medium rounded-md transition-all cursor-pointer text-center ${
                   isSelected
                     ? 'bg-indigo-600 text-white font-bold shadow-xs'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-[#232537]'

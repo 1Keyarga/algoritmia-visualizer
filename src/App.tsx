@@ -95,7 +95,7 @@ export function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[#111217] text-slate-100 overflow-hidden font-sans select-none">
+    <div className="flex flex-col h-full w-full min-h-0 bg-[#111217] text-slate-100 overflow-hidden font-sans">
       {/* Top Navigation Bar */}
       <Navbar
         selectedAlgorithm={selectedAlgorithm}
@@ -125,7 +125,7 @@ export function App() {
         />
 
         {/* Right Area: Memory (Top) + Visualization (Bottom) */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-y-auto overflow-x-hidden bg-[#12131b]">
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#12131b]">
           {/* Memory Panel */}
           {!isDivideAndConquer && (
             <MemoryPanel

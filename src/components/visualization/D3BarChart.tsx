@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import * as d3 from 'd3';
 import type { ArrayElement } from '../../types/trace';
+import { useContainerSize } from '../../hooks/useContainerSize';
 
 interface D3BarChartProps {
   array: ArrayElement[];
@@ -9,24 +10,20 @@ interface D3BarChartProps {
 export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  const dimensions = useContainerSize(containerRef);
+  const reactId = useId().replace(/:/g, '');
+  const ids = {
+    default: `grad-default-${reactId}`,
+    comparing: `grad-comparing-${reactId}`,
+    sorted: `grad-sorted-${reactId}`,
+    swapped: `grad-swapped-${reactId}`,
+    hatch: `hatch-comparing-${reactId}`,
+  };
 
   useEffect(() => {
-    if (!containerRef.current) return;
-    const observer = new ResizeObserver((entries) => {
-      for (let entry of entries) {
-        setDimensions({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height,
-        });
-      }
-    });
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    if (!svgRef.current || !containerRef.current || array.length === 0 || dimensions.width === 0) return;
+    if (!svgRef.current || array.length === 0 || dimensions.width === 0 || dimensions.height === 0) {
+      return;
+    }
 
     const width = dimensions.width;
     const height = dimensions.height;
@@ -38,49 +35,32 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
+    // Fluid SVG: no intrinsic pixel width/height so flex/zoom can recover.
     svg
-      .attr('width', width)
-      .attr('height', height)
-      .attr('viewBox', `0 0 ${width} ${height}`);
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('preserveAspectRatio', 'xMidYMid meet')
+      .attr('width', '100%')
+      .attr('height', '100%');
 
     const defs = svg.append('defs');
-    
-    // Gradiente default
-    const gradDefault = defs.append('linearGradient')
-      .attr('id', 'grad-default')
-      .attr('x1', '0%').attr('y1', '0%')
-      .attr('x2', '0%').attr('y2', '100%');
-    gradDefault.append('stop').attr('offset', '0%').attr('stop-color', '#6366f1');
-    gradDefault.append('stop').attr('offset', '100%').attr('stop-color', '#4338ca');
 
-    // Gradiente comparing
-    const gradComparing = defs.append('linearGradient')
-      .attr('id', 'grad-comparing')
-      .attr('x1', '0%').attr('y1', '0%')
-      .attr('x2', '0%').attr('y2', '100%');
-    gradComparing.append('stop').attr('offset', '0%').attr('stop-color', '#fbbf24');
-    gradComparing.append('stop').attr('offset', '100%').attr('stop-color', '#d97706');
+    const addGradient = (id: string, from: string, to: string) => {
+      const grad = defs.append('linearGradient')
+        .attr('id', id)
+        .attr('x1', '0%').attr('y1', '0%')
+        .attr('x2', '0%').attr('y2', '100%');
+      grad.append('stop').attr('offset', '0%').attr('stop-color', from);
+      grad.append('stop').attr('offset', '100%').attr('stop-color', to);
+    };
 
-    // Gradiente sorted
-    const gradSorted = defs.append('linearGradient')
-      .attr('id', 'grad-sorted')
-      .attr('x1', '0%').attr('y1', '0%')
-      .attr('x2', '0%').attr('y2', '100%');
-    gradSorted.append('stop').attr('offset', '0%').attr('stop-color', '#34d399');
-    gradSorted.append('stop').attr('offset', '100%').attr('stop-color', '#059669');
+    addGradient(ids.default, '#6366f1', '#4338ca');
+    addGradient(ids.comparing, '#fbbf24', '#d97706');
+    addGradient(ids.sorted, '#34d399', '#059669');
+    addGradient(ids.swapped, '#a78bfa', '#7c3aed');
 
-    // Gradiente swapped
-    const gradSwapped = defs.append('linearGradient')
-      .attr('id', 'grad-swapped')
-      .attr('x1', '0%').attr('y1', '0%')
-      .attr('x2', '0%').attr('y2', '100%');
-    gradSwapped.append('stop').attr('offset', '0%').attr('stop-color', '#a78bfa');
-    gradSwapped.append('stop').attr('offset', '100%').attr('stop-color', '#7c3aed');
-
-    // Patrón rayado para accesibilidad
     const patternComparing = defs
       .append('pattern')
-      .attr('id', 'hatch-comparing')
+      .attr('id', ids.hatch)
       .attr('width', 8)
       .attr('height', 8)
       .attr('patternTransform', 'rotate(45 0 0)')
@@ -99,7 +79,6 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       .append('g')
       .attr('transform', `translate(${margin.left},${margin.top})`);
 
-    // Cálculo dinámico natural basado estrictamente en el valor máximo del dataset
     const maxDataVal = d3.max(array, d => d.value) || 100;
 
     const yScale = d3
@@ -114,7 +93,6 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       .range([0, innerWidth])
       .padding(0.20);
 
-    // Eje Y estándar con líneas de referencia
     const yAxis = d3
       .axisLeft(yScale)
       .ticks(6)
@@ -133,20 +111,20 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       .attr('stroke-dasharray', '3,3');
     yAxisG
       .selectAll('.tick text')
-      .attr('fill', '#64748b')
+      .attr('fill', '#94a3b8')
       .attr('font-size', '11px')
       .attr('font-family', 'JetBrains Mono, monospace');
 
     const getFill = (state: ArrayElement['state']) => {
       switch (state) {
         case 'comparing':
-          return 'url(#grad-comparing)';
+          return `url(#${ids.comparing})`;
         case 'swapped':
-          return 'url(#grad-swapped)';
+          return `url(#${ids.swapped})`;
         case 'sorted':
-          return 'url(#grad-sorted)';
+          return `url(#${ids.sorted})`;
         default:
-          return 'url(#grad-default)';
+          return `url(#${ids.default})`;
       }
     };
 
@@ -158,15 +136,14 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       .attr('class', 'bar-group')
       .attr('transform', (_, i) => `translate(${xScale(String(i)) || 0}, 0)`);
 
-    // Barras
     barGroups
       .append('rect')
       .attr('class', 'bar-rect')
       .attr('x', 0)
       .attr('y', d => {
         const rawHeight = innerHeight - yScale(d.value);
-        const height = Math.max(4, rawHeight);
-        return innerHeight - height;
+        const barHeight = Math.max(4, rawHeight);
+        return innerHeight - barHeight;
       })
       .attr('width', xScale.bandwidth())
       .attr('height', d => Math.max(4, innerHeight - yScale(d.value)))
@@ -174,27 +151,24 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       .attr('ry', 6)
       .attr('fill', d => getFill(d.state))
       .attr('stroke', d => (d.state === 'comparing' ? '#fef08a' : d.state === 'sorted' ? '#6ee7b7' : '#818cf8'))
-      .attr('stroke-width', d => (d.state === 'comparing' || d.state === 'sorted' ? 2 : 1))
-      .style('transition', 'all 0.18s ease-out');
+      .attr('stroke-width', d => (d.state === 'comparing' || d.state === 'sorted' ? 2 : 1));
 
-    // Patrón accesible
     barGroups
       .filter(d => d.state === 'comparing')
       .append('rect')
       .attr('x', 0)
       .attr('y', d => {
         const rawHeight = innerHeight - yScale(d.value);
-        const height = Math.max(4, rawHeight);
-        return innerHeight - height;
+        const barHeight = Math.max(4, rawHeight);
+        return innerHeight - barHeight;
       })
       .attr('width', xScale.bandwidth())
       .attr('height', d => Math.max(4, innerHeight - yScale(d.value)))
       .attr('rx', 6)
       .attr('ry', 6)
-      .attr('fill', 'url(#hatch-comparing)')
+      .attr('fill', `url(#${ids.hatch})`)
       .attr('pointer-events', 'none');
 
-    // Letras A-N
     barGroups
       .append('text')
       .attr('class', 'x-label')
@@ -207,15 +181,14 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       .attr('font-family', 'Inter, sans-serif')
       .text(d => d.label || '');
 
-    // Valores arriba de cada barra
     barGroups
       .append('text')
       .attr('class', 'val-label')
       .attr('x', xScale.bandwidth() / 2)
       .attr('y', d => {
         const rawHeight = innerHeight - yScale(d.value);
-        const height = Math.max(4, rawHeight);
-        return innerHeight - height - 6;
+        const barHeight = Math.max(4, rawHeight);
+        return innerHeight - barHeight - 6;
       })
       .attr('text-anchor', 'middle')
       .attr('fill', d => (d.state === 'comparing' ? '#fef08a' : d.state === 'sorted' ? '#a7f3d0' : '#e2e8f0'))
@@ -223,12 +196,16 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       .attr('font-weight', '700')
       .attr('font-family', 'JetBrains Mono, monospace')
       .text(d => d.value);
-
-  }, [array, dimensions]);
+  }, [array, dimensions.height, dimensions.width, ids.comparing, ids.default, ids.hatch, ids.sorted, ids.swapped]);
 
   return (
-    <div ref={containerRef} className="w-full h-full min-h-[240px] relative flex-1 flex items-center justify-center">
-      <svg ref={svgRef} className="w-full h-full overflow-visible" />
+    <div ref={containerRef} className="relative w-full h-full min-h-0 flex-1 overflow-hidden">
+      <svg
+        ref={svgRef}
+        className="absolute inset-0 block h-full w-full overflow-visible"
+        role="img"
+        aria-label="Visualización del arreglo"
+      />
     </div>
   );
 };

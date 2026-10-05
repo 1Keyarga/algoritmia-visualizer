@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { parseCustomDataset, generateRandomDataset } from '../../core/utils/generator';
 import { X, Sparkles, AlertCircle, Dices, TrendingDown, TrendingUp } from 'lucide-react';
 
@@ -17,6 +17,14 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
 }) => {
   const [inputValue, setInputValue] = useState(currentDataset.join(', '));
   const [error, setError] = useState<string | null>(null);
+
+  // Sync input value when modal opens with a different dataset
+  useEffect(() => {
+    if (isOpen) {
+      setInputValue(currentDataset.join(', '));
+      setError(null);
+    }
+  }, [isOpen, currentDataset]);
 
   if (!isOpen) return null;
 
@@ -70,7 +78,7 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
               rows={3}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
-              className="w-full bg-[#111217] border border-[#2d2f3f] rounded-lg p-3 text-sm text-slate-200 font-mono-code focus:outline-none focus:border-indigo-500 transition-colors"
+              className="w-full bg-[#111217] border border-[#2d2f3f] rounded-lg p-3 text-sm text-slate-200 font-mono-code focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 transition-colors"
               placeholder="Ejemplo: 12, 23, 67, 12, 56, 11, 45, 23, 78, 56, 78, 89, 98, 45"
             />
           </div>

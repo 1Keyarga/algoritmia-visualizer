@@ -45,30 +45,30 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="h-14 bg-[#14151e] border-b border-[#232532] px-4 flex items-center justify-between shrink-0 select-none z-30">
+      <header className="h-14 bg-[#14151e] border-b border-[#232532] px-3 flex items-center justify-between shrink-0 select-none z-30">
         {/* Left: Brand logo & Algorithm Selector & Dataset controls */}
-        <div className="flex items-center gap-3 xl:gap-4">
+        <div className="flex items-center gap-2 lg:gap-3 overflow-hidden">
           {/* Logo badge */}
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-md shadow-amber-500/20 text-slate-950 font-black text-sm tracking-tight">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-md shadow-amber-500/20 text-slate-950 font-black text-xs tracking-tight">
               <span>Lk</span>
             </div>
-            <span className="text-slate-300 font-semibold text-xs hidden lg:inline-block">
+            <span className="text-slate-300 font-semibold text-[11px] hidden xl:inline-block">
               Algoritmia & ED
             </span>
           </div>
 
-          <div className="h-5 w-[1px] bg-[#2d2f3f]" />
+          <div className="h-4 w-[1px] bg-[#2d2f3f] shrink-0 hidden sm:block" />
 
           {/* Algorithm dropdown */}
-          <div className="relative">
+          <div className="relative shrink-0">
             <button
               onClick={() => setIsAlgoMenuOpen(!isAlgoMenuOpen)}
-              className="flex items-center gap-2 bg-[#1c1d29] hover:bg-[#252738] border border-[#2e3146] px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-100 transition-colors shadow-xs cursor-pointer"
+              className="flex items-center gap-1.5 bg-[#1c1d29] hover:bg-[#252738] border border-[#2e3146] px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-100 transition-colors shadow-xs cursor-pointer"
             >
-              <Layers className="w-4 h-4 text-indigo-400" />
-              <span>{selectedAlgorithm.name}</span>
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isAlgoMenuOpen ? 'rotate-180' : ''}`} />
+              <Layers className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+              <span className="truncate max-w-[120px] sm:max-w-[140px] md:max-w-[160px]">{selectedAlgorithm.name}</span>
+              <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform shrink-0 ${isAlgoMenuOpen ? 'rotate-180' : ''}`} />
             </button>
 
             {isAlgoMenuOpen && (
@@ -119,10 +119,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Quick Variant Toggle for Bubble Sort: Clásico on left (default), Optimizado on right */}
           {isBubbleSort && (
-            <div className="flex items-center bg-[#171824] border border-[#282a3c] p-0.5 rounded-lg">
+            <div className="flex items-center bg-[#171824] border border-[#282a3c] p-0.5 rounded-lg shrink-0">
               <button
                 onClick={() => handleToggleBubbleVariant(false)}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                className={`px-2 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer ${
                   !isOptimizedBubble
                     ? 'bg-indigo-600 text-white font-semibold shadow-xs'
                     : 'text-slate-400 hover:text-slate-200'
@@ -134,7 +134,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
               <button
                 onClick={() => handleToggleBubbleVariant(true)}
-                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                className={`px-2 py-1 text-[11px] font-medium rounded-md transition-all cursor-pointer ${
                   isOptimizedBubble
                     ? 'bg-indigo-600 text-white font-semibold shadow-xs'
                     : 'text-slate-400 hover:text-slate-200'
@@ -146,47 +146,45 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           )}
 
-          {/* Dataset size slider */}
-          <div className="flex items-center gap-2.5 bg-[#171824] border border-[#26283a] px-3 py-1 rounded-lg">
-            <span className="text-xs text-slate-400 font-medium hidden md:inline">Dataset</span>
-            <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">5</span>
+          {/* Dataset size slider - more compact */}
+          <div className="flex items-center gap-1.5 bg-[#171824] border border-[#26283a] px-2 py-1 rounded-lg shrink-0 hidden md:flex">
+            <span className="text-[10px] text-slate-400 font-medium hidden lg:inline">Dataset</span>
             <input
               type="range"
               min={5}
               max={25}
               value={datasetSize}
               onChange={(e) => onChangeDatasetSize(Number(e.target.value))}
-              className="w-16 md:w-20 h-1.5 bg-[#2a2c3f] rounded-lg appearance-none cursor-pointer accent-indigo-500"
+              className="w-14 lg:w-16 h-1.5 bg-[#2a2c3f] rounded-lg appearance-none cursor-pointer accent-indigo-500"
             />
-            <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">25</span>
-            <span className="text-xs font-mono font-bold text-amber-300 w-5 text-center">
+            <span className="text-[11px] font-mono font-bold text-amber-300 w-4 text-center">
               {datasetSize}
             </span>
           </div>
 
-          {/* New dataset button */}
+          {/* New dataset button - icon only on small screens */}
           <button
             onClick={onGenerateRandom}
-            className="flex items-center gap-1.5 bg-[#202232] hover:bg-[#292c42] border border-[#353850] text-indigo-300 hover:text-indigo-100 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors shadow-xs cursor-pointer"
+            className="flex items-center gap-1 bg-[#202232] hover:bg-[#292c42] border border-[#353850] text-indigo-300 hover:text-indigo-100 px-2 py-1 rounded-lg text-[11px] font-medium transition-colors shadow-xs cursor-pointer shrink-0"
             title="Generar nuevo arreglo aleatorio"
           >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span className="hidden sm:inline">Nuevo Dataset</span>
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+            <span className="hidden sm:inline">Nuevo</span>
           </button>
 
-          {/* Custom dataset modal trigger */}
+          {/* Custom dataset modal trigger - icon only on small screens */}
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 bg-[#1a1b28] hover:bg-[#232537] border border-[#2b2e42] text-slate-300 hover:text-white px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer"
+            className="flex items-center gap-1 bg-[#1a1b28] hover:bg-[#232537] border border-[#2b2e42] text-slate-300 hover:text-white px-2 py-1 rounded-lg text-[11px] font-medium transition-colors cursor-pointer shrink-0"
             title="Ingresar valores personalizados"
           >
-            <Sliders className="w-3.5 h-3.5 text-slate-400" />
-            <span className="hidden xl:inline">Personalizar</span>
+            <Sliders className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <span className="hidden lg:inline">Personalizar</span>
           </button>
         </div>
 
         {/* Right: Settings & Student Avatar */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => setIsModalOpen(true)}
             className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#202232] rounded-lg transition-colors cursor-pointer"
@@ -195,9 +193,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Settings className="w-4 h-4" />
           </button>
 
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 p-[1.5px] cursor-pointer shadow-md" title="Perfil de Estudiante">
+          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 p-[1.5px] cursor-pointer shadow-md shrink-0" title="Perfil de Estudiante">
             <div className="w-full h-full rounded-full bg-[#171821] flex items-center justify-center overflow-hidden hover:bg-[#222433] transition-colors">
-              <User className="w-4 h-4 text-indigo-300" />
+              <User className="w-3.5 h-3.5 text-indigo-300" />
             </div>
           </div>
         </div>

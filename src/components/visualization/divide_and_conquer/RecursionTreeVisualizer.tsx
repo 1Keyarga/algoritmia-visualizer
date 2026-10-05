@@ -1,7 +1,8 @@
-import React, { useMemo, useRef, useEffect, useState } from 'react';
+import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import type { RecursionTreeNode, DivideAndConquerState } from '../../../types/trace';
 import { Maximize, ZoomIn, ZoomOut, Target } from 'lucide-react';
+import { useContainerSize } from '../../../hooks/useContainerSize';
 
 interface RecursionTreeVisualizerProps {
   dcState: DivideAndConquerState;
@@ -20,6 +21,7 @@ export const RecursionTreeVisualizer: React.FC<RecursionTreeVisualizerProps> = (
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement>(null);
   const zoomBehavior = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const viewSize = useContainerSize(containerRef);
 
   const [isAutoTracking, setIsAutoTracking] = useState(true);
 
@@ -114,11 +116,11 @@ export const RecursionTreeVisualizer: React.FC<RecursionTreeVisualizerProps> = (
     svg.call(zoomBehavior.current);
   }, []);
 
-  // 3. Fit-to-View Automático (Al cambiar dataset o cargar)
-  useEffect(() => {
-    if (!svgRef.current || !containerRef.current || !bounds || !zoomBehavior.current) return;
-    const svg = d3.select(svgRef.current);
-    const { width: viewWidth, height: viewHeight } = containerRef.current.getBoundingClientRect();
+  const fitToView = useCallback((animate: boolean) => {
+    if (!svgRef.current || !bounds || !zoomBehavior.current) return;
+    const viewWidth = viewSize.width;
+    const viewHeight = viewSize.height;
+    if (viewWidth < 8 || viewHeight < 8) return;
 
     const padding = 60;
     const scale = Math.min(
@@ -129,16 +131,25 @@ export const RecursionTreeVisualizer: React.FC<RecursionTreeVisualizerProps> = (
 
     const centerX = bounds.minX + bounds.width / 2;
     const centerY = bounds.minY + bounds.height / 2;
+    const transform = d3.zoomIdentity
+      .translate(viewWidth / 2, viewHeight / 2)
+      .scale(scale)
+      .translate(-centerX, -centerY);
 
-    svg.transition().duration(750).call(
-      zoomBehavior.current.transform,
-      d3.zoomIdentity
-        .translate(viewWidth / 2, viewHeight / 2)
-        .scale(scale)
-        .translate(-centerX, -centerY)
-    );
+    const svg = d3.select(svgRef.current);
+    if (animate) {
+      svg.transition().duration(400).call(zoomBehavior.current.transform, transform);
+    } else {
+      svg.call(zoomBehavior.current.transform, transform);
+    }
+  }, [bounds, viewSize.height, viewSize.width]);
+
+  // Fit when the dataset changes, and whenever the container size / browser zoom changes.
+  useEffect(() => {
+    if (!bounds || !zoomBehavior.current) return;
+    fitToView(false);
     setIsAutoTracking(true);
-  }, [rootRangeId]); // Solo ejecuta cuando cambia el dataset raíz
+  }, [rootRangeId, viewSize.width, viewSize.height, fitToView, bounds]);
 
   // 4. Auto-Tracking del Nodo Activo
   useEffect(() => {
@@ -170,17 +181,7 @@ export const RecursionTreeVisualizer: React.FC<RecursionTreeVisualizerProps> = (
 
   const handleResetView = () => {
     setIsAutoTracking(true);
-    if (!svgRef.current || !containerRef.current || !bounds || !zoomBehavior.current) return;
-    const svg = d3.select(svgRef.current);
-    const { width: viewWidth, height: viewHeight } = containerRef.current.getBoundingClientRect();
-    const scale = Math.min((viewWidth - 120) / bounds.width, (viewHeight - 120) / bounds.height, 1.2);
-    const centerX = bounds.minX + bounds.width / 2;
-    const centerY = bounds.minY + bounds.height / 2;
-
-    svg.transition().duration(750).call(
-      zoomBehavior.current.transform,
-      d3.zoomIdentity.translate(viewWidth / 2, viewHeight / 2).scale(scale).translate(-centerX, -centerY)
-    );
+    fitToView(true);
   };
 
   const getNodeBadge = (state: RecursionTreeNode['state']) => {
