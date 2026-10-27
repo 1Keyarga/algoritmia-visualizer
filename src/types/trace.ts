@@ -81,7 +81,6 @@ export interface Step {
     [key: string]: number | undefined;
   };
   operationType: OperationType;
-  isSorted?: boolean;
   divideAndConquer?: DivideAndConquerState;
 }
 

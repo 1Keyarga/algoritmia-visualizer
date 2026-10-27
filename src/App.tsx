@@ -1,15 +1,19 @@
 import { useState, useMemo, useEffect } from 'react';
 import { ALGORITHMS_CATALOG } from './core/algorithms/registry';
 import type { AlgorithmMetadata, SupportedLanguage } from './types/algorithm';
+import type { Step } from './types/trace';
 import { generateBubbleSortTrace } from './core/algorithms/bubbleSort';
 import { generateSelectionSortTrace } from './core/algorithms/selectionSort';
 import { generateInsertionSortTrace } from './core/algorithms/insertionSort';
 import { generateMergeSortTrace } from './core/algorithms/mergeSort';
+import { generateLinearSearchTrace } from './core/algorithms/linearSearch';
+import { generateBinarySearchTrace } from './core/algorithms/binarySearch';
 import { generateRandomDataset } from './core/utils/generator';
 import { usePlayback } from './hooks/usePlayback';
 import { useKeyboard } from './hooks/useKeyboard';
 import { Navbar } from './components/layout/Navbar';
 import { PseudocodePanel } from './components/pseudocode/PseudocodePanel';
+import { StudentCodeEditor } from './components/pseudocode/StudentCodeEditor';
 import { MemoryPanel } from './components/memory/MemoryPanel';
 import { VisualizerPanel } from './components/visualization/VisualizerPanel';
 import { PlaybackFooter } from './components/controls/PlaybackFooter';
@@ -29,11 +33,25 @@ export function App() {
     38, 27, 43, 3, 9, 82, 10, 19
   ]);
 
+  const [searchTarget, setSearchTarget] = useState<number>(45);
+  const [customSteps, setCustomSteps] = useState<Step[] | null>(null);
+  const [isASTExecuting, setIsASTExecuting] = useState(false);
+  const [customCategory, setCustomCategory] = useState<'sorting' | 'searching'>('sorting');
+
+  // Cambiar dataset a ordenado para binary search
+  useEffect(() => {
+    if (selectedAlgorithm.id === 'binary-search') {
+      const sorted = [...dataset].sort((a, b) => a - b);
+      setDataset(sorted);
+    }
+  }, [selectedAlgorithm.id]);
+
   const isOptimized = selectedAlgorithm.id === 'bubble-sort';
 
   const isDivideAndConquer = selectedAlgorithm.family === 'divide_and_conquer';
+  const isCustomAST = selectedAlgorithm.id === 'custom-ast';
 
-  // Auto-collapse Memory Panel for Divide & Conquer, open for sorting/searching
+  // Colapsar panel de memoria solo en divide y vencerás para dar prioridad al árbol
   useEffect(() => {
     if (isDivideAndConquer) {
       setIsMemoryOpen(false);
@@ -43,6 +61,9 @@ export function App() {
   }, [isDivideAndConquer]);
 
   const steps = useMemo(() => {
+    if (selectedAlgorithm.id === 'custom-ast') {
+      return customSteps || generateBubbleSortTrace(dataset, isOptimized);
+    }
     if (selectedAlgorithm.id === 'merge-sort') {
       return generateMergeSortTrace(dataset);
     }
@@ -52,11 +73,17 @@ export function App() {
     if (selectedAlgorithm.id === 'selection-sort') {
       return generateSelectionSortTrace(dataset);
     }
+    if (selectedAlgorithm.id === 'linear-search') {
+      return generateLinearSearchTrace(dataset, searchTarget);
+    }
+    if (selectedAlgorithm.id === 'binary-search') {
+      return generateBinarySearchTrace(dataset, searchTarget);
+    }
     if (selectedAlgorithm.id.startsWith('bubble-sort')) {
       return generateBubbleSortTrace(dataset, isOptimized);
     }
     return generateBubbleSortTrace(dataset, isOptimized);
-  }, [dataset, selectedAlgorithm, isOptimized]);
+  }, [dataset, selectedAlgorithm, isOptimized, searchTarget, customSteps]);
 
   const playback = usePlayback(steps);
 
@@ -95,8 +122,8 @@ export function App() {
   };
 
   return (
-    <div className="flex flex-col h-full w-full min-h-0 bg-[#111217] text-slate-100 overflow-hidden font-sans">
-      {/* Top Navigation Bar */}
+    <div className="flex flex-col h-full w-full min-h-0 bg-[#111217] text-slate-100 font-sans">
+      {/* Barra de navegación superior */}
       <Navbar
         selectedAlgorithm={selectedAlgorithm}
         onSelectAlgorithm={(algo) => {
@@ -108,25 +135,45 @@ export function App() {
         onGenerateRandom={() => handleGenerateRandom(dataset.length)}
         onApplyCustomDataset={handleApplyCustomDataset}
         currentDataset={dataset}
+        searchTarget={searchTarget}
+        onChangeSearchTarget={setSearchTarget}
       />
 
-      {/* Main Workspace Area */}
+      {/* Área principal de trabajo */}
       <main className="flex-1 flex min-h-0 overflow-hidden">
-        {/* Left Panel: Pseudocode / Python / C++ / Java */}
-        <PseudocodePanel
-          algorithm={selectedAlgorithm}
-          currentStep={playback.currentStep}
-          stepIndex={playback.currentStepIndex}
-          totalSteps={playback.totalSteps}
-          selectedLanguage={selectedLanguage}
-          onChangeLanguage={setSelectedLanguage}
-          isOpen={isPseudocodeOpen}
-          onToggleOpen={() => setIsPseudocodeOpen(!isPseudocodeOpen)}
-        />
+        {/* Panel izquierdo: Código o Editor del Estudiante con Acorn AST */}
+        {isCustomAST ? (
+          <StudentCodeEditor
+            currentDataset={dataset}
+            searchTarget={searchTarget}
+            currentStep={playback.currentStep}
+            onTraceGenerated={(newSteps, _code, category) => {
+              setCustomSteps(newSteps);
+              setIsASTExecuting(true);
+              if (category) setCustomCategory(category);
+              playback.reset();
+            }}
+            isOpen={isPseudocodeOpen}
+            onToggleOpen={() => setIsPseudocodeOpen(!isPseudocodeOpen)}
+            isExecuting={isASTExecuting}
+            onExitExecutionMode={() => setIsASTExecuting(false)}
+          />
+        ) : (
+          <PseudocodePanel
+            algorithm={selectedAlgorithm}
+            currentStep={playback.currentStep}
+            stepIndex={playback.currentStepIndex}
+            totalSteps={playback.totalSteps}
+            selectedLanguage={selectedLanguage}
+            onChangeLanguage={setSelectedLanguage}
+            isOpen={isPseudocodeOpen}
+            onToggleOpen={() => setIsPseudocodeOpen(!isPseudocodeOpen)}
+          />
+        )}
 
-        {/* Right Area: Memory (Top) + Visualization (Bottom) */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#12131b]">
-          {/* Memory Panel */}
+        {/* Área derecha: Memoria (superior) + Visualización gráfica (inferior) */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-auto bg-[#12131b]">
+          {/* Panel de memoria */}
           {!isDivideAndConquer && (
             <MemoryPanel
               currentStep={playback.currentStep}
@@ -135,18 +182,20 @@ export function App() {
             />
           )}
 
-          {/* Visualization Panel */}
+          {/* Panel de visualización */}
           <VisualizerPanel
             currentStep={playback.currentStep}
             stepIndex={playback.currentStepIndex}
             totalSteps={playback.totalSteps}
             isFullscreen={isVisualizerFullscreen}
             onToggleFullscreen={handleToggleFullscreen}
+            algorithmFamily={isCustomAST ? customCategory : selectedAlgorithm.family}
+            algorithmId={selectedAlgorithm.id}
           />
         </div>
       </main>
 
-      {/* Bottom Playback & Scrubber Controls */}
+      {/* Barra inferior de controles y reproducción */}
       <PlaybackFooter
         currentStepIndex={playback.currentStepIndex}
         totalSteps={playback.totalSteps}

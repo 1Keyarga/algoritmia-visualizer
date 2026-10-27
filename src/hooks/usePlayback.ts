@@ -1,4 +1,4 @@
-﻿import { useReducer, useEffect, useCallback, useRef } from 'react';
+import { useReducer, useEffect, useCallback, useRef } from 'react';
 import type { PlaybackSpeed, PlaybackState, PlaybackAction } from '../types/playback';
 import type { Step } from '../types/trace';
 
@@ -44,7 +44,7 @@ function playbackReducer(state: PlaybackState, action: PlaybackAction): Playback
     case 'SET_SPEED':
       try {
         localStorage.setItem('algoritmia_preferred_speed', String(action.payload));
-      } catch (e) {
+      } catch {
         // Ignorar si localStorage no está disponible
       }
       return { ...state, speed: action.payload };
@@ -64,7 +64,7 @@ export function usePlayback(steps: Step[]) {
       if (saved && ['0.5', '1', '2', '4'].includes(saved)) {
         return Number(saved) as PlaybackSpeed;
       }
-    } catch (e) {}
+    } catch {}
     return 1;
   };
 

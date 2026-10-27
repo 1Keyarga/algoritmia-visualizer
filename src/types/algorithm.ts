@@ -1,4 +1,4 @@
-﻿export type AlgorithmFamily = 'sorting' | 'searching' | 'divide_and_conquer';
+export type AlgorithmFamily = 'sorting' | 'searching' | 'divide_and_conquer' | 'custom';
 export type SupportedLanguage = 'pseudocode' | 'python' | 'cpp' | 'java';
 
 export interface CodeLine {

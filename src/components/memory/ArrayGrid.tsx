@@ -24,18 +24,12 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
   const rightIndex = activeIndices?.right;
   const midIndex = activeIndices?.mid;
 
-  const sortedIndices = array
-    .map((item, idx) => item.state === 'sorted' ? idx : -1)
-    .filter(idx => idx !== -1);
-  
-  const sortedLegendText = sortedIndices.length > 0
-    ? `Ordenados (${sortedIndices.length})`
-    : 'Ordenados';
+
 
   return (
     <div className="flex-1 flex flex-col justify-between font-mono-code min-w-0">
       <div>
-        {/* Header with list name and element count */}
+        {/* Encabezado con nombre de estructura y cantidad de elementos */}
         <div className="flex items-center justify-between text-xs text-slate-300 mb-2 font-sans font-semibold">
           <div className="flex items-center gap-2">
             <span className="text-indigo-400 font-mono text-sm font-bold">arreglo (arr)</span>
@@ -62,37 +56,37 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
                 let badgeStyle = 'bg-amber-500/30 text-amber-300 border-amber-500/60 shadow-amber-500/20';
 
                 if (isMin && isI && jIndex !== undefined) {
-                  indicator = 'i, min ▼';
+                  indicator = 'i, min';
                   badgeStyle = 'bg-purple-500/30 text-purple-300 border-purple-500/60 shadow-purple-500/20';
                 } else if (isMin) {
-                  indicator = 'min ▼';
+                  indicator = 'min';
                   badgeStyle = 'bg-purple-500/30 text-purple-300 border-purple-500/60 shadow-purple-500/20';
                 } else if (isKey) {
-                  indicator = 'clave ▼';
+                  indicator = 'clave';
                   badgeStyle = 'bg-purple-500/30 text-purple-300 border-purple-500/60 shadow-purple-500/20';
                 } else if (isMid && isLeft) {
-                  indicator = 'ini, med ▼';
+                  indicator = 'ini, med';
                   badgeStyle = 'bg-amber-500/30 text-amber-300 border-amber-500/60 shadow-amber-500/20';
                 } else if (isMid) {
-                  indicator = 'medio ▼';
+                  indicator = 'medio';
                   badgeStyle = 'bg-amber-500/30 text-amber-300 border-amber-500/60 shadow-amber-500/20';
                 } else if (isLeft && isRight) {
-                  indicator = 'ini, fin ▼';
+                  indicator = 'ini, fin';
                   badgeStyle = 'bg-indigo-500/30 text-indigo-300 border-indigo-500/60 shadow-indigo-500/20';
                 } else if (isLeft) {
-                  indicator = 'inicio ▼';
+                  indicator = 'inicio';
                   badgeStyle = 'bg-blue-500/30 text-blue-300 border-blue-500/60 shadow-blue-500/20';
                 } else if (isRight) {
-                  indicator = 'fin ▼';
+                  indicator = 'fin';
                   badgeStyle = 'bg-indigo-500/30 text-indigo-300 border-indigo-500/60 shadow-indigo-500/20';
                 } else if (isJ) {
-                  indicator = 'j ▼';
+                  indicator = 'j';
                   badgeStyle = 'bg-amber-500/30 text-amber-300 border-amber-500/60 shadow-amber-500/20';
                 } else if (isJ1) {
-                  indicator = 'j+1 ▼';
+                  indicator = 'j+1';
                   badgeStyle = 'bg-amber-500/30 text-amber-300 border-amber-500/60 shadow-amber-500/20';
                 } else if (isI) {
-                  indicator = 'i ▼';
+                  indicator = 'i';
                   badgeStyle = 'bg-blue-500/30 text-blue-300 border-blue-500/60 shadow-blue-500/20';
                 }
 
@@ -138,7 +132,7 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
               })}
             </div>
 
-            {/* Values Row with States & Non-chromatic Badges */}
+            {/* Fila de valores con estados y marcadores no cromáticos */}
             <div className="flex items-center">
               {array.map((item, idx) => {
                 let cellBg = 'bg-[#1a1b28] text-slate-100 border-[#2d3046]';
@@ -171,49 +165,6 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
                 );
               })}
             </div>
-          </div>
-        </div>
-
-        {/* Accessible Legend */}
-        <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300 mt-1 font-sans">
-          {minIndex !== undefined && (
-            <div className="flex items-center gap-1.5 bg-[#1d1f2d] px-2.5 py-1 rounded-md border border-[#2b2d42]">
-              <span className="w-3 h-3 rounded-[3px] bg-purple-500 border border-purple-300" />
-              <span className="text-purple-300 font-medium">Mínimo (min = {minIndex})</span>
-            </div>
-          )}
-
-          {keyVal !== undefined && (
-            <div className="flex items-center gap-1.5 bg-[#1d1f2d] px-2.5 py-1 rounded-md border border-[#2b2d42]">
-              <span className="w-3 h-3 rounded-[3px] bg-purple-500 border border-purple-300" />
-              <span className="text-purple-300 font-medium">Clave (valor = {keyVal})</span>
-            </div>
-          )}
-
-          {leftIndex !== undefined && rightIndex !== undefined && (
-            <div className="flex items-center gap-1.5 bg-[#1d1f2d] px-2.5 py-1 rounded-md border border-[#2b2d42]">
-              <span className="w-3 h-3 rounded-[3px] bg-indigo-500 border border-indigo-300" />
-              <span className="text-indigo-300 font-medium">Subproblema [{leftIndex}..{rightIndex}]</span>
-            </div>
-          )}
-
-          {jIndex !== undefined && (
-            <div className="flex items-center gap-1.5 bg-[#1d1f2d] px-2.5 py-1 rounded-md border border-[#2b2d42]">
-              <span className="w-3 h-3 rounded-[3px] bg-amber-500 border border-amber-300" />
-              <span className="text-amber-300 font-medium">
-                {minIndex !== undefined || keyVal !== undefined ? `Comparando (j = ${jIndex})` : `Comparando (j = ${jIndex}, j+1 = ${jIndex + 1})`}
-              </span>
-            </div>
-          )}
-
-          <div className="flex items-center gap-1.5 bg-[#1d1f2d] px-2.5 py-1 rounded-md border border-[#2b2d42]">
-            <span className="w-3 h-3 rounded-[3px] bg-emerald-500 border border-emerald-300" />
-            <span className="text-emerald-300 font-medium">{sortedLegendText}</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 bg-[#1d1f2d] px-2.5 py-1 rounded-md border border-[#2b2d42]">
-            <span className="w-3 h-3 rounded-[3px] bg-[#2d3046] border border-[#444866]" />
-            <span className="text-slate-400">Desordenado</span>
           </div>
         </div>
       </div>

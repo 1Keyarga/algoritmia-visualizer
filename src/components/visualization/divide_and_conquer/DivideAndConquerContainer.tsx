@@ -1,24 +1,21 @@
 import React from 'react';
-import type { DivideAndConquerState, MemoryFrame, StepMetrics, ComplexityInfo } from '../../../types/trace';
+import type { DivideAndConquerState } from '../../../types/trace';
 import { RecursionTreeVisualizer } from './RecursionTreeVisualizer';
 import { Layers } from 'lucide-react';
 
 interface DivideAndConquerContainerProps {
   dcState: DivideAndConquerState;
-  frames?: MemoryFrame[];
-  metrics?: StepMetrics;
-  complexity?: ComplexityInfo;
 }
 
-export const DivideAndConquerContainer: React.FC<DivideAndConquerContainerProps> = ({ dcState, frames: _frames, metrics: _metrics, complexity: _complexity }) => {
+export const DivideAndConquerContainer: React.FC<DivideAndConquerContainerProps> = ({ dcState }) => {
   const { activePhase, phaseDescription } = dcState;
 
-  // Fases del flujo conceptual
-  const phases: Array<{ id: 'divide' | 'conquer' | 'combine' | 'completed'; label: string; icon: string }> = [
-    { id: 'divide', label: '1. Divide', icon: '⚡' },
-    { id: 'conquer', label: '2. Caso Base', icon: '✔' },
-    { id: 'combine', label: '3. Mezcla', icon: '⮁' },
-    { id: 'completed', label: '4. Resuelto', icon: '🏆' },
+  // Fases del flujo algorítmico
+  const phases: Array<{ id: 'divide' | 'conquer' | 'combine' | 'completed'; label: string }> = [
+    { id: 'divide', label: '1. División' },
+    { id: 'conquer', label: '2. Caso Base' },
+    { id: 'combine', label: '3. Combinación' },
+    { id: 'completed', label: '4. Resuelto' },
   ];
 
   return (
@@ -35,11 +32,10 @@ export const DivideAndConquerContainer: React.FC<DivideAndConquerContainerProps>
                 key={phase.id}
                 className={`flex items-center gap-1.5 text-[11px] font-mono px-2.5 py-0.5 rounded-full border transition-all ${
                   isCurrent
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/60 font-bold shadow-sm shadow-amber-500/20'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/60 font-bold shadow-xs'
                     : 'bg-[#181a28] text-slate-500 border-[#272a3e]'
                 }`}
               >
-                <span>{phase.icon}</span>
                 <span>{phase.label}</span>
               </div>
             );

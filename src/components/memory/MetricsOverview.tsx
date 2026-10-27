@@ -13,7 +13,7 @@ export const MetricsOverview: React.FC<MetricsOverviewProps> = ({
 }) => {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono-code pt-1.5 mt-1 border-t border-[#25283a] text-slate-300">
-      {/* Counters */}
+      {/* Contadores de operaciones */}
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1.5 bg-[#1b1c28] px-2 py-1 rounded-md border border-[#2b2e44]">
           <GitCompare className="w-3 h-3 text-amber-400" />
@@ -28,7 +28,7 @@ export const MetricsOverview: React.FC<MetricsOverviewProps> = ({
         </div>
       </div>
 
-      {/* Complexity Badges */}
+      {/* Indicadores de complejidad asintótica Big-O */}
       <div className="flex items-center gap-2">
         <div className="flex items-center gap-1.5 bg-[#1b1c28] px-2 py-1 rounded-md border border-[#2b2e44]">
           <Clock className="w-3 h-3 text-indigo-400" />

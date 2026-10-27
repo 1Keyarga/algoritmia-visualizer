@@ -1,7 +1,5 @@
-﻿import type { Step, ArrayElement, MemoryFrame, StepLineHighlight } from '../../types/trace';
+import type { Step, ArrayElement, MemoryFrame, StepLineHighlight } from '../../types/trace';
 import type { AlgorithmMetadata, SupportedLanguage } from '../../types/algorithm';
-
-export type BubbleSortVariant = 'optimized' | 'classic';
 
 export const BUBBLE_SORT_OPTIMIZED_METADATA: AlgorithmMetadata = {
   id: 'bubble-sort',
@@ -305,8 +303,8 @@ export function generateBubbleSortTrace(initialData: number[], isOptimized: bool
 
     for (let j = 0; j < limit; j++) {
       currentArray = currentArray.map((item, idx) => {
-        if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
-        if (idx === j || idx === j + 1) return { ...item, state: 'comparing', nonColorIndicator: idx === j ? '(j)' : '(j+1)' };
+        if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
+        if (idx === j || idx === j + 1) return { ...item, state: 'comparing', nonColorIndicator: idx === j ? 'j' : 'j+1' };
         return { ...item, state: 'default', nonColorIndicator: undefined };
       });
 
@@ -408,7 +406,7 @@ export function generateBubbleSortTrace(initialData: number[], isOptimized: bool
       }
 
       currentArray = currentArray.map((item, idx) => {
-        if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
+        if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
         return { ...item, state: 'default', nonColorIndicator: undefined };
       });
     }
@@ -418,7 +416,7 @@ export function generateBubbleSortTrace(initialData: number[], isOptimized: bool
     currentArray[sortedIdx] = {
       ...currentArray[sortedIdx],
       state: 'sorted',
-      nonColorIndicator: '✔',
+      nonColorIndicator: undefined,
     };
 
     if (isOptimized) {
@@ -446,7 +444,7 @@ export function generateBubbleSortTrace(initialData: number[], isOptimized: bool
 
         for (let k = sortedIdx - 1; k >= 0; k--) {
           sortedIndices.add(k);
-          currentArray[k] = { ...currentArray[k], state: 'sorted', nonColorIndicator: '✔' };
+          currentArray[k] = { ...currentArray[k], state: 'sorted', nonColorIndicator: undefined };
         }
 
         pushStep(
@@ -466,7 +464,7 @@ export function generateBubbleSortTrace(initialData: number[], isOptimized: bool
   currentArray = currentArray.map(item => ({
     ...item,
     state: 'sorted',
-    nonColorIndicator: '✔',
+    nonColorIndicator: undefined,
   }));
 
   const returnLine = isOptimized

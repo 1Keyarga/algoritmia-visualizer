@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { ALGORITHMS_CATALOG } from '../../core/algorithms/registry';
+import React, { useState, useRef, useEffect } from 'react';
+import { ALGORITHMS_CATALOG, CUSTOM_AST_METADATA } from '../../core/algorithms/registry';
 import type { AlgorithmMetadata } from '../../types/algorithm';
-import { ChevronDown, Sparkles, Settings, Sliders, Layers, User } from 'lucide-react';
+import { ChevronDown, Sparkles, Sliders, Layers, User, Code2 } from 'lucide-react';
 import { DatasetModal } from './DatasetModal';
 
 interface NavbarProps {
@@ -12,6 +12,8 @@ interface NavbarProps {
   onGenerateRandom: () => void;
   onApplyCustomDataset: (data: number[]) => void;
   currentDataset: number[];
+  searchTarget?: number;
+  onChangeSearchTarget?: (target: number) => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -22,14 +24,30 @@ export const Navbar: React.FC<NavbarProps> = ({
   onGenerateRandom,
   onApplyCustomDataset,
   currentDataset,
+  searchTarget,
+  onChangeSearchTarget,
 }) => {
   const [isAlgoMenuOpen, setIsAlgoMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+
+  // Calcula la posición del menú desplegable respecto al botón selector
+  useEffect(() => {
+    if (isAlgoMenuOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+      });
+    }
+  }, [isAlgoMenuOpen]);
 
   const families = [
     { key: 'sorting', label: 'Algoritmos de Ordenamiento' },
     { key: 'searching', label: 'Algoritmos de Búsqueda' },
     { key: 'divide_and_conquer', label: 'Divide y Vencerás' },
+    { key: 'custom', label: 'Código del Estudiante (Acorn AST)' },
   ];
 
   const isBubbleSort = selectedAlgorithm.id.startsWith('bubble-sort');
@@ -45,10 +63,10 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="h-14 bg-[#14151e] border-b border-[#232532] px-3 flex items-center justify-between shrink-0 select-none z-30">
-        {/* Left: Brand logo & Algorithm Selector & Dataset controls */}
+      <header className="h-14 bg-[#14151e] border-b border-[#232532] px-3 flex items-center justify-between shrink-0 select-none">
+        {/* Zona izquierda: Logo, selector de algoritmo y controles del dataset */}
         <div className="flex items-center gap-2 lg:gap-3 overflow-hidden">
-          {/* Logo badge */}
+          {/* Logotipo del curso */}
           <div className="flex items-center gap-2 shrink-0">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-md shadow-amber-500/20 text-slate-950 font-black text-xs tracking-tight">
               <span>Lk</span>
@@ -61,8 +79,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           <div className="h-4 w-[1px] bg-[#2d2f3f] shrink-0 hidden sm:block" />
 
           {/* Algorithm dropdown */}
-          <div className="relative shrink-0">
+          <div className="relative shrink-0 z-50">
             <button
+              ref={buttonRef}
               onClick={() => setIsAlgoMenuOpen(!isAlgoMenuOpen)}
               className="flex items-center gap-1.5 bg-[#1c1d29] hover:bg-[#252738] border border-[#2e3146] px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-100 transition-colors shadow-xs cursor-pointer"
             >
@@ -74,10 +93,13 @@ export const Navbar: React.FC<NavbarProps> = ({
             {isAlgoMenuOpen && (
               <>
                 <div
-                  className="fixed inset-0 z-40"
+                  className="fixed inset-0 z-[40]"
                   onClick={() => setIsAlgoMenuOpen(false)}
                 />
-                <div className="absolute left-0 mt-1.5 w-64 bg-[#1c1d29] border border-[#2e3146] rounded-xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+                <div
+                  className="fixed w-64 bg-[#1c1d29] border border-[#2e3146] rounded-xl shadow-2xl py-2 z-[50] animate-in fade-in zoom-in-95 duration-100 max-h-[70vh] overflow-y-auto custom-scrollbar"
+                  style={{ top: `${dropdownPosition.top}px`, left: `${dropdownPosition.left}px` }}
+                >
                   {families.map((fam) => {
                     const algos = ALGORITHMS_CATALOG.filter(a => a.family === fam.key);
                     return (
@@ -146,7 +168,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           )}
 
-          {/* Dataset size slider - more compact */}
+          {/* Control deslizante de tamaño del arreglo */}
           <div className="flex items-center gap-1.5 bg-[#171824] border border-[#26283a] px-2 py-1 rounded-lg shrink-0 hidden md:flex">
             <span className="text-[10px] text-slate-400 font-medium hidden lg:inline">Dataset</span>
             <input
@@ -162,7 +184,21 @@ export const Navbar: React.FC<NavbarProps> = ({
             </span>
           </div>
 
-          {/* New dataset button - icon only on small screens */}
+          {/* Input para valor a buscar (solo en algoritmos de búsqueda) */}
+          {selectedAlgorithm.family === 'searching' && (
+            <div className="flex items-center gap-1.5 bg-[#171824] border border-[#26283a] px-2 py-1 rounded-lg shrink-0">
+              <span className="text-[10px] text-slate-400 font-medium hidden lg:inline">Buscar:</span>
+              <input
+                type="number"
+                value={searchTarget || ''}
+                onChange={(e) => onChangeSearchTarget?.(Number(e.target.value))}
+                className="w-16 lg:w-20 h-5 bg-[#2a2c3f] border border-[#3e4156] rounded px-2 text-[11px] font-mono font-bold text-amber-300 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/30"
+                placeholder="valor"
+              />
+            </div>
+          )}
+
+          {/* Botón para generar nuevo dataset aleatorio */}
           <button
             onClick={onGenerateRandom}
             className="flex items-center gap-1 bg-[#202232] hover:bg-[#292c42] border border-[#353850] text-indigo-300 hover:text-indigo-100 px-2 py-1 rounded-lg text-[11px] font-medium transition-colors shadow-xs cursor-pointer shrink-0"
@@ -172,7 +208,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="hidden sm:inline">Nuevo</span>
           </button>
 
-          {/* Custom dataset modal trigger - icon only on small screens */}
+          {/* Botón para abrir el modal de personalización */}
           <button
             onClick={() => setIsModalOpen(true)}
             className="flex items-center gap-1 bg-[#1a1b28] hover:bg-[#232537] border border-[#2b2e42] text-slate-300 hover:text-white px-2 py-1 rounded-lg text-[11px] font-medium transition-colors cursor-pointer shrink-0"
@@ -181,22 +217,26 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Sliders className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="hidden lg:inline">Personalizar</span>
           </button>
+
+          {/* Botón rápido para Editor de Estudiante (Acorn AST) */}
+          <button
+            onClick={() => onSelectAlgorithm(CUSTOM_AST_METADATA)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shrink-0 border ${
+              selectedAlgorithm.id === 'custom-ast'
+                ? 'bg-indigo-600 text-white border-indigo-400 shadow-sm shadow-indigo-600/30'
+                : 'bg-[#1b1d2e] hover:bg-[#24283f] text-indigo-300 border-[#323654]'
+            }`}
+            title="Abrir Editor de Código del Estudiante con Acorn AST"
+          >
+            <Code2 className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Editor AST</span>
+          </button>
         </div>
 
-        {/* Right: Settings & Student Avatar */}
+        {/* Zona derecha: Perfil de usuario */}
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="p-1.5 text-slate-400 hover:text-slate-200 hover:bg-[#202232] rounded-lg transition-colors cursor-pointer"
-            title="Configuración de Dataset"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-
-          <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-500 p-[1.5px] cursor-pointer shadow-md shrink-0" title="Perfil de Estudiante">
-            <div className="w-full h-full rounded-full bg-[#171821] flex items-center justify-center overflow-hidden hover:bg-[#222433] transition-colors">
-              <User className="w-3.5 h-3.5 text-indigo-300" />
-            </div>
+          <div className="w-7 h-7 rounded-full bg-[#1e2030] border border-[#353850] flex items-center justify-center text-indigo-300 shadow-xs" title="Perfil de usuario">
+            <User className="w-3.5 h-3.5" />
           </div>
         </div>
       </header>

@@ -14,8 +14,8 @@ function readSize(el: HTMLElement): ContainerSize {
 }
 
 /**
- * Tracks an element's layout size across window resize, ResizeObserver,
- * and visualViewport changes (browser zoom).
+ * Monitorea las dimensiones de un elemento considerando redimensionamiento
+ * de ventana, ResizeObserver y cambios en el visualViewport del navegador.
  */
 export function useContainerSize(
   ref: RefObject<HTMLElement | null>,

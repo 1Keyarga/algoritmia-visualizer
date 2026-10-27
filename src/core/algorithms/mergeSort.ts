@@ -339,7 +339,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
       currentArray[inicio] = {
         ...currentArray[inicio],
         state: 'sorted',
-        nonColorIndicator: '✔',
+        nonColorIndicator: undefined,
       };
 
       if (workers[workerIdx].currentTask) {
@@ -502,7 +502,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
       currentArray = currentArray.map((item, idx) => {
         if (idx === i) return { ...item, state: 'comparing', nonColorIndicator: 'i' };
         if (idx === j) return { ...item, state: 'comparing', nonColorIndicator: 'j' };
-        if (idx >= inicio && idx < inicio + k) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
+        if (idx >= inicio && idx < inicio + k) return { ...item, state: 'sorted', nonColorIndicator: undefined };
         return { ...item, state: 'default' };
       });
 
@@ -647,7 +647,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
         ...currentArray[inicio + idx],
         value: temp[idx],
         state: 'swapped',
-        nonColorIndicator: '✔',
+        nonColorIndicator: undefined,
       };
       movesCount++;
 
@@ -677,7 +677,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
   currentArray = currentArray.map(item => ({
     ...item,
     state: 'sorted',
-    nonColorIndicator: '✔',
+    nonColorIndicator: undefined,
   }));
 
   treeNodes[rootId].state = 'completed';

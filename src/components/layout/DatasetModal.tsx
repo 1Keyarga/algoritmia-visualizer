@@ -18,7 +18,7 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
   const [inputValue, setInputValue] = useState(currentDataset.join(', '));
   const [error, setError] = useState<string | null>(null);
 
-  // Sync input value when modal opens with a different dataset
+  // Sincroniza el valor del input cuando el modal se abre con un dataset distinto
   useEffect(() => {
     if (isOpen) {
       setInputValue(currentDataset.join(', '));

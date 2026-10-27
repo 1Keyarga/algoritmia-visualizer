@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import type { Step } from '../../types/trace';
 import type { AlgorithmMetadata, SupportedLanguage } from '../../types/algorithm';
 import { StepExplanation } from './StepExplanation';
@@ -41,7 +41,7 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
     }
 
     const tokens = code.split(
-      /(\balgoritmo\b|\bfuncion\b|\bpara\b|\bhacer\b|\bdesde\b|\bhasta\b|\bsi\b|\bentonces\b|\bno\b|\binterrumpir\b|\bretornar\b|\bintercambiar\b|\blongitud\b|\bVerdadero\b|\bFalso\b|\bdef\b|\bin\b|\brange\b|\blen\b|\bswap\b|\bTrue\b|\bFalse\b|\bvoid\b|\bint\b|\bbool\b|\bvector\b|\bpublic\b|\bstatic\b|\bbreak\b|\breturn\b|\bwhile\b|\bfor\b|\bif\b|\belse\b|[←(),:><=+\-\[\];{}&])/g
+      /(\balgoritmo\b|\bfuncion\b|\bpara\b|\bhacer\b|\bdesde\b|\bhasta\b|\bsi\b|\bentonces\b|\bno\b|\binterrumpir\b|\bretornar\b|\bintercambiar\b|\blongitud\b|\bVerdadero\b|\bFalso\b|\bdef\b|\bin\b|\brange\b|\blen\b|\bswap\b|\bTrue\b|\bFalse\b|\bvoid\b|\bint\b|\bbool\b|\bvector\b|\bpublic\b|\bstatic\b|\bbreak\b|\breturn\b|\bwhile\b|\bfor\b|\bif\b|\belse\b|[←(),:><=+\-[\];{}&])/g
     );
 
     return tokens.map((token, i) => {
@@ -114,7 +114,7 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
 
   return (
     <div className="w-[360px] sm:w-[420px] md:w-[480px] lg:w-[500px] xl:w-[560px] bg-[#161722] border-r border-[#232532] flex flex-col justify-between shrink-0 h-full overflow-hidden select-none transition-all">
-      {/* Header with Language Tabs and Clean Chevron Button */}
+      {/* Encabezado con selector de lenguaje y botón de colapso */}
       <div className="bg-[#13141d] border-b border-[#232532] p-2 flex flex-col gap-1.5">
         <div className="flex items-center justify-between px-2 pt-0.5">
           <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
@@ -129,7 +129,7 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
           </button>
         </div>
 
-        {/* Language Tabs */}
+        {/* Pestañas de lenguaje */}
         <div className="flex items-center gap-1 bg-[#1a1c27] p-1 rounded-lg border border-[#27293a]">
           {languages.map((lang) => {
             const isSelected = selectedLanguage === lang.id;
@@ -150,7 +150,7 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
         </div>
       </div>
 
-      {/* Code Viewer Container */}
+      {/* Visor de código con numeración y resaltado */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 font-mono-code text-[13px] leading-relaxed">
         {lines.map((line) => {
           const highlight = getLineHighlight(line.lineNumber);
@@ -206,7 +206,7 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
         })}
       </div>
 
-      {/* Explanation Footer Box */}
+      {/* Panel explicativo del paso actual */}
       <div className="p-3.5 bg-[#12131b] border-t border-[#232532]">
         <StepExplanation
           currentStep={currentStep}

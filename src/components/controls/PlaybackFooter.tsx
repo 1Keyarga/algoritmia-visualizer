@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import type { PlaybackSpeed } from '../../types/playback';
 import {
   Play,
@@ -44,7 +44,7 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
 
   return (
     <footer className="bg-[#13141e] border-t border-[#232532] flex flex-col shrink-0 select-none z-20">
-      {/* Dedicated Interactive Scrubber Timeline (RF-18) */}
+      {/* Línea de tiempo interactiva (Scrubber) */}
       <div className="w-full px-6 pt-2 pb-1 bg-[#101119] flex items-center gap-3 border-b border-[#1c1d29]">
         <div className="flex-1 relative flex items-center group">
           <input
@@ -61,9 +61,9 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
         </span>
       </div>
 
-      {/* Main Controls Row */}
+      {/* Barra de controles de reproducción */}
       <div className="h-14 px-6 flex items-center justify-between">
-        {/* Left: Step counter */}
+        {/* Contador de pasos */}
         <div className="flex items-center gap-2 min-w-[140px]">
           <div className="bg-[#1c1d2c] px-3 py-1 rounded-lg border border-[#2b2d42]">
             <span className="text-xs font-mono text-slate-300 font-semibold">
@@ -72,9 +72,9 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
           </div>
         </div>
 
-        {/* Center: Playback multimedia controls */}
+        {/* Controles multimedia */}
         <div className="flex items-center gap-3">
-          {/* Go to start */}
+          {/* Ir al inicio */}
           <button
             onClick={onGoToStart}
             disabled={currentStepIndex === 0}
@@ -84,7 +84,7 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
             <SkipBack className="w-4 h-4" />
           </button>
 
-          {/* Prev step */}
+          {/* Paso anterior */}
           <button
             onClick={onPrevStep}
             disabled={currentStepIndex === 0}
@@ -94,10 +94,10 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
             <ChevronLeft className="w-5 h-5" />
           </button>
 
-          {/* Play/Pause Central Glowing Button */}
+          {/* Botón Reproducir / Pausar */}
           <button
             onClick={onTogglePlay}
-            className="w-11 h-11 rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white flex items-center justify-center shadow-lg shadow-indigo-600/40 hover:shadow-indigo-500/70 transition-all transform active:scale-95 cursor-pointer ring-2 ring-indigo-400/30"
+            className="w-11 h-11 rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 hover:shadow-indigo-500/50 transition-all transform active:scale-95 cursor-pointer ring-2 ring-indigo-400/20"
             title={isPlaying ? 'Pausar (Espacio)' : 'Reproducir (Espacio)'}
           >
             {isPlaying ? (
@@ -107,7 +107,7 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
             )}
           </button>
 
-          {/* Next step */}
+          {/* Paso siguiente */}
           <button
             onClick={onNextStep}
             disabled={currentStepIndex >= totalSteps - 1}
@@ -117,7 +117,7 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
             <ChevronRight className="w-5 h-5" />
           </button>
 
-          {/* Go to end */}
+          {/* Ir al final */}
           <button
             onClick={onGoToEnd}
             disabled={currentStepIndex >= totalSteps - 1}
@@ -128,7 +128,7 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
           </button>
         </div>
 
-        {/* Right: Speed buttons & Reset */}
+        {/* Velocidad de reproducción y reinicio */}
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-[#1c1d29] border border-[#2b2e42] rounded-lg p-0.5">
             {speeds.map((s) => (
