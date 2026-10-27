@@ -47,7 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { key: 'sorting', label: 'Algoritmos de Ordenamiento' },
     { key: 'searching', label: 'Algoritmos de Búsqueda' },
     { key: 'divide_and_conquer', label: 'Divide y Vencerás' },
-    { key: 'custom', label: 'Código del Estudiante (Acorn AST)' },
+    { key: 'custom', label: 'Código del Estudiante' },
   ];
 
   const isBubbleSort = selectedAlgorithm.id.startsWith('bubble-sort');
@@ -218,7 +218,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span className="hidden lg:inline">Personalizar</span>
           </button>
 
-          {/* Botón rápido para Editor de Estudiante (Acorn AST) */}
+          {/* Acceso directo a Mi Código (Editor del Estudiante) */}
           <button
             onClick={() => onSelectAlgorithm(CUSTOM_AST_METADATA)}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer shrink-0 border ${
@@ -226,10 +226,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 ? 'bg-indigo-600 text-white border-indigo-400 shadow-sm shadow-indigo-600/30'
                 : 'bg-[#1b1d2e] hover:bg-[#24283f] text-indigo-300 border-[#323654]'
             }`}
-            title="Abrir Editor de Código del Estudiante con Acorn AST"
+            title="Abrir Editor de Código del Estudiante"
           >
             <Code2 className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Editor AST</span>
+            <span>Mi Código</span>
           </button>
         </div>
 

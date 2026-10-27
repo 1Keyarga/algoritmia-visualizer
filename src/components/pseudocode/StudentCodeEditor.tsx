@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
-  STUDENT_CODE_TEMPLATES,
+  GENERAL_C_STARTER,
+  GENERAL_JS_STARTER,
   validateStudentSyntax,
   instrumentAndTraceStudentCode,
 } from '../../core/ast/astInstrumenter';
 import type { Step } from '../../types/trace';
-import { Play, RotateCcw, AlertTriangle, CheckCircle, Code2, Sparkles, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, RotateCcw, AlertTriangle, CheckCircle, Code2, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 
 interface StudentCodeEditorProps {
   currentDataset: number[];
@@ -29,37 +30,23 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
   onExitExecutionMode,
 }) => {
   const [activeLanguage, setActiveLanguage] = useState<'c' | 'javascript'>('c');
-  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('c_bubbleSort');
-  const [code, setCode] = useState<string>(STUDENT_CODE_TEMPLATES.c_bubbleSort.code);
+  const [code, setCode] = useState<string>(GENERAL_C_STARTER);
   const [syntaxError, setSyntaxError] = useState<string | null>(null);
   const [errorLine, setErrorLine] = useState<number | null>(null);
   const [executionStats, setExecutionStats] = useState<{ totalSteps: number } | null>(null);
 
-  // Filtrar plantillas según el lenguaje activo
-  const filteredTemplates = Object.values(STUDENT_CODE_TEMPLATES).filter(
-    (t) => t.language === activeLanguage
-  );
-
   // Al cambiar de lenguaje
   const handleSelectLanguage = (lang: 'c' | 'javascript') => {
     setActiveLanguage(lang);
-    const defaultTpl = Object.values(STUDENT_CODE_TEMPLATES).find((t) => t.language === lang);
-    if (defaultTpl) {
-      setSelectedTemplateKey(defaultTpl.id);
-      setCode(defaultTpl.code);
-    }
+    setCode(lang === 'c' ? GENERAL_C_STARTER : GENERAL_JS_STARTER);
     setSyntaxError(null);
     setErrorLine(null);
     onExitExecutionMode();
   };
 
-  // Al cambiar de plantilla
-  const handleSelectTemplate = (key: string) => {
-    setSelectedTemplateKey(key);
-    const newTpl = STUDENT_CODE_TEMPLATES[key];
-    if (newTpl) {
-      setCode(newTpl.code);
-    }
+  // Restablecer el código base desde cero
+  const handleResetCode = () => {
+    setCode(activeLanguage === 'c' ? GENERAL_C_STARTER : GENERAL_JS_STARTER);
     setSyntaxError(null);
     setErrorLine(null);
     onExitExecutionMode();
@@ -77,7 +64,7 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
     }
   }, [code]);
 
-  // Ejecutar e instrumentar con Acorn
+  // Compilar y ejecutar
   const handleCompileAndRun = () => {
     const result = instrumentAndTraceStudentCode(code, currentDataset, searchTarget);
     if (!result.success || !result.steps) {
@@ -88,10 +75,8 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
 
     setSyntaxError(null);
     setErrorLine(null);
-    const tpl = STUDENT_CODE_TEMPLATES[selectedTemplateKey];
-    const category: 'sorting' | 'searching' = tpl ? tpl.category : 'sorting';
     setExecutionStats({ totalSteps: result.steps.length });
-    onTraceGenerated(result.steps, code, category);
+    onTraceGenerated(result.steps, code, 'sorting');
   };
 
   // Líneas de código para la numeración
@@ -102,14 +87,14 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
       <div
         onClick={onToggleOpen}
         className="w-10 bg-[#161722] border-r border-[#232532] flex flex-col items-center py-4 cursor-pointer hover:bg-[#1a1c2a] transition-colors group select-none shrink-0"
-        title="Abrir Editor de Estudiante (AST)"
+        title="Abrir Editor de Código"
       >
         <button className="p-1.5 rounded-lg bg-[#222434] text-slate-400 group-hover:text-white mb-4 transition-colors">
           <ChevronRight className="w-4 h-4" />
         </button>
         <div className="flex-1 flex items-center justify-center">
           <span className="text-[11px] font-bold tracking-widest text-indigo-400 group-hover:text-indigo-300 uppercase [writing-mode:vertical-rl] rotate-180">
-            Editor Estudiante ({activeLanguage === 'c' ? 'C/C++' : 'JavaScript'})
+            Editor de Código ({activeLanguage === 'c' ? 'C / C++' : 'JavaScript'})
           </span>
         </div>
         <Code2 className="w-4 h-4 text-indigo-400 mt-4" />
@@ -124,25 +109,35 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-400">
-              <Sparkles className="w-3.5 h-3.5" />
+              <Code2 className="w-3.5 h-3.5" />
             </div>
             <div>
               <div className="text-[11px] font-bold tracking-wider text-slate-200 uppercase">
                 Editor de Código ({activeLanguage === 'c' ? 'C / C++' : 'JavaScript'})
               </div>
               <div className="text-[10px] text-slate-400">
-                Instrumentación de AST con Acorn.js y funciones generadoras
+                Trazado y depuración de memoria en tiempo de ejecución
               </div>
             </div>
           </div>
 
-          <button
-            onClick={onToggleOpen}
-            className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
-            title="Colapsar editor"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleResetCode}
+              disabled={isExecuting}
+              className="text-slate-400 hover:text-slate-200 p-1 rounded-md hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-40"
+              title="Restablecer código base inicial"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={onToggleOpen}
+              className="text-slate-400 hover:text-white p-1 rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
+              title="Colapsar editor"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Selector de Lenguaje (C / JavaScript) */}
@@ -170,29 +165,12 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
             JavaScript
           </button>
         </div>
-
-        {/* Selector de Plantilla */}
-        <div className="flex items-center gap-2 pt-0.5">
-          <span className="text-[10px] font-mono text-slate-400 shrink-0">Plantilla:</span>
-          <select
-            value={selectedTemplateKey}
-            onChange={(e) => handleSelectTemplate(e.target.value)}
-            disabled={isExecuting}
-            className="flex-1 bg-[#1a1c2b] border border-[#2c3046] text-slate-200 text-xs rounded-md px-2 py-1 outline-none focus:border-indigo-500 font-sans cursor-pointer disabled:opacity-50"
-          >
-            {filteredTemplates.map((tpl) => (
-              <option key={tpl.id} value={tpl.id}>
-                {tpl.name}
-              </option>
-            ))}
-          </select>
-        </div>
       </div>
 
       {/* 2. Área del Código (Edición o Visualización de Ejecución) */}
-      <div className="flex-1 flex flex-col min-h-0 bg-[#0f1019] relative overflow-hidden font-mono-code text-xs">
+      <div className="flex-1 flex flex-col min-h-0 bg-[#0f1019] relative overflow-hidden font-mono text-xs">
         {isExecuting ? (
-          /* Modo Visualización de Ejecución */
+          /* Modo Visualización de Ejecución con resaltado activo */
           <div className="flex-1 overflow-y-auto overflow-x-hidden py-3">
             {lines.map((lineText, idx) => {
               const lineNum = idx + 1;
@@ -229,7 +207,7 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
             })}
           </div>
         ) : (
-          /* Modo Edición de Código */
+          /* Modo Edición de Código Libre */
           <div className="flex-1 flex min-h-0">
             {/* Números de Línea */}
             <div className="w-9 bg-[#11121d] border-r border-[#1e2030] py-3 text-right pr-2 text-slate-600 select-none text-[11px] shrink-0 font-mono">
@@ -251,8 +229,8 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
               className="flex-1 bg-transparent text-slate-200 p-3 leading-5 outline-none resize-none overflow-auto font-mono text-[12px] selection:bg-indigo-700/50"
               placeholder={
                 activeLanguage === 'c'
-                  ? '// Escribe aquí tu algoritmo en lenguaje C...\nvoid ordenar(int arr[], int n) {\n    // tu código aquí\n}'
-                  : '// Escribe aquí tu algoritmo en JavaScript...\nfunction ordenar(arr) {\n    // tu código aquí\n}'
+                  ? '// Escribe aquí tu algoritmo en lenguaje C...\n#include <stdio.h>\nvoid ordenar(int arr[], int n) {\n    // tu código aquí\n}\nint main() {\n    // punto de entrada\n}'
+                  : '// Escribe aquí tu algoritmo en JavaScript...\nfunction ordenar(arr, n) {\n    // tu código aquí\n}\nfunction main() {\n    // punto de entrada\n}'
               }
             />
           </div>
@@ -280,7 +258,7 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
               </span>
             ) : (
               <span className="text-emerald-400 flex items-center gap-1 text-[11px]">
-                <CheckCircle className="w-3.5 h-3.5" /> AST Validado por Acorn
+                <CheckCircle className="w-3.5 h-3.5" /> Sintaxis correcta
               </span>
             )}
           </div>
@@ -300,7 +278,7 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
               className="flex-1 flex items-center justify-center gap-1.5 bg-[#202234] hover:bg-[#2b2d45] border border-[#3b3f5c] text-slate-200 px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-sm"
             >
               <RotateCcw className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Modificar Código ({activeLanguage.toUpperCase()})</span>
+              <span>Modificar Código ({activeLanguage === 'c' ? 'C / C++' : 'JavaScript'})</span>
             </button>
           ) : (
             <button
@@ -309,7 +287,7 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
               className="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:opacity-40 text-white px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-md shadow-indigo-600/30"
             >
               <Play className="w-3.5 h-3.5 fill-white" />
-              <span>Analizar y Trazar con Acorn ({activeLanguage === 'c' ? 'C/C++' : 'JS'})</span>
+              <span>Compilar y Ejecutar ({activeLanguage === 'c' ? 'C / C++' : 'JavaScript'})</span>
             </button>
           )}
         </div>

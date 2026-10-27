@@ -17,25 +17,12 @@ export interface VariableSnapshot {
   [key: string]: number | string | boolean | null | undefined;
 }
 
-export interface StudentTemplateItem {
-  id: string;
-  name: string;
-  language: 'c' | 'javascript';
-  category: 'sorting' | 'searching';
-  code: string;
-}
-
 /**
- * Plantillas predeterminadas de algoritmos en C y JavaScript.
+ * Código inicial base desde cero en lenguaje C.
+ * Estructura completa estándar con inclusión de cabeceras y función main().
  */
-export const STUDENT_CODE_TEMPLATES: Record<string, StudentTemplateItem> = {
-  // --- Plantillas en Lenguaje C ---
-  c_bubbleSort: {
-    id: 'c_bubbleSort',
-    name: '[C] Bubble Sort (Burbuja)',
-    language: 'c',
-    category: 'sorting',
-    code: `// Bubble Sort en lenguaje C
+export const GENERAL_C_STARTER = `#include <stdio.h>
+
 void ordenar(int arr[], int n) {
     int i, j, temp;
     for (i = 0; i < n - 1; i++) {
@@ -47,196 +34,50 @@ void ordenar(int arr[], int n) {
             }
         }
     }
-}`.trim(),
-  },
-  c_selectionSort: {
-    id: 'c_selectionSort',
-    name: '[C] Selection Sort (Selección)',
-    language: 'c',
-    category: 'sorting',
-    code: `// Selection Sort en lenguaje C
-void ordenar(int arr[], int n) {
-    int i, j, min, temp;
-    for (i = 0; i < n - 1; i++) {
-        min = i;
-        for (j = i + 1; j < n; j++) {
-            if (arr[j] < arr[min]) {
-                min = j;
-            }
-        }
-        if (min != i) {
-            temp = arr[i];
-            arr[i] = arr[min];
-            arr[min] = temp;
-        }
-    }
-}`.trim(),
-  },
-  c_insertionSort: {
-    id: 'c_insertionSort',
-    name: '[C] Insertion Sort (Inserción)',
-    language: 'c',
-    category: 'sorting',
-    code: `// Insertion Sort en lenguaje C
-void ordenar(int arr[], int n) {
-    int i, j, clave;
-    for (i = 1; i < n; i++) {
-        clave = arr[i];
-        j = i - 1;
-        while (j >= 0 && arr[j] > clave) {
-            arr[j + 1] = arr[j];
-            j = j - 1;
-        }
-        arr[j + 1] = clave;
-    }
-}`.trim(),
-  },
-  c_linearSearch: {
-    id: 'c_linearSearch',
-    name: '[C] Búsqueda Lineal',
-    language: 'c',
-    category: 'searching',
-    code: `// Búsqueda Lineal en lenguaje C
-int buscar(int arr[], int n, int clave) {
-    for (int i = 0; i < n; i++) {
-        if (arr[i] == clave) {
-            return i;
-        }
-    }
-    return -1;
-}`.trim(),
-  },
-  c_binarySearch: {
-    id: 'c_binarySearch',
-    name: '[C] Búsqueda Binaria',
-    language: 'c',
-    category: 'searching',
-    code: `// Búsqueda Binaria en C (requiere arreglo ordenado)
-int buscar(int arr[], int n, int clave) {
-    int inicio = 0;
-    int fin = n - 1;
-    while (inicio <= fin) {
-        int medio = (inicio + fin) / 2;
-        if (arr[medio] == clave) {
-            return medio;
-        }
-        if (arr[medio] < clave) {
-            inicio = medio + 1;
-        } else {
-            fin = medio - 1;
-        }
-    }
-    return -1;
-}`.trim(),
-  },
+}
 
-  // --- Plantillas en JavaScript ---
-  js_bubbleSort: {
-    id: 'js_bubbleSort',
-    name: '[JS] Bubble Sort (Burbuja)',
-    language: 'javascript',
-    category: 'sorting',
-    code: `// Bubble Sort en JavaScript
-function ordenar(arr) {
-  let n = arr.length;
-  for (let i = 0; i < n - 1; i++) {
-    for (let j = 0; j < n - i - 1; j++) {
-      if (arr[j] > arr[j + 1]) {
-        let temp = arr[j];
-        arr[j] = arr[j + 1];
-        arr[j + 1] = temp;
-      }
-    }
-  }
-}`.trim(),
-  },
-  js_selectionSort: {
-    id: 'js_selectionSort',
-    name: '[JS] Selection Sort (Selección)',
-    language: 'javascript',
-    category: 'sorting',
-    code: `// Selection Sort en JavaScript
-function ordenar(arr) {
-  let n = arr.length;
-  for (let i = 0; i < n - 1; i++) {
-    let min = i;
-    for (let j = i + 1; j < n; j++) {
-      if (arr[j] < arr[min]) {
-        min = j;
-      }
-    }
-    if (min !== i) {
-      let temp = arr[i];
-      arr[i] = arr[min];
-      arr[min] = temp;
-    }
-  }
-}`.trim(),
-  },
-  js_insertionSort: {
-    id: 'js_insertionSort',
-    name: '[JS] Insertion Sort (Inserción)',
-    language: 'javascript',
-    category: 'sorting',
-    code: `// Insertion Sort en JavaScript
-function ordenar(arr) {
-  let n = arr.length;
-  for (let i = 1; i < n; i++) {
-    let clave = arr[i];
-    let j = i - 1;
-    while (j >= 0 && arr[j] > clave) {
-      arr[j + 1] = arr[j];
-      j = j - 1;
-    }
-    arr[j + 1] = clave;
-  }
-}`.trim(),
-  },
-  js_linearSearch: {
-    id: 'js_linearSearch',
-    name: '[JS] Búsqueda Lineal',
-    language: 'javascript',
-    category: 'searching',
-    code: `// Búsqueda Lineal en JavaScript
-function buscar(arr, clave) {
-  for (let i = 0; i < arr.length; i++) {
-    if (arr[i] === clave) {
-      return i;
-    }
-  }
-  return -1;
-}`.trim(),
-  },
-  js_binarySearch: {
-    id: 'js_binarySearch',
-    name: '[JS] Búsqueda Binaria',
-    language: 'javascript',
-    category: 'searching',
-    code: `// Búsqueda Binaria en JavaScript
-function buscar(arr, clave) {
-  let inicio = 0;
-  let fin = arr.length - 1;
-  while (inicio <= fin) {
-    let medio = Math.floor((inicio + fin) / 2);
-    if (arr[medio] === clave) {
-      return medio;
-    }
-    if (arr[medio] < clave) {
-      inicio = medio + 1;
-    } else {
-      fin = medio - 1;
-    }
-  }
-  return -1;
-}`.trim(),
-  },
-};
+int main() {
+    int arr[] = { 64, 34, 25, 12, 22, 11, 90 };
+    int n = sizeof(arr) / sizeof(arr[0]);
+    ordenar(arr, n);
+    return 0;
+}`;
 
 /**
- * Validador sintáctico estricto usando Acorn (soporta C y JavaScript).
+ * Código inicial base desde cero en JavaScript.
+ * Estructura completa con función de ordenamiento y función main().
  */
-export function validateStudentSyntax(sourceCode: string): { isValid: boolean; error?: string; line?: number; column?: number; detectedLanguage: 'c' | 'javascript' } {
+export const GENERAL_JS_STARTER = `function ordenar(arr, n) {
+    let i, j, temp;
+    for (i = 0; i < n - 1; i++) {
+        for (j = 0; j < n - i - 1; j++) {
+            if (arr[j] > arr[j + 1]) {
+                temp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = temp;
+            }
+        }
+    }
+}
+
+function main() {
+    let arr = [64, 34, 25, 12, 22, 11, 90];
+    let n = arr.length;
+    ordenar(arr, n);
+}`;
+
+/**
+ * Validador sintáctico para C y JavaScript.
+ */
+export function validateStudentSyntax(sourceCode: string): {
+  isValid: boolean;
+  error?: string;
+  line?: number;
+  column?: number;
+  detectedLanguage: 'c' | 'javascript';
+} {
   const { code: normalizedCode, detectedLanguage } = normalizeCToJavaScript(sourceCode);
+
   try {
     acorn.parse(normalizedCode, {
       ecmaVersion: 'latest',
@@ -244,9 +85,9 @@ export function validateStudentSyntax(sourceCode: string): { isValid: boolean; e
     });
     return { isValid: true, detectedLanguage };
   } catch (err: any) {
-    const line = err.loc?.line;
-    const column = err.loc?.column;
-    const rawMessage = err.message ? err.message.replace(/\s*\(\d+:\d+\)$/, '') : 'Error de sintaxis desconocido';
+    const line = err.loc?.line ?? 1;
+    const column = err.loc?.column ?? 0;
+    const rawMessage = err.message ? err.message.replace(/\s*\(\d+:\d+\)$/, '') : 'Error de sintaxis';
     return {
       isValid: false,
       error: `Error de sintaxis en línea ${line}, columna ${column}: ${rawMessage}`,
@@ -258,27 +99,22 @@ export function validateStudentSyntax(sourceCode: string): { isValid: boolean; e
 }
 
 /**
- * Motor de Instrumentación de AST (Enfoque 1: Generadores).
+ * Motor de Trazado e Instrumentación de Código del Estudiante.
  * 
- * 1. Parsea el código con Acorn en un AST ESTree.
- * 2. Recorre el árbol e intercepta:
- *    - Sentencias: Inyecta yields de paso con número de línea y variables de entorno.
- *    - Comparaciones de arreglos: arr[j] > arr[k] => __comparar(arr, j, k, '>')
- *    - Comparaciones de clave: arr[i] === clave => __compararValor(arr, i, clave, '===')
- *    - Asignaciones a arreglos: arr[j] = val => __asignar(arr, j, val)
- * 3. Ejecuta la función generadora en un sandbox con límites de seguridad (máximo 1500 pasos).
- * 4. Retorna el array Step[] consumible directamente por el reproductor, memoria y visualizador.
+ * 1. Normaliza el código fuente (C o JavaScript) preservando los números de línea 1:1.
+ * 2. Analiza el AST para interceptar comparaciones, intercambios y asignaciones.
+ * 3. Ejecuta la traza paso a paso registrando el estado de memoria y variables.
  */
 export function instrumentAndTraceStudentCode(
   sourceCode: string,
   initialDataset: number[],
   targetKey: number = 45,
-  maxSteps: number = 1500
+  maxSteps: number = 2000
 ): ASTInstrumentationResult {
   // 1. Normalizar si es C / C++ preservando números de línea 1:1
-  const { code: normalizedCode, detectedLanguage } = normalizeCToJavaScript(sourceCode);
+  const { code: normalizedCode, detectedLanguage, mainArrayValues } = normalizeCToJavaScript(sourceCode);
 
-  // Validar sintaxis con Acorn
+  // Validar sintaxis
   let ast: any;
   try {
     ast = acorn.parse(normalizedCode, {
@@ -286,20 +122,24 @@ export function instrumentAndTraceStudentCode(
       locations: true,
     });
   } catch (err: any) {
-    const line = err.loc?.line;
-    const column = err.loc?.column;
+    const line = err.loc?.line ?? 1;
+    const column = err.loc?.column ?? 0;
     const msg = err.message ? err.message.replace(/\s*\(\d+:\d+\)$/, '') : 'Error de sintaxis';
     return {
       success: false,
-      error: `Error de sintaxis (Acorn) en línea ${line}: ${msg}`,
+      error: `Error de sintaxis en línea ${line}: ${msg}`,
       line,
       column,
       detectedLanguage,
     };
   }
 
-  // 2. Extraer variables declaradas para incluirlas en el snapshot de memoria
-  const declaredVariables = new Set<string>(['i', 'j', 'temp', 'min', 'clave', 'inicio', 'fin', 'medio', 'n', 'key', 'left', 'right', 'mid']);
+  // 2. Extraer variables y funciones declaradas
+  const declaredVariables = new Set<string>([
+    'i', 'j', 'temp', 'min', 'clave', 'inicio', 'fin', 'medio', 'n', 'key', 'left', 'right', 'mid'
+  ]);
+  const declaredFunctions = new Set<string>();
+  let firstDeclaredFunction: string | null = null;
 
   function findDeclarations(node: any) {
     if (!node || typeof node !== 'object') return;
@@ -309,11 +149,20 @@ export function instrumentAndTraceStudentCode(
           declaredVariables.add(decl.id.name);
         }
       }
-    } else if (node.type === 'FunctionDeclaration' && Array.isArray(node.params)) {
-      for (const p of node.params) {
-        if (p.type === 'Identifier') declaredVariables.add(p.name);
+    } else if (node.type === 'FunctionDeclaration') {
+      if (node.id && node.id.name) {
+        declaredFunctions.add(node.id.name);
+        if (!firstDeclaredFunction) {
+          firstDeclaredFunction = node.id.name;
+        }
+      }
+      if (Array.isArray(node.params)) {
+        for (const p of node.params) {
+          if (p.type === 'Identifier') declaredVariables.add(p.name);
+        }
       }
     }
+
     for (const key of Object.keys(node)) {
       const child = node[key];
       if (Array.isArray(child)) {
@@ -331,16 +180,15 @@ export function instrumentAndTraceStudentCode(
     .map(v => `typeof ${v} !== 'undefined' ? { [${JSON.stringify(v)}]: ${v} } : {}`)
     .join(', ');
 
-  // 3. Recolectar modificaciones de código (Source-to-Source)
+  // 3. Modificaciones de código (Source-to-Source)
   interface Replacement {
     start: number;
     end: number;
     text: string;
-    priority: number; // Mayor prioridad se aplica primero en el mismo offset
+    priority: number;
   }
   const replacements: Replacement[] = [];
 
-  // Helper para verificar si un nodo es arr[...]
   function isArrayAccess(node: any): boolean {
     return (
       node &&
@@ -352,18 +200,11 @@ export function instrumentAndTraceStudentCode(
     );
   }
 
-  // Detectar si hay una función principal declarada
-  let mainFunctionName: string | null = null;
-
   function walk(node: any, parent: any) {
     if (!node || typeof node !== 'object') return;
 
-    // Detectar función principal
+    // Convertir funciones normales a generadores (function* foo)
     if (node.type === 'FunctionDeclaration') {
-      if (!mainFunctionName && node.id) {
-        mainFunctionName = node.id.name;
-      }
-      // Convertir function foo(...) a function* foo(...)
       const funcStart = node.start;
       replacements.push({
         start: funcStart,
@@ -373,7 +214,28 @@ export function instrumentAndTraceStudentCode(
       });
     }
 
-    // A. Inyección de Yield en Sentencias
+    // Convertir llamadas a funciones del usuario en llamadas delegadas yield*
+    if (
+      node.type === 'CallExpression' &&
+      node.callee &&
+      node.callee.type === 'Identifier' &&
+      declaredFunctions.has(node.callee.name)
+    ) {
+      replacements.push({
+        start: node.start,
+        end: node.start,
+        text: '(yield* ',
+        priority: 15,
+      });
+      replacements.push({
+        start: node.end,
+        end: node.end,
+        text: ')',
+        priority: 15,
+      });
+    }
+
+    // Inyección de paso en sentencias ejecutables
     const isStatement = [
       'VariableDeclaration',
       'ExpressionStatement',
@@ -394,12 +256,13 @@ export function instrumentAndTraceStudentCode(
       });
     }
 
-    // B. Reemplazo de Comparaciones: arr[a] OP arr[b] o arr[a] OP clave
+    // Interceptar comparaciones sobre el arreglo arr
     if (node.type === 'BinaryExpression') {
       const op = node.operator;
       const isCompareOp = ['<', '>', '<=', '>=', '===', '==', '!==', '!='].includes(op);
 
       if (isCompareOp) {
+        const line = node.loc?.start?.line ?? 1;
         const leftIsArr = isArrayAccess(node.left);
         const rightIsArr = isArrayAccess(node.right);
 
@@ -409,17 +272,17 @@ export function instrumentAndTraceStudentCode(
           replacements.push({
             start: node.start,
             end: node.end,
-            text: `(yield* __comparar(arr, ${leftIdxCode}, ${rightIdxCode}, ${JSON.stringify(op)}))`,
+            text: `(yield* __comparar(arr, ${leftIdxCode}, ${rightIdxCode}, ${JSON.stringify(op)}, ${line}))`,
             priority: 20,
           });
-          return; // No recorrer hijos directos ya transformados
+          return;
         } else if (leftIsArr) {
           const idxCode = normalizedCode.slice(node.left.property.start, node.left.property.end);
           const valCode = normalizedCode.slice(node.right.start, node.right.end);
           replacements.push({
             start: node.start,
             end: node.end,
-            text: `(yield* __compararValor(arr, ${idxCode}, ${valCode}, ${JSON.stringify(op)}, false))`,
+            text: `(yield* __compararValor(arr, ${idxCode}, ${valCode}, ${JSON.stringify(op)}, false, ${line}))`,
             priority: 20,
           });
           return;
@@ -429,7 +292,7 @@ export function instrumentAndTraceStudentCode(
           replacements.push({
             start: node.start,
             end: node.end,
-            text: `(yield* __compararValor(arr, ${idxCode}, ${valCode}, ${JSON.stringify(op)}, true))`,
+            text: `(yield* __compararValor(arr, ${idxCode}, ${valCode}, ${JSON.stringify(op)}, true, ${line}))`,
             priority: 20,
           });
           return;
@@ -437,22 +300,23 @@ export function instrumentAndTraceStudentCode(
       }
     }
 
-    // C. Reemplazo de Asignaciones a Arreglos: arr[j] = valor
+    // Interceptar asignaciones sobre el arreglo arr: arr[j] = valor
     if (node.type === 'AssignmentExpression') {
       if (isArrayAccess(node.left)) {
+        const line = node.loc?.start?.line ?? 1;
         const idxCode = normalizedCode.slice(node.left.property.start, node.left.property.end);
         const valCode = normalizedCode.slice(node.right.start, node.right.end);
         replacements.push({
           start: node.start,
           end: node.end,
-          text: `(yield* __asignar(arr, ${idxCode}, ${valCode}))`,
+          text: `(yield* __asignar(arr, ${idxCode}, ${valCode}, ${line}))`,
           priority: 25,
         });
         return;
       }
     }
 
-    // Recorrer hijos
+    // Recorrer nodos hijos
     for (const key of Object.keys(node)) {
       const child = node[key];
       if (Array.isArray(child)) {
@@ -467,7 +331,7 @@ export function instrumentAndTraceStudentCode(
 
   walk(ast, null);
 
-  // 4. Aplicar reemplazos ordenados de atrás hacia adelante para preservar offsets
+  // Aplicar reemplazos de atrás hacia adelante
   replacements.sort((a, b) => b.start - a.start || b.priority - a.priority);
 
   let transformedCode = normalizedCode;
@@ -478,16 +342,19 @@ export function instrumentAndTraceStudentCode(
       transformedCode.slice(rep.end);
   }
 
-  // Si hay una función declarada (ej. function ordenar(arr)), invocarla al final
-  const invocation = mainFunctionName
-    ? `\n  yield* ${mainFunctionName}(arr, __clave);\n`
-    : '';
+  // Punto de entrada: ejecutar main() si existe, o la primera función declarada
+  let invocation = '';
+  if (declaredFunctions.has('main')) {
+    invocation = '\n  yield* main();\n';
+  } else if (firstDeclaredFunction) {
+    invocation = `\n  yield* ${firstDeclaredFunction}(arr, arr.length, __clave);\n`;
+  }
 
   // Envoltura completa del generador
   const generatorHeader = `
 return function* (__initialArr, __clave, __hooks) {
   const { __paso, __comparar, __compararValor, __asignar, __intercambiar } = __hooks;
-  const arr = __initialArr;
+  let arr = __initialArr;
 
   function* swap(a, i, j) { yield* __intercambiar(a, i, j); }
   function* intercambiar(a, i, j) { yield* __intercambiar(a, i, j); }
@@ -497,19 +364,24 @@ return function* (__initialArr, __clave, __hooks) {
 };
 `;
 
-  // 5. Ejecutar la función generadora producida
+  // 4. Inicializar conjunto de datos
+  // Si el estudiante definió un arreglo literal en su código, usar ese exactamente
+  const workingArray: number[] =
+    mainArrayValues && mainArrayValues.length > 0
+      ? [...mainArrayValues]
+      : [...initialDataset];
+
   const steps: Step[] = [];
-  const workingArray: number[] = [...initialDataset];
   let comparisonsCount = 0;
   let swapsCount = 0;
   let operationsCount = 0;
 
-  // Estado del arreglo con identidades para renderizado D3
+  // Estado del arreglo con identidades
   let currentElements: ArrayElement[] = workingArray.map((val, idx) => ({
-    id: `ast-item-${idx}-${val}`,
+    id: `student-item-${idx}-${val}`,
     value: val,
     originalIndex: idx,
-    state: 'default',
+    state: 'default' as ElementState,
     label: String(idx),
   }));
 
@@ -523,23 +395,27 @@ return function* (__initialArr, __clave, __hooks) {
     operationsCount++;
     const arrCopy = (customArray || currentElements).map(el => ({ ...el }));
 
-    // Frames para el panel de memoria
+    const activeFrameName = declaredFunctions.has('main')
+      ? 'main()'
+      : firstDeclaredFunction
+      ? `${firstDeclaredFunction}(arr)`
+      : 'Programa';
+
     const frames: MemoryFrame[] = [
       {
         id: 'frame-student',
-        name: mainFunctionName ? `${mainFunctionName}(arr)` : 'CódigoEstudiante',
+        name: activeFrameName,
         isActive: true,
         variables: { ...vars, n: workingArray.length },
       },
       {
         id: 'frame-global',
-        name: 'Entorno Global',
+        name: 'Memoria Global',
         isActive: false,
         variables: { n: workingArray.length },
       },
     ];
 
-    // Mapeo unificado de línea activa
     const lineMap: Record<SupportedLanguage, number> = {
       pseudocode: line,
       python: line,
@@ -555,13 +431,14 @@ return function* (__initialArr, __clave, __hooks) {
       },
     ];
 
-    // Detectar índices activos de variables típicas
     const activeIndices: Record<string, number | undefined> = {};
     if (typeof vars.i === 'number') activeIndices.i = vars.i;
     if (typeof vars.j === 'number') activeIndices.j = vars.j;
     if (typeof vars.min === 'number') activeIndices.min = vars.min;
     if (typeof vars.medio === 'number') activeIndices.mid = vars.medio;
     if (typeof vars.clave === 'number') activeIndices.keyVal = vars.clave;
+    if (typeof vars.left === 'number') activeIndices.left = vars.left;
+    if (typeof vars.right === 'number') activeIndices.right = vars.right;
 
     return {
       stepIndex: steps.length + 1,
@@ -586,15 +463,15 @@ return function* (__initialArr, __clave, __hooks) {
     };
   }
 
-  // Hooks inyectados en el código del estudiante
+  // Hooks interceptores
   const hooks = {
     *__paso(line: number, getVarsFn: () => VariableSnapshot) {
       const vars = getVarsFn();
-      steps.push(makeStep(line, `Ejecutando línea ${line}`, 'check', vars));
+      steps.push(makeStep(line, `Ejecución de línea ${line}`, 'check', vars));
       yield;
     },
 
-    *__comparar(arr: number[], i: number, j: number, op: string) {
+    *__comparar(arr: number[], i: number, j: number, op: string, line: number = 1) {
       comparisonsCount++;
       const valI = arr[i];
       const valJ = arr[j];
@@ -611,18 +488,17 @@ return function* (__initialArr, __clave, __hooks) {
         case '!=': res = valI !== valJ; break;
       }
 
-      // Marcar celdas comparadas
       const tempArray = currentElements.map((el, idx) => {
         if (idx === i || idx === j) {
-          return { ...el, state: 'comparing' as const };
+          return { ...el, state: 'comparing' as ElementState };
         }
-        return { ...el, state: el.state === 'comparing' ? ('default' as const) : el.state };
+        return el;
       });
 
       steps.push(
         makeStep(
-          1,
-          `Comparando arr[${i}] (${valI}) ${op} arr[${j}] (${valJ}) → ${res ? 'Verdadero' : 'Falso'}`,
+          line,
+          `Comparación: arr[${i}] (${valI}) ${op} arr[${j}] (${valJ}) → ${res ? 'Verdadero' : 'Falso'}`,
           'compare',
           { i, j },
           tempArray
@@ -633,7 +509,7 @@ return function* (__initialArr, __clave, __hooks) {
       return res;
     },
 
-    *__compararValor(arr: number[], idx: number, val: number, op: string, reverse: boolean) {
+    *__compararValor(arr: number[], idx: number, val: number, op: string, reverse: boolean, line: number = 1) {
       comparisonsCount++;
       const arrVal = arr[idx];
 
@@ -672,7 +548,7 @@ return function* (__initialArr, __clave, __hooks) {
 
       steps.push(
         makeStep(
-          1,
+          line,
           `Evaluando arr[${idx}] (${arrVal}) ${op} ${val} → ${res ? 'Coincidencia' : 'No coincide'}`,
           'compare',
           { i: idx, clave: val },
@@ -684,11 +560,10 @@ return function* (__initialArr, __clave, __hooks) {
       return res;
     },
 
-    *__asignar(arr: number[], idx: number, value: number) {
+    *__asignar(arr: number[], idx: number, value: number, line: number = 1) {
       swapsCount++;
       arr[idx] = value;
 
-      // Actualizar representación visual
       currentElements = currentElements.map((el, i) => {
         if (i === idx) {
           return { ...el, value, state: 'swapped' as const };
@@ -698,7 +573,7 @@ return function* (__initialArr, __clave, __hooks) {
 
       steps.push(
         makeStep(
-          1,
+          line,
           `Asignación: arr[${idx}] ← ${value}`,
           'assign',
           { idx, value },
@@ -710,7 +585,7 @@ return function* (__initialArr, __clave, __hooks) {
       return value;
     },
 
-    *__intercambiar(arr: number[], i: number, j: number) {
+    *__intercambiar(arr: number[], i: number, j: number, line: number = 1) {
       swapsCount++;
       const temp = arr[i];
       arr[i] = arr[j];
@@ -722,7 +597,7 @@ return function* (__initialArr, __clave, __hooks) {
 
       steps.push(
         makeStep(
-          1,
+          line,
           `Intercambio: arr[${i}] ⇄ arr[${j}] (${arr[i]} ⇄ ${arr[j]})`,
           'swap',
           { i, j }
@@ -732,43 +607,52 @@ return function* (__initialArr, __clave, __hooks) {
     },
   };
 
-  // 6. Instanciación segura y ejecución del generador
+  // 5. Instanciación y ejecución del generador
   try {
     const factory = new Function(generatorHeader);
     const generatorFn = factory();
     const iterator = generatorFn(workingArray, targetKey, hooks);
 
-    let next = iterator.next();
-    while (!next.done) {
-      if (steps.length > maxSteps) {
-        return {
-          success: false,
-          error: `Límite de seguridad de ${maxSteps} pasos excedido. Verifique que los bucles finalicen correctamente.`,
-          instrumentedCode: transformedCode,
-        };
-      }
-      next = iterator.next();
+    let current = iterator.next();
+    let stepsCounter = 0;
+
+    while (!current.done && stepsCounter < maxSteps) {
+      stepsCounter++;
+      current = iterator.next();
     }
 
-    // Paso final de finalización
-    const finalArray = currentElements.map(el => ({ ...el, state: 'sorted' as const }));
-    steps.push(makeStep(1, 'Algoritmo completado con éxito.', 'finish', {}, finalArray));
+    if (stepsCounter >= maxSteps) {
+      return {
+        success: false,
+        error: `Límite de seguridad alcanzado (${maxSteps} pasos). Verifique posibles bucles infinitos en el algoritmo.`,
+        detectedLanguage,
+      };
+    }
+
+    if (steps.length === 0) {
+      // Si el código no ejecutó ningún bucle o sentencia medible, crear al menos un paso inicial
+      steps.push(makeStep(1, 'Código ejecutado sin operaciones sobre el arreglo', 'finish'));
+    }
 
     // Actualizar totalSteps en cada paso
-    steps.forEach(s => {
-      s.totalSteps = steps.length;
-    });
+    const total = steps.length;
+    for (let i = 0; i < total; i++) {
+      steps[i].stepIndex = i;
+      steps[i].totalSteps = total;
+    }
 
     return {
       success: true,
       steps,
       instrumentedCode: transformedCode,
+      detectedLanguage,
     };
   } catch (runtimeErr: any) {
+    const msg = runtimeErr.message || 'Error durante la ejecución';
     return {
       success: false,
-      error: `Error de ejecución: ${runtimeErr.message || 'Error en tiempo de ejecución'}`,
-      instrumentedCode: transformedCode,
+      error: `Error de ejecución: ${msg}`,
+      detectedLanguage,
     };
   }
 }

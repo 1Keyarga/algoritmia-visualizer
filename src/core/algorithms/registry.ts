@@ -8,11 +8,11 @@ import { BINARY_SEARCH_METADATA } from './binarySearch';
 
 export const CUSTOM_AST_METADATA: AlgorithmMetadata = {
   id: 'custom-ast',
-  name: 'Código Personalizado (Acorn AST)',
+  name: 'Código del Estudiante',
   family: 'custom',
-  categoryName: 'Editor de Estudiante (AST)',
-  description: 'Escribe o edita tu propio algoritmo en JavaScript. El analizador sintáctico Acorn.js analiza el AST e instrumenta generadores paso a paso para visualizar comparaciones, asignaciones y memoria.',
-  defaultDataset: [12, 23, 67, 12, 56, 11, 45, 23, 78, 56, 78, 89, 98, 45],
+  categoryName: 'Editor de Código',
+  description: 'Escribe o edita tu propio algoritmo en C o JavaScript. El sistema analiza la sintaxis, traza el flujo de ejecución e instrumenta la memoria para visualizar paso a paso las comparaciones, intercambios y registros de variables.',
+  defaultDataset: [64, 34, 25, 12, 22, 11, 90],
   complexity: {
     time: 'Variable',
     space: 'Variable',

@@ -141,7 +141,7 @@ export function App() {
 
       {/* Área principal de trabajo */}
       <main className="flex-1 flex min-h-0 overflow-hidden">
-        {/* Panel izquierdo: Código o Editor del Estudiante con Acorn AST */}
+        {/* Panel izquierdo: Pseudocódigo o Editor de Código del Estudiante */}
         {isCustomAST ? (
           <StudentCodeEditor
             currentDataset={dataset}

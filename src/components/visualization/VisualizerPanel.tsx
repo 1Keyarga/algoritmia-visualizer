@@ -3,7 +3,8 @@ import type { Step } from '../../types/trace';
 import { D3BarChart } from './D3BarChart';
 import { DivideAndConquerContainer } from './divide_and_conquer/DivideAndConquerContainer';
 import { SearchMapVisualizer } from './SearchMapVisualizer';
-import { BarChart3, GitFork, Search, Maximize2, Minimize2 } from 'lucide-react';
+import { StudentCodeVisualizer } from './StudentCodeVisualizer';
+import { BarChart3, GitFork, Search, Maximize2, Minimize2, Cpu } from 'lucide-react';
 
 interface VisualizerPanelProps {
   currentStep: Step | null;
@@ -26,6 +27,7 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
 }) => {
   const isDivideAndConquer = !!currentStep?.divideAndConquer;
   const isSearching = algorithmFamily === 'searching';
+  const isCustomCode = algorithmFamily === 'custom' || algorithmId === 'custom-ast';
   const searchType = algorithmId === 'binary-search' ? 'binary' : 'linear';
 
   return (
@@ -33,7 +35,9 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
       {/* Encabezado del panel de visualización */}
       <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-[#232534] shrink-0">
         <div className="flex items-center gap-2">
-          {isDivideAndConquer ? (
+          {isCustomCode ? (
+            <Cpu className="w-4 h-4 text-indigo-400" />
+          ) : isDivideAndConquer ? (
             <GitFork className="w-4 h-4 text-amber-400" />
           ) : isSearching ? (
             <Search className="w-4 h-4 text-emerald-400" />
@@ -41,11 +45,13 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
             <BarChart3 className="w-4 h-4 text-indigo-400" />
           )}
           <span className="text-xs font-bold tracking-wider text-slate-300 uppercase">
-            {isDivideAndConquer
+            {isCustomCode
+              ? 'Depurador y Visualizador de Memoria'
+              : isDivideAndConquer
               ? 'Divide y Vencerás'
               : isSearching
-              ? 'Mapa Térmico de Búsqueda (Heatmap)'
-              : 'Visualización Gráfica (D3.js)'}
+              ? 'Mapa Térmico de Búsqueda'
+              : 'Lienzo de Visualización'}
           </span>
 
           {/* Explicación en línea para Divide y Vencerás */}
@@ -81,7 +87,7 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
           <button
             onClick={onToggleFullscreen}
             className="p-1.5 rounded-lg bg-[#1c1d2c] hover:bg-[#25283d] text-slate-400 hover:text-white border border-[#2b2d42] transition-colors cursor-pointer"
-            title={isFullscreen ? 'Restaurar vista' : 'Maximizar gráfico'}
+            title={isFullscreen ? 'Restaurar vista' : 'Maximizar panel'}
           >
             {isFullscreen ? (
               <Minimize2 className="w-4 h-4" />
@@ -95,7 +101,9 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
       {/* Contenedor principal de visualización */}
       <div className="flex-1 min-h-0 flex flex-col">
         {currentStep ? (
-          isDivideAndConquer && currentStep.divideAndConquer ? (
+          isCustomCode ? (
+            <StudentCodeVisualizer currentStep={currentStep} />
+          ) : isDivideAndConquer && currentStep.divideAndConquer ? (
             <DivideAndConquerContainer
               dcState={currentStep.divideAndConquer}
             />
