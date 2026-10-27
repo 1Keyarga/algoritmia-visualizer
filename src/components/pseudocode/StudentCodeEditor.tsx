@@ -28,17 +28,38 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
   isExecuting,
   onExitExecutionMode,
 }) => {
-  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('bubbleSort');
-  const [code, setCode] = useState<string>(STUDENT_CODE_TEMPLATES.bubbleSort.code);
+  const [activeLanguage, setActiveLanguage] = useState<'c' | 'javascript'>('c');
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string>('c_bubbleSort');
+  const [code, setCode] = useState<string>(STUDENT_CODE_TEMPLATES.c_bubbleSort.code);
   const [syntaxError, setSyntaxError] = useState<string | null>(null);
   const [errorLine, setErrorLine] = useState<number | null>(null);
   const [executionStats, setExecutionStats] = useState<{ totalSteps: number } | null>(null);
 
+  // Filtrar plantillas según el lenguaje activo
+  const filteredTemplates = Object.values(STUDENT_CODE_TEMPLATES).filter(
+    (t) => t.language === activeLanguage
+  );
+
+  // Al cambiar de lenguaje
+  const handleSelectLanguage = (lang: 'c' | 'javascript') => {
+    setActiveLanguage(lang);
+    const defaultTpl = Object.values(STUDENT_CODE_TEMPLATES).find((t) => t.language === lang);
+    if (defaultTpl) {
+      setSelectedTemplateKey(defaultTpl.id);
+      setCode(defaultTpl.code);
+    }
+    setSyntaxError(null);
+    setErrorLine(null);
+    onExitExecutionMode();
+  };
+
   // Al cambiar de plantilla
   const handleSelectTemplate = (key: string) => {
     setSelectedTemplateKey(key);
-    const newCode = STUDENT_CODE_TEMPLATES[key]?.code || '';
-    setCode(newCode);
+    const newTpl = STUDENT_CODE_TEMPLATES[key];
+    if (newTpl) {
+      setCode(newTpl.code);
+    }
     setSyntaxError(null);
     setErrorLine(null);
     onExitExecutionMode();
@@ -88,7 +109,7 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
         </button>
         <div className="flex-1 flex items-center justify-center">
           <span className="text-[11px] font-bold tracking-widest text-indigo-400 group-hover:text-indigo-300 uppercase [writing-mode:vertical-rl] rotate-180">
-            Editor Estudiante (Acorn AST)
+            Editor Estudiante ({activeLanguage === 'c' ? 'C/C++' : 'JavaScript'})
           </span>
         </div>
         <Code2 className="w-4 h-4 text-indigo-400 mt-4" />
@@ -107,10 +128,10 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
             </div>
             <div>
               <div className="text-[11px] font-bold tracking-wider text-slate-200 uppercase">
-                Editor de Código (Acorn AST)
+                Editor de Código ({activeLanguage === 'c' ? 'C / C++' : 'JavaScript'})
               </div>
               <div className="text-[10px] text-slate-400">
-                Instrumentación dinámica de AST con generadores
+                Instrumentación de AST con Acorn.js y funciones generadoras
               </div>
             </div>
           </div>
@@ -124,8 +145,34 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
           </button>
         </div>
 
+        {/* Selector de Lenguaje (C / JavaScript) */}
+        <div className="flex items-center gap-1 bg-[#1a1c2b] p-1 rounded-lg border border-[#2c3046]">
+          <button
+            onClick={() => handleSelectLanguage('c')}
+            disabled={isExecuting}
+            className={`flex-1 py-1 px-2 text-xs font-semibold rounded-md transition-all cursor-pointer text-center ${
+              activeLanguage === 'c'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-[#23263a]'
+            } disabled:opacity-50`}
+          >
+            Lenguaje C / C++
+          </button>
+          <button
+            onClick={() => handleSelectLanguage('javascript')}
+            disabled={isExecuting}
+            className={`flex-1 py-1 px-2 text-xs font-semibold rounded-md transition-all cursor-pointer text-center ${
+              activeLanguage === 'javascript'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-[#23263a]'
+            } disabled:opacity-50`}
+          >
+            JavaScript
+          </button>
+        </div>
+
         {/* Selector de Plantilla */}
-        <div className="flex items-center gap-2 pt-1">
+        <div className="flex items-center gap-2 pt-0.5">
           <span className="text-[10px] font-mono text-slate-400 shrink-0">Plantilla:</span>
           <select
             value={selectedTemplateKey}
@@ -133,8 +180,8 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
             disabled={isExecuting}
             className="flex-1 bg-[#1a1c2b] border border-[#2c3046] text-slate-200 text-xs rounded-md px-2 py-1 outline-none focus:border-indigo-500 font-sans cursor-pointer disabled:opacity-50"
           >
-            {Object.entries(STUDENT_CODE_TEMPLATES).map(([key, tpl]) => (
-              <option key={key} value={key}>
+            {filteredTemplates.map((tpl) => (
+              <option key={tpl.id} value={tpl.id}>
                 {tpl.name}
               </option>
             ))}
@@ -202,7 +249,11 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
               onChange={(e) => setCode(e.target.value)}
               spellCheck={false}
               className="flex-1 bg-transparent text-slate-200 p-3 leading-5 outline-none resize-none overflow-auto font-mono text-[12px] selection:bg-indigo-700/50"
-              placeholder="// Escribe aquí tu algoritmo en JavaScript..."
+              placeholder={
+                activeLanguage === 'c'
+                  ? '// Escribe aquí tu algoritmo en lenguaje C...\nvoid ordenar(int arr[], int n) {\n    // tu código aquí\n}'
+                  : '// Escribe aquí tu algoritmo en JavaScript...\nfunction ordenar(arr) {\n    // tu código aquí\n}'
+              }
             />
           </div>
         )}
@@ -249,7 +300,7 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
               className="flex-1 flex items-center justify-center gap-1.5 bg-[#202234] hover:bg-[#2b2d45] border border-[#3b3f5c] text-slate-200 px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-sm"
             >
               <RotateCcw className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Modificar Código</span>
+              <span>Modificar Código ({activeLanguage.toUpperCase()})</span>
             </button>
           ) : (
             <button
@@ -258,7 +309,7 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
               className="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:opacity-40 text-white px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-md shadow-indigo-600/30"
             >
               <Play className="w-3.5 h-3.5 fill-white" />
-              <span>Analizar y Trazar con Acorn</span>
+              <span>Analizar y Trazar con Acorn ({activeLanguage === 'c' ? 'C/C++' : 'JS'})</span>
             </button>
           )}
         </div>

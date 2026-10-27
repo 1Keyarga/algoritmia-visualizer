@@ -1,6 +1,7 @@
 import * as acorn from 'acorn';
 import type { Step, ArrayElement, MemoryFrame, StepLineHighlight, ElementState } from '../../types/trace';
 import type { SupportedLanguage } from '../../types/algorithm';
+import { normalizeCToJavaScript } from './cPreprocessor';
 
 export interface ASTInstrumentationResult {
   success: boolean;
@@ -9,21 +10,133 @@ export interface ASTInstrumentationResult {
   line?: number;
   column?: number;
   instrumentedCode?: string;
+  detectedLanguage?: 'c' | 'javascript';
 }
 
 export interface VariableSnapshot {
   [key: string]: number | string | boolean | null | undefined;
 }
 
+export interface StudentTemplateItem {
+  id: string;
+  name: string;
+  language: 'c' | 'javascript';
+  category: 'sorting' | 'searching';
+  code: string;
+}
+
 /**
- * Plantillas predeterminadas de algoritmos para que el estudiante
- * pueda partir de una base limpia o escribir desde cero.
+ * Plantillas predeterminadas de algoritmos en C y JavaScript.
  */
-export const STUDENT_CODE_TEMPLATES: Record<string, { name: string; category: 'sorting' | 'searching'; code: string }> = {
-  bubbleSort: {
-    name: 'Bubble Sort (Burbuja)',
+export const STUDENT_CODE_TEMPLATES: Record<string, StudentTemplateItem> = {
+  // --- Plantillas en Lenguaje C ---
+  c_bubbleSort: {
+    id: 'c_bubbleSort',
+    name: '[C] Bubble Sort (Burbuja)',
+    language: 'c',
     category: 'sorting',
-    code: `// Implementación de Bubble Sort del estudiante
+    code: `// Bubble Sort en lenguaje C
+void ordenar(int arr[], int n) {
+    int i, j, temp;
+    for (i = 0; i < n - 1; i++) {
+        for (j = 0; j < n - i - 1; j++) {
+            if (arr[j] > arr[j + 1]) {
+                temp = arr[j];
+                arr[j] = arr[j + 1];
+                arr[j + 1] = temp;
+            }
+        }
+    }
+}`.trim(),
+  },
+  c_selectionSort: {
+    id: 'c_selectionSort',
+    name: '[C] Selection Sort (Selección)',
+    language: 'c',
+    category: 'sorting',
+    code: `// Selection Sort en lenguaje C
+void ordenar(int arr[], int n) {
+    int i, j, min, temp;
+    for (i = 0; i < n - 1; i++) {
+        min = i;
+        for (j = i + 1; j < n; j++) {
+            if (arr[j] < arr[min]) {
+                min = j;
+            }
+        }
+        if (min != i) {
+            temp = arr[i];
+            arr[i] = arr[min];
+            arr[min] = temp;
+        }
+    }
+}`.trim(),
+  },
+  c_insertionSort: {
+    id: 'c_insertionSort',
+    name: '[C] Insertion Sort (Inserción)',
+    language: 'c',
+    category: 'sorting',
+    code: `// Insertion Sort en lenguaje C
+void ordenar(int arr[], int n) {
+    int i, j, clave;
+    for (i = 1; i < n; i++) {
+        clave = arr[i];
+        j = i - 1;
+        while (j >= 0 && arr[j] > clave) {
+            arr[j + 1] = arr[j];
+            j = j - 1;
+        }
+        arr[j + 1] = clave;
+    }
+}`.trim(),
+  },
+  c_linearSearch: {
+    id: 'c_linearSearch',
+    name: '[C] Búsqueda Lineal',
+    language: 'c',
+    category: 'searching',
+    code: `// Búsqueda Lineal en lenguaje C
+int buscar(int arr[], int n, int clave) {
+    for (int i = 0; i < n; i++) {
+        if (arr[i] == clave) {
+            return i;
+        }
+    }
+    return -1;
+}`.trim(),
+  },
+  c_binarySearch: {
+    id: 'c_binarySearch',
+    name: '[C] Búsqueda Binaria',
+    language: 'c',
+    category: 'searching',
+    code: `// Búsqueda Binaria en C (requiere arreglo ordenado)
+int buscar(int arr[], int n, int clave) {
+    int inicio = 0;
+    int fin = n - 1;
+    while (inicio <= fin) {
+        int medio = (inicio + fin) / 2;
+        if (arr[medio] == clave) {
+            return medio;
+        }
+        if (arr[medio] < clave) {
+            inicio = medio + 1;
+        } else {
+            fin = medio - 1;
+        }
+    }
+    return -1;
+}`.trim(),
+  },
+
+  // --- Plantillas en JavaScript ---
+  js_bubbleSort: {
+    id: 'js_bubbleSort',
+    name: '[JS] Bubble Sort (Burbuja)',
+    language: 'javascript',
+    category: 'sorting',
+    code: `// Bubble Sort en JavaScript
 function ordenar(arr) {
   let n = arr.length;
   for (let i = 0; i < n - 1; i++) {
@@ -37,10 +150,12 @@ function ordenar(arr) {
   }
 }`.trim(),
   },
-  selectionSort: {
-    name: 'Selection Sort (Selección)',
+  js_selectionSort: {
+    id: 'js_selectionSort',
+    name: '[JS] Selection Sort (Selección)',
+    language: 'javascript',
     category: 'sorting',
-    code: `// Implementación de Selection Sort del estudiante
+    code: `// Selection Sort en JavaScript
 function ordenar(arr) {
   let n = arr.length;
   for (let i = 0; i < n - 1; i++) {
@@ -58,10 +173,12 @@ function ordenar(arr) {
   }
 }`.trim(),
   },
-  insertionSort: {
-    name: 'Insertion Sort (Inserción)',
+  js_insertionSort: {
+    id: 'js_insertionSort',
+    name: '[JS] Insertion Sort (Inserción)',
+    language: 'javascript',
     category: 'sorting',
-    code: `// Implementación de Insertion Sort del estudiante
+    code: `// Insertion Sort en JavaScript
 function ordenar(arr) {
   let n = arr.length;
   for (let i = 1; i < n; i++) {
@@ -75,10 +192,12 @@ function ordenar(arr) {
   }
 }`.trim(),
   },
-  linearSearch: {
-    name: 'Búsqueda Lineal',
+  js_linearSearch: {
+    id: 'js_linearSearch',
+    name: '[JS] Búsqueda Lineal',
+    language: 'javascript',
     category: 'searching',
-    code: `// Búsqueda Lineal del estudiante
+    code: `// Búsqueda Lineal en JavaScript
 function buscar(arr, clave) {
   for (let i = 0; i < arr.length; i++) {
     if (arr[i] === clave) {
@@ -88,10 +207,12 @@ function buscar(arr, clave) {
   return -1;
 }`.trim(),
   },
-  binarySearch: {
-    name: 'Búsqueda Binaria',
+  js_binarySearch: {
+    id: 'js_binarySearch',
+    name: '[JS] Búsqueda Binaria',
+    language: 'javascript',
     category: 'searching',
-    code: `// Búsqueda Binaria del estudiante (requiere arreglo ordenado)
+    code: `// Búsqueda Binaria en JavaScript
 function buscar(arr, clave) {
   let inicio = 0;
   let fin = arr.length - 1;
@@ -112,15 +233,16 @@ function buscar(arr, clave) {
 };
 
 /**
- * Validador sintáctico estricto usando Acorn.
+ * Validador sintáctico estricto usando Acorn (soporta C y JavaScript).
  */
-export function validateStudentSyntax(sourceCode: string): { isValid: boolean; error?: string; line?: number; column?: number } {
+export function validateStudentSyntax(sourceCode: string): { isValid: boolean; error?: string; line?: number; column?: number; detectedLanguage: 'c' | 'javascript' } {
+  const { code: normalizedCode, detectedLanguage } = normalizeCToJavaScript(sourceCode);
   try {
-    acorn.parse(sourceCode, {
+    acorn.parse(normalizedCode, {
       ecmaVersion: 'latest',
       locations: true,
     });
-    return { isValid: true };
+    return { isValid: true, detectedLanguage };
   } catch (err: any) {
     const line = err.loc?.line;
     const column = err.loc?.column;
@@ -130,6 +252,7 @@ export function validateStudentSyntax(sourceCode: string): { isValid: boolean; e
       error: `Error de sintaxis en línea ${line}, columna ${column}: ${rawMessage}`,
       line,
       column,
+      detectedLanguage,
     };
   }
 }
@@ -152,10 +275,13 @@ export function instrumentAndTraceStudentCode(
   targetKey: number = 45,
   maxSteps: number = 1500
 ): ASTInstrumentationResult {
-  // 1. Validar sintaxis preliminar con Acorn
+  // 1. Normalizar si es C / C++ preservando números de línea 1:1
+  const { code: normalizedCode, detectedLanguage } = normalizeCToJavaScript(sourceCode);
+
+  // Validar sintaxis con Acorn
   let ast: any;
   try {
-    ast = acorn.parse(sourceCode, {
+    ast = acorn.parse(normalizedCode, {
       ecmaVersion: 'latest',
       locations: true,
     });
@@ -168,6 +294,7 @@ export function instrumentAndTraceStudentCode(
       error: `Error de sintaxis (Acorn) en línea ${line}: ${msg}`,
       line,
       column,
+      detectedLanguage,
     };
   }
 
@@ -277,8 +404,8 @@ export function instrumentAndTraceStudentCode(
         const rightIsArr = isArrayAccess(node.right);
 
         if (leftIsArr && rightIsArr) {
-          const leftIdxCode = sourceCode.slice(node.left.property.start, node.left.property.end);
-          const rightIdxCode = sourceCode.slice(node.right.property.start, node.right.property.end);
+          const leftIdxCode = normalizedCode.slice(node.left.property.start, node.left.property.end);
+          const rightIdxCode = normalizedCode.slice(node.right.property.start, node.right.property.end);
           replacements.push({
             start: node.start,
             end: node.end,
@@ -287,8 +414,8 @@ export function instrumentAndTraceStudentCode(
           });
           return; // No recorrer hijos directos ya transformados
         } else if (leftIsArr) {
-          const idxCode = sourceCode.slice(node.left.property.start, node.left.property.end);
-          const valCode = sourceCode.slice(node.right.start, node.right.end);
+          const idxCode = normalizedCode.slice(node.left.property.start, node.left.property.end);
+          const valCode = normalizedCode.slice(node.right.start, node.right.end);
           replacements.push({
             start: node.start,
             end: node.end,
@@ -297,8 +424,8 @@ export function instrumentAndTraceStudentCode(
           });
           return;
         } else if (rightIsArr) {
-          const idxCode = sourceCode.slice(node.right.property.start, node.right.property.end);
-          const valCode = sourceCode.slice(node.left.start, node.left.end);
+          const idxCode = normalizedCode.slice(node.right.property.start, node.right.property.end);
+          const valCode = normalizedCode.slice(node.left.start, node.left.end);
           replacements.push({
             start: node.start,
             end: node.end,
@@ -313,8 +440,8 @@ export function instrumentAndTraceStudentCode(
     // C. Reemplazo de Asignaciones a Arreglos: arr[j] = valor
     if (node.type === 'AssignmentExpression') {
       if (isArrayAccess(node.left)) {
-        const idxCode = sourceCode.slice(node.left.property.start, node.left.property.end);
-        const valCode = sourceCode.slice(node.right.start, node.right.end);
+        const idxCode = normalizedCode.slice(node.left.property.start, node.left.property.end);
+        const valCode = normalizedCode.slice(node.right.start, node.right.end);
         replacements.push({
           start: node.start,
           end: node.end,
@@ -343,7 +470,7 @@ export function instrumentAndTraceStudentCode(
   // 4. Aplicar reemplazos ordenados de atrás hacia adelante para preservar offsets
   replacements.sort((a, b) => b.start - a.start || b.priority - a.priority);
 
-  let transformedCode = sourceCode;
+  let transformedCode = normalizedCode;
   for (const rep of replacements) {
     transformedCode =
       transformedCode.slice(0, rep.start) +
