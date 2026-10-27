@@ -174,10 +174,11 @@ export function instrumentAndTraceStudentCode(
   }
   findDeclarations(ast);
 
-  // Variables para serializar en el helper de snapshot
+  // Variables para serializar en el helper de snapshot.
+  // Se usa try/catch porque typeof no evita el error en la Temporal Dead Zone de let/const.
   const scopeVarTokens = Array.from(declaredVariables)
     .filter(v => v !== 'arr' && v !== 'Math' && v !== '__hooks')
-    .map(v => `typeof ${v} !== 'undefined' ? { [${JSON.stringify(v)}]: ${v} } : {}`)
+    .map(v => `(function(){try{return{[${JSON.stringify(v)}]:${v}}}catch(e){return{}}})()`)
     .join(', ');
 
   // 3. Modificaciones de código (Source-to-Source)
