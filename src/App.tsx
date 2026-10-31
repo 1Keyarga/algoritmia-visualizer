@@ -173,8 +173,8 @@ export function App() {
 
         {/* Área derecha: Memoria (superior) + Visualización gráfica (inferior) */}
         <div className="flex-1 flex flex-col min-h-0 overflow-auto bg-[#12131b]">
-          {/* Panel de memoria */}
-          {!isDivideAndConquer && (
+          {/* Panel de memoria (oculto en divide y vencerás y en modo código del estudiante porque tienen su propio visualizador dedicado) */}
+          {!isDivideAndConquer && !isCustomAST && (
             <MemoryPanel
               currentStep={playback.currentStep}
               isOpen={isMemoryOpen}

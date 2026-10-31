@@ -132,24 +132,27 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
               })}
             </div>
 
-            {/* Fila de valores con estados y marcadores no cromáticos */}
+            {/* Fila de valores con estados semánticos (RF-05) y marcadores no cromáticos (RNF-07) */}
             <div className="flex items-center">
               {array.map((item, idx) => {
                 let cellBg = 'bg-[#1a1b28] text-slate-100 border-[#2d3046]';
-                let indicatorColor = 'text-slate-500';
+                let indicatorColor = 'text-slate-400';
 
                 if (item.state === 'comparing') {
                   cellBg = 'bg-amber-500/25 text-amber-200 border-amber-500 ring-2 ring-amber-500/30 font-black shadow-lg shadow-amber-500/10';
-                  indicatorColor = 'text-amber-400 font-black';
+                  indicatorColor = 'text-amber-300 font-black';
                 } else if (item.state === 'selected') {
                   cellBg = 'bg-purple-500/30 text-purple-200 border-purple-500 ring-2 ring-purple-500/40 font-black shadow-lg shadow-purple-500/10';
                   indicatorColor = 'text-purple-300 font-bold';
                 } else if (item.state === 'swapped') {
-                  cellBg = 'bg-indigo-500/35 text-indigo-100 border-indigo-500 ring-2 ring-indigo-500/40 font-black';
-                  indicatorColor = 'text-indigo-300 font-bold';
+                  cellBg = 'bg-sky-500/30 text-sky-100 border-sky-400 ring-2 ring-sky-500/40 font-black shadow-lg shadow-sky-500/10';
+                  indicatorColor = 'text-sky-300 font-bold';
                 } else if (item.state === 'sorted') {
                   cellBg = 'bg-emerald-500/25 text-emerald-200 border-emerald-500 font-bold';
-                  indicatorColor = 'text-emerald-400 font-bold';
+                  indicatorColor = 'text-emerald-300 font-bold';
+                } else if (item.state === 'discarded') {
+                  cellBg = 'bg-[#11131d] text-slate-500 border-[#202334] opacity-60 line-through';
+                  indicatorColor = 'text-rose-400/80 font-bold no-underline';
                 }
 
                 return (

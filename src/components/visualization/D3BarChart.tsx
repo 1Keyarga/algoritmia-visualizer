@@ -17,6 +17,8 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
     comparing: `grad-comparing-${reactId}`,
     sorted: `grad-sorted-${reactId}`,
     swapped: `grad-swapped-${reactId}`,
+    selected: `grad-selected-${reactId}`,
+    discarded: `grad-discarded-${reactId}`,
     hatch: `hatch-comparing-${reactId}`,
   };
 
@@ -28,14 +30,13 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
     const width = dimensions.width;
     const height = dimensions.height;
 
-    const margin = { top: 28, right: 25, bottom: 35, left: 35 };
+    const margin = { top: 32, right: 25, bottom: 42, left: 35 };
     const innerWidth = Math.max(100, width - margin.left - margin.right);
     const innerHeight = Math.max(100, height - margin.top - margin.bottom);
 
     const svg = d3.select(svgRef.current);
     svg.selectAll('*').remove();
 
-    // Fluid SVG: no intrinsic pixel width/height so flex/zoom can recover.
     svg
       .attr('viewBox', `0 0 ${width} ${height}`)
       .attr('preserveAspectRatio', 'xMidYMid meet')
@@ -53,10 +54,13 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       grad.append('stop').attr('offset', '100%').attr('stop-color', to);
     };
 
-    addGradient(ids.default, '#6366f1', '#4338ca');
+    // Paleta semántica RF-05: Gris (pendiente), Ámbar (comparación), Azul (intercambio), Púrpura (seleccionado/min/clave), Verde (ordenado)
+    addGradient(ids.default, '#64748b', '#334155');
     addGradient(ids.comparing, '#fbbf24', '#d97706');
     addGradient(ids.sorted, '#34d399', '#059669');
-    addGradient(ids.swapped, '#a78bfa', '#7c3aed');
+    addGradient(ids.swapped, '#38bdf8', '#0284c7');
+    addGradient(ids.selected, '#c084fc', '#7e22ce');
+    addGradient(ids.discarded, '#334155', '#1e293b');
 
     const patternComparing = defs
       .append('pattern')
@@ -121,10 +125,31 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
           return `url(#${ids.comparing})`;
         case 'swapped':
           return `url(#${ids.swapped})`;
+        case 'selected':
+          return `url(#${ids.selected})`;
         case 'sorted':
           return `url(#${ids.sorted})`;
+        case 'discarded':
+          return `url(#${ids.discarded})`;
         default:
           return `url(#${ids.default})`;
+      }
+    };
+
+    const getStroke = (state: ArrayElement['state']) => {
+      switch (state) {
+        case 'comparing':
+          return '#fef08a';
+        case 'swapped':
+          return '#7dd3fc';
+        case 'selected':
+          return '#e9d5ff';
+        case 'sorted':
+          return '#6ee7b7';
+        case 'discarded':
+          return '#334155';
+        default:
+          return '#94a3b8';
       }
     };
 
@@ -134,7 +159,8 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       .enter()
       .append('g')
       .attr('class', 'bar-group')
-      .attr('transform', (_, i) => `translate(${xScale(String(i)) || 0}, 0)`);
+      .attr('transform', (_, i) => `translate(${xScale(String(i)) || 0}, 0)`)
+      .attr('opacity', d => (d.state === 'discarded' ? 0.45 : 1));
 
     barGroups
       .append('rect')
@@ -150,9 +176,10 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       .attr('rx', 6)
       .attr('ry', 6)
       .attr('fill', d => getFill(d.state))
-      .attr('stroke', d => (d.state === 'comparing' ? '#fef08a' : d.state === 'sorted' ? '#6ee7b7' : '#818cf8'))
-      .attr('stroke-width', d => (d.state === 'comparing' || d.state === 'sorted' ? 2 : 1));
+      .attr('stroke', d => getStroke(d.state))
+      .attr('stroke-width', d => (d.state !== 'default' && d.state !== 'discarded' ? 2 : 1));
 
+    // Patrón diagonal adicional para elementos en comparación (accesibilidad daltonismo RNF-07)
     barGroups
       .filter(d => d.state === 'comparing')
       .append('rect')
@@ -169,18 +196,31 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       .attr('fill', `url(#${ids.hatch})`)
       .attr('pointer-events', 'none');
 
+    // Etiqueta inferior: combina etiqueta de estabilidad (A, B, C...) e indicador no cromático (RNF-07: ✔, ⇄, min, clave, j)
     barGroups
       .append('text')
       .attr('class', 'x-label')
       .attr('x', xScale.bandwidth() / 2)
-      .attr('y', innerHeight + 20)
+      .attr('y', innerHeight + 18)
       .attr('text-anchor', 'middle')
-      .attr('fill', d => (d.state === 'comparing' ? '#fbbf24' : d.state === 'sorted' ? '#34d399' : '#94a3b8'))
+      .attr('fill', d => {
+        if (d.state === 'comparing') return '#fbbf24';
+        if (d.state === 'swapped') return '#38bdf8';
+        if (d.state === 'selected') return '#c084fc';
+        if (d.state === 'sorted') return '#34d399';
+        return '#94a3b8';
+      })
       .attr('font-size', '11px')
-      .attr('font-weight', d => (d.state === 'comparing' || d.state === 'sorted' ? 'bold' : '500'))
-      .attr('font-family', 'Inter, sans-serif')
-      .text(d => d.label || '');
+      .attr('font-weight', d => (d.state !== 'default' ? 'bold' : '500'))
+      .attr('font-family', 'JetBrains Mono, Inter, sans-serif')
+      .text(d => {
+        if (d.nonColorIndicator && d.label) {
+          return `${d.label} (${d.nonColorIndicator})`;
+        }
+        return d.nonColorIndicator || d.label || '';
+      });
 
+    // Valor numérico sobre la barra
     barGroups
       .append('text')
       .attr('class', 'val-label')
@@ -188,15 +228,32 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array }) => {
       .attr('y', d => {
         const rawHeight = innerHeight - yScale(d.value);
         const barHeight = Math.max(4, rawHeight);
-        return innerHeight - barHeight - 6;
+        return innerHeight - barHeight - 7;
       })
       .attr('text-anchor', 'middle')
-      .attr('fill', d => (d.state === 'comparing' ? '#fef08a' : d.state === 'sorted' ? '#a7f3d0' : '#e2e8f0'))
+      .attr('fill', d => {
+        if (d.state === 'comparing') return '#fef08a';
+        if (d.state === 'swapped') return '#bae6fd';
+        if (d.state === 'selected') return '#f3e8ff';
+        if (d.state === 'sorted') return '#a7f3d0';
+        return '#e2e8f0';
+      })
       .attr('font-size', '11px')
       .attr('font-weight', '700')
       .attr('font-family', 'JetBrains Mono, monospace')
       .text(d => d.value);
-  }, [array, dimensions.height, dimensions.width, ids.comparing, ids.default, ids.hatch, ids.sorted, ids.swapped]);
+  }, [
+    array,
+    dimensions.height,
+    dimensions.width,
+    ids.comparing,
+    ids.default,
+    ids.discarded,
+    ids.hatch,
+    ids.selected,
+    ids.sorted,
+    ids.swapped,
+  ]);
 
   return (
     <div ref={containerRef} className="relative w-full h-full min-h-0 flex-1 overflow-hidden">

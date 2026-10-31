@@ -1,5 +1,12 @@
 import * as acorn from 'acorn';
-import type { Step, ArrayElement, MemoryFrame, StepLineHighlight, ElementState } from '../../types/trace';
+import type {
+  Step,
+  ArrayElement,
+  NamedArrayState,
+  MemoryFrame,
+  StepLineHighlight,
+  ElementState,
+} from '../../types/trace';
 import type { SupportedLanguage } from '../../types/algorithm';
 import { normalizeCToJavaScript } from './cPreprocessor';
 
@@ -14,7 +21,7 @@ export interface ASTInstrumentationResult {
 }
 
 export interface VariableSnapshot {
-  [key: string]: number | string | boolean | null | undefined;
+  [key: string]: any;
 }
 
 /**
@@ -102,8 +109,9 @@ export function validateStudentSyntax(sourceCode: string): {
  * Motor de Trazado e Instrumentación de Código del Estudiante.
  * 
  * 1. Normaliza el código fuente (C o JavaScript) preservando los números de línea 1:1.
- * 2. Analiza el AST para interceptar comparaciones, intercambios y asignaciones.
- * 3. Ejecuta la traza paso a paso registrando el estado de memoria y variables.
+ * 2. Soporta cualquier nombre de arreglo (arr, datos, vector, aux, etc.) y múltiples arreglos simultáneos.
+ * 3. Analiza el AST para interceptar comparaciones, intercambios y asignaciones sobre cualquier arreglo.
+ * 4. Ejecuta la traza paso a paso registrando el estado de todos los arreglos y variables de ámbito.
  */
 export function instrumentAndTraceStudentCode(
   sourceCode: string,
@@ -112,7 +120,8 @@ export function instrumentAndTraceStudentCode(
   maxSteps: number = 2000
 ): ASTInstrumentationResult {
   // 1. Normalizar si es C / C++ preservando números de línea 1:1
-  const { code: normalizedCode, detectedLanguage, mainArrayValues } = normalizeCToJavaScript(sourceCode);
+  const { code: normalizedCode, detectedLanguage, mainArrayValues, primaryArrayName } =
+    normalizeCToJavaScript(sourceCode);
 
   // Validar sintaxis
   let ast: any;
@@ -134,9 +143,9 @@ export function instrumentAndTraceStudentCode(
     };
   }
 
-  // 2. Extraer variables y funciones declaradas
+  // 2. Extraer todas las variables, parámetros y funciones declaradas por el estudiante
   const declaredVariables = new Set<string>([
-    'i', 'j', 'temp', 'min', 'clave', 'inicio', 'fin', 'medio', 'n', 'key', 'left', 'right', 'mid'
+    'arr', 'i', 'j', 'k', 'temp', 'min', 'clave', 'inicio', 'fin', 'medio', 'n', 'key', 'left', 'right', 'mid'
   ]);
   const declaredFunctions = new Set<string>();
   let firstDeclaredFunction: string | null = null;
@@ -174,12 +183,14 @@ export function instrumentAndTraceStudentCode(
   }
   findDeclarations(ast);
 
-  // Variables para serializar en el helper de snapshot.
+  // Variables para serializar en el helper de snapshot (tanto escalares como arreglos).
   // Se usa try/catch porque typeof no evita el error en la Temporal Dead Zone de let/const.
   const scopeVarTokens = Array.from(declaredVariables)
-    .filter(v => v !== 'arr' && v !== 'Math' && v !== '__hooks')
+    .filter(v => v !== 'Math' && v !== '__hooks' && v !== '__initialArr' && v !== '__clave')
     .map(v => `(function(){try{return{[${JSON.stringify(v)}]:${v}}}catch(e){return{}}})()`)
     .join(', ');
+
+  const snapshotExpr = `() => Object.assign({}, ${scopeVarTokens})`;
 
   // 3. Modificaciones de código (Source-to-Source)
   interface Replacement {
@@ -190,14 +201,14 @@ export function instrumentAndTraceStudentCode(
   }
   const replacements: Replacement[] = [];
 
+  // Detecta cualquier acceso indexado sobre un identificador: arr[i], datos[j], aux[k], etc.
   function isArrayAccess(node: any): boolean {
-    return (
+    return Boolean(
       node &&
       node.type === 'MemberExpression' &&
-      !node.computed === false &&
+      node.computed === true &&
       node.object &&
-      node.object.type === 'Identifier' &&
-      node.object.name === 'arr'
+      node.object.type === 'Identifier'
     );
   }
 
@@ -248,7 +259,7 @@ export function instrumentAndTraceStudentCode(
 
     if (isStatement && parent && (parent.type === 'BlockStatement' || parent.type === 'Program')) {
       const line = node.loc?.start?.line ?? 1;
-      const injection = `yield* __paso(${line}, () => Object.assign({}, ${scopeVarTokens})); `;
+      const injection = `yield* __paso(${line}, ${snapshotExpr}); `;
       replacements.push({
         start: node.start,
         end: node.start,
@@ -257,7 +268,7 @@ export function instrumentAndTraceStudentCode(
       });
     }
 
-    // Interceptar comparaciones sobre el arreglo arr
+    // Interceptar comparaciones sobre cualquier arreglo (arr[i] > arr[j], izq[i] <= der[j], datos[i] == clave)
     if (node.type === 'BinaryExpression') {
       const op = node.operator;
       const isCompareOp = ['<', '>', '<=', '>=', '===', '==', '!==', '!='].includes(op);
@@ -268,32 +279,36 @@ export function instrumentAndTraceStudentCode(
         const rightIsArr = isArrayAccess(node.right);
 
         if (leftIsArr && rightIsArr) {
+          const leftArrName = node.left.object.name;
+          const rightArrName = node.right.object.name;
           const leftIdxCode = normalizedCode.slice(node.left.property.start, node.left.property.end);
           const rightIdxCode = normalizedCode.slice(node.right.property.start, node.right.property.end);
           replacements.push({
             start: node.start,
             end: node.end,
-            text: `(yield* __comparar(arr, ${leftIdxCode}, ${rightIdxCode}, ${JSON.stringify(op)}, ${line}))`,
+            text: `(yield* __comparar(${leftArrName}, ${JSON.stringify(leftArrName)}, ${leftIdxCode}, ${rightArrName}, ${JSON.stringify(rightArrName)}, ${rightIdxCode}, ${JSON.stringify(op)}, ${line}, ${snapshotExpr}))`,
             priority: 20,
           });
           return;
         } else if (leftIsArr) {
+          const arrName = node.left.object.name;
           const idxCode = normalizedCode.slice(node.left.property.start, node.left.property.end);
           const valCode = normalizedCode.slice(node.right.start, node.right.end);
           replacements.push({
             start: node.start,
             end: node.end,
-            text: `(yield* __compararValor(arr, ${idxCode}, ${valCode}, ${JSON.stringify(op)}, false, ${line}))`,
+            text: `(yield* __compararValor(${arrName}, ${JSON.stringify(arrName)}, ${idxCode}, ${valCode}, ${JSON.stringify(op)}, false, ${line}, ${snapshotExpr}))`,
             priority: 20,
           });
           return;
         } else if (rightIsArr) {
+          const arrName = node.right.object.name;
           const idxCode = normalizedCode.slice(node.right.property.start, node.right.property.end);
           const valCode = normalizedCode.slice(node.left.start, node.left.end);
           replacements.push({
             start: node.start,
             end: node.end,
-            text: `(yield* __compararValor(arr, ${idxCode}, ${valCode}, ${JSON.stringify(op)}, true, ${line}))`,
+            text: `(yield* __compararValor(${arrName}, ${JSON.stringify(arrName)}, ${idxCode}, ${valCode}, ${JSON.stringify(op)}, true, ${line}, ${snapshotExpr}))`,
             priority: 20,
           });
           return;
@@ -301,16 +316,17 @@ export function instrumentAndTraceStudentCode(
       }
     }
 
-    // Interceptar asignaciones sobre el arreglo arr: arr[j] = valor
+    // Interceptar asignaciones sobre cualquier arreglo: nombreArr[j] = valor
     if (node.type === 'AssignmentExpression') {
       if (isArrayAccess(node.left)) {
         const line = node.loc?.start?.line ?? 1;
+        const arrName = node.left.object.name;
         const idxCode = normalizedCode.slice(node.left.property.start, node.left.property.end);
         const valCode = normalizedCode.slice(node.right.start, node.right.end);
         replacements.push({
           start: node.start,
           end: node.end,
-          text: `(yield* __asignar(arr, ${idxCode}, ${valCode}, ${line}))`,
+          text: `(yield* __asignar(${arrName}, ${JSON.stringify(arrName)}, ${idxCode}, ${valCode}, ${line}, ${snapshotExpr}))`,
           priority: 25,
         });
         return;
@@ -365,9 +381,8 @@ return function* (__initialArr, __clave, __hooks) {
 };
 `;
 
-  // 4. Inicializar conjunto de datos
-  // Si el estudiante definió un arreglo literal en su código, usar ese exactamente
-  const workingArray: number[] =
+  // 4. Inicializar conjunto de datos de respaldo
+  const fallbackArray: number[] =
     mainArrayValues && mainArrayValues.length > 0
       ? [...mainArrayValues]
       : [...initialDataset];
@@ -377,29 +392,155 @@ return function* (__initialArr, __clave, __hooks) {
   let swapsCount = 0;
   let operationsCount = 0;
 
-  // Estado del arreglo con identidades
-  let currentElements: ArrayElement[] = workingArray.map((val, idx) => ({
-    id: `student-item-${idx}-${val}`,
-    value: val,
-    originalIndex: idx,
-    state: 'default' as ElementState,
-    label: String(idx),
-  }));
+  // Mapa de todos los arreglos rastreados por referencia en memoria
+  interface TrackedArrayEntry {
+    idPrefix: string;
+    name: string;
+    ref: number[];
+    elements: ArrayElement[];
+  }
+  const trackedArrays = new Map<number[], TrackedArrayEntry>();
+  let arrayCounter = 0;
+
+  function ensureTrackedArray(arrRef: number[], preferredName: string): TrackedArrayEntry {
+    let entry = trackedArrays.get(arrRef);
+    if (!entry) {
+      arrayCounter++;
+      const prefix = `arr-${arrayCounter}`;
+      const elements: ArrayElement[] = arrRef.map((val, idx) => ({
+        id: `${prefix}-item-${idx}`,
+        value: Number(val) || 0,
+        originalIndex: idx,
+        state: 'default' as ElementState,
+        label: String(idx),
+      }));
+      entry = {
+        idPrefix: prefix,
+        name: preferredName,
+        ref: arrRef,
+        elements,
+      };
+      trackedArrays.set(arrRef, entry);
+    } else {
+      if (preferredName && preferredName !== '__initialArr') {
+        entry.name = preferredName;
+      }
+      // Sincronizar longitud y valores si el arreglo mutó directamente (ej. push o inicialización)
+      if (entry.elements.length !== arrRef.length) {
+        entry.elements = arrRef.map((val, idx) => ({
+          id: `${entry!.idPrefix}-item-${idx}`,
+          value: Number(val) || 0,
+          originalIndex: idx,
+          state: 'default' as ElementState,
+          label: String(idx),
+        }));
+      } else {
+        for (let i = 0; i < arrRef.length; i++) {
+          entry.elements[i].value = Number(arrRef[i]) || 0;
+        }
+      }
+    }
+    return entry;
+  }
+
+  // Registrar el arreglo de respaldo inicial por si el usuario aún no inicializa su arreglo en la línea 1
+  ensureTrackedArray(fallbackArray, primaryArrayName || 'arr');
+
+  function extractScopeAndArrays(
+    rawVars: VariableSnapshot,
+    highlightOverrides?: Map<number[], Map<number, { state: ElementState; indicator?: string }>>
+  ): {
+    scalarVars: Record<string, string | number | boolean | null | undefined>;
+    namedArrays: NamedArrayState[];
+    primaryElements: ArrayElement[];
+  } {
+    const scalarVars: Record<string, string | number | boolean | null | undefined> = {};
+    const activeArrayRefs = new Set<number[]>();
+
+    for (const [key, val] of Object.entries(rawVars)) {
+      if (Array.isArray(val)) {
+        // Ignorar el arreglo fallback inyectado si el estudiante declaró sus propios arreglos en main()
+        if (key === 'arr' && val === fallbackArray && declaredFunctions.has('main') && trackedArrays.size > 1) {
+          continue;
+        }
+        ensureTrackedArray(val, key);
+        activeArrayRefs.add(val);
+        scalarVars[key] = `→ [0..${ Math.max(0, val.length - 1) }]`;
+      } else if (
+        typeof val === 'number' ||
+        typeof val === 'boolean' ||
+        typeof val === 'string' ||
+        val === null
+      ) {
+        scalarVars[key] = val;
+      }
+    }
+
+    // Si en este paso ya se habían registrado arreglos del usuario, eliminar el fallbackArray si no se usa
+    const userArrayEntries = Array.from(trackedArrays.values()).filter(e => e.ref !== fallbackArray);
+    const entriesToRender =
+      userArrayEntries.length > 0 ? userArrayEntries : Array.from(trackedArrays.values());
+
+    const namedArrays: NamedArrayState[] = entriesToRender.map(entry => {
+      const overridesForThisArray = highlightOverrides?.get(entry.ref);
+      const clonedElements = entry.elements.map((el, idx) => {
+        const override = overridesForThisArray?.get(idx);
+        if (override) {
+          return {
+            ...el,
+            state: override.state,
+            nonColorIndicator: override.indicator,
+          };
+        }
+        return { ...el };
+      });
+      return {
+        name: entry.name,
+        elements: clonedElements,
+      };
+    });
+
+    const primaryElements =
+      namedArrays.length > 0
+        ? namedArrays[0].elements
+        : fallbackArray.map((v, i) => ({
+            id: `fallback-${i}`,
+            value: v,
+            originalIndex: i,
+            state: 'default' as ElementState,
+          }));
+
+    return { scalarVars, namedArrays, primaryElements };
+  }
+
+  function resetTransientStates() {
+    for (const entry of trackedArrays.values()) {
+      for (const el of entry.elements) {
+        if (el.state === 'comparing' || el.state === 'swapped') {
+          el.state = 'default';
+          el.nonColorIndicator = undefined;
+        }
+      }
+    }
+  }
 
   function makeStep(
     line: number,
     explanation: string,
     operationType: Step['operationType'],
-    vars: VariableSnapshot = {},
-    customArray?: ArrayElement[]
+    rawVars: VariableSnapshot = {},
+    highlightOverrides?: Map<number[], Map<number, { state: ElementState; indicator?: string }>>
   ): Step {
     operationsCount++;
-    const arrCopy = (customArray || currentElements).map(el => ({ ...el }));
+    const { scalarVars, namedArrays, primaryElements } = extractScopeAndArrays(
+      rawVars,
+      highlightOverrides
+    );
 
     const activeFrameName = declaredFunctions.has('main')
       ? 'main()'
       : firstDeclaredFunction
-      ? `${firstDeclaredFunction}(arr)`
+      ? `${firstDeclaredFunction}()`
       : 'Programa';
 
     const frames: MemoryFrame[] = [
@@ -407,13 +548,13 @@ return function* (__initialArr, __clave, __hooks) {
         id: 'frame-student',
         name: activeFrameName,
         isActive: true,
-        variables: { ...vars, n: workingArray.length },
+        variables: scalarVars,
       },
       {
         id: 'frame-global',
         name: 'Memoria Global',
         isActive: false,
-        variables: { n: workingArray.length },
+        variables: { n: primaryElements.length },
       },
     ];
 
@@ -433,13 +574,17 @@ return function* (__initialArr, __clave, __hooks) {
     ];
 
     const activeIndices: Record<string, number | undefined> = {};
-    if (typeof vars.i === 'number') activeIndices.i = vars.i;
-    if (typeof vars.j === 'number') activeIndices.j = vars.j;
-    if (typeof vars.min === 'number') activeIndices.min = vars.min;
-    if (typeof vars.medio === 'number') activeIndices.mid = vars.medio;
-    if (typeof vars.clave === 'number') activeIndices.keyVal = vars.clave;
-    if (typeof vars.left === 'number') activeIndices.left = vars.left;
-    if (typeof vars.right === 'number') activeIndices.right = vars.right;
+    if (typeof rawVars.i === 'number') activeIndices.i = rawVars.i;
+    if (typeof rawVars.j === 'number') activeIndices.j = rawVars.j;
+    if (typeof rawVars.k === 'number') activeIndices.k = rawVars.k;
+    if (typeof rawVars.min === 'number') activeIndices.min = rawVars.min;
+    if (typeof rawVars.medio === 'number') activeIndices.mid = rawVars.medio;
+    if (typeof rawVars.mid === 'number') activeIndices.mid = rawVars.mid;
+    if (typeof rawVars.clave === 'number') activeIndices.keyVal = rawVars.clave;
+    if (typeof rawVars.inicio === 'number') activeIndices.left = rawVars.inicio;
+    if (typeof rawVars.left === 'number') activeIndices.left = rawVars.left;
+    if (typeof rawVars.fin === 'number') activeIndices.right = rawVars.fin;
+    if (typeof rawVars.right === 'number') activeIndices.right = rawVars.right;
 
     return {
       stepIndex: steps.length + 1,
@@ -447,7 +592,8 @@ return function* (__initialArr, __clave, __hooks) {
       activeLine: line,
       activeLineByLang: lineMap,
       highlights,
-      array: arrCopy,
+      array: primaryElements,
+      namedArrays,
       frames,
       explanation,
       metrics: {
@@ -464,45 +610,66 @@ return function* (__initialArr, __clave, __hooks) {
     };
   }
 
-  // Hooks interceptores
+  // Hooks interceptores universales para cualquier arreglo
   const hooks = {
     *__paso(line: number, getVarsFn: () => VariableSnapshot) {
+      resetTransientStates();
       const vars = getVarsFn();
-      steps.push(makeStep(line, `Ejecución de línea ${line}`, 'check', vars));
+      steps.push(makeStep(line, `Ejecución de sentencia en línea ${line}`, 'check', vars));
       yield;
     },
 
-    *__comparar(arr: number[], i: number, j: number, op: string, line: number = 1) {
+    *__comparar(
+      leftArr: number[],
+      leftName: string,
+      i: number,
+      rightArr: number[],
+      rightName: string,
+      j: number,
+      op: string,
+      line: number = 1,
+      getVarsFn?: () => VariableSnapshot
+    ) {
+      resetTransientStates();
       comparisonsCount++;
-      const valI = arr[i];
-      const valJ = arr[j];
+      const valI = Array.isArray(leftArr) ? leftArr[i] : undefined;
+      const valJ = Array.isArray(rightArr) ? rightArr[j] : undefined;
 
       let res = false;
       switch (op) {
-        case '<': res = valI < valJ; break;
-        case '>': res = valI > valJ; break;
-        case '<=': res = valI <= valJ; break;
-        case '>=': res = valI >= valJ; break;
+        case '<': res = (valI as any) < (valJ as any); break;
+        case '>': res = (valI as any) > (valJ as any); break;
+        case '<=': res = (valI as any) <= (valJ as any); break;
+        case '>=': res = (valI as any) >= (valJ as any); break;
         case '===':
         case '==': res = valI === valJ; break;
         case '!==':
         case '!=': res = valI !== valJ; break;
       }
 
-      const tempArray = currentElements.map((el, idx) => {
-        if (idx === i || idx === j) {
-          return { ...el, state: 'comparing' as ElementState };
-        }
-        return el;
-      });
+      if (Array.isArray(leftArr)) ensureTrackedArray(leftArr, leftName);
+      if (Array.isArray(rightArr)) ensureTrackedArray(rightArr, rightName);
 
+      const overrides = new Map<number[], Map<number, { state: ElementState; indicator?: string }>>();
+      if (Array.isArray(leftArr)) {
+        const m = new Map<number, { state: ElementState; indicator?: string }>();
+        m.set(i, { state: 'comparing', indicator: '?' });
+        overrides.set(leftArr, m);
+      }
+      if (Array.isArray(rightArr)) {
+        const m = overrides.get(rightArr) || new Map<number, { state: ElementState; indicator?: string }>();
+        m.set(j, { state: 'comparing', indicator: '?' });
+        overrides.set(rightArr, m);
+      }
+
+      const vars = getVarsFn ? getVarsFn() : { i, j };
       steps.push(
         makeStep(
           line,
-          `Comparación: arr[${i}] (${valI}) ${op} arr[${j}] (${valJ}) → ${res ? 'Verdadero' : 'Falso'}`,
+          `Comparación: ${leftName}[${i}] (${valI}) ${op} ${rightName}[${j}] (${valJ}) → ${res ? 'Verdadero' : 'Falso'}`,
           'compare',
-          { i, j },
-          tempArray
+          vars,
+          overrides
         )
       );
 
@@ -510,17 +677,27 @@ return function* (__initialArr, __clave, __hooks) {
       return res;
     },
 
-    *__compararValor(arr: number[], idx: number, val: number, op: string, reverse: boolean, line: number = 1) {
+    *__compararValor(
+      targetArr: number[],
+      arrName: string,
+      idx: number,
+      val: number,
+      op: string,
+      reverse: boolean,
+      line: number = 1,
+      getVarsFn?: () => VariableSnapshot
+    ) {
+      resetTransientStates();
       comparisonsCount++;
-      const arrVal = arr[idx];
+      const arrVal = Array.isArray(targetArr) ? targetArr[idx] : undefined;
 
       let res = false;
       if (reverse) {
         switch (op) {
-          case '<': res = val < arrVal; break;
-          case '>': res = val > arrVal; break;
-          case '<=': res = val <= arrVal; break;
-          case '>=': res = val >= arrVal; break;
+          case '<': res = val < (arrVal as any); break;
+          case '>': res = val > (arrVal as any); break;
+          case '<=': res = val <= (arrVal as any); break;
+          case '>=': res = val >= (arrVal as any); break;
           case '===':
           case '==': res = val === arrVal; break;
           case '!==':
@@ -528,10 +705,10 @@ return function* (__initialArr, __clave, __hooks) {
         }
       } else {
         switch (op) {
-          case '<': res = arrVal < val; break;
-          case '>': res = arrVal > val; break;
-          case '<=': res = arrVal <= val; break;
-          case '>=': res = arrVal >= val; break;
+          case '<': res = (arrVal as any) < val; break;
+          case '>': res = (arrVal as any) > val; break;
+          case '<=': res = (arrVal as any) <= val; break;
+          case '>=': res = (arrVal as any) >= val; break;
           case '===':
           case '==': res = arrVal === val; break;
           case '!==':
@@ -539,21 +716,27 @@ return function* (__initialArr, __clave, __hooks) {
         }
       }
 
-      const tempArray = currentElements.map((el, index) => {
-        if (index === idx) {
-          const nextState: ElementState = res ? 'sorted' : 'comparing';
-          return { ...el, state: nextState };
-        }
-        return el;
-      });
+      if (Array.isArray(targetArr)) ensureTrackedArray(targetArr, arrName);
 
+      const overrides = new Map<number[], Map<number, { state: ElementState; indicator?: string }>>();
+      if (Array.isArray(targetArr)) {
+        const m = new Map<number, { state: ElementState; indicator?: string }>();
+        const isEqualityMatch = (op === '==' || op === '===') && res;
+        m.set(idx, {
+          state: isEqualityMatch ? 'sorted' : 'comparing',
+          indicator: isEqualityMatch ? '✔' : '?',
+        });
+        overrides.set(targetArr, m);
+      }
+
+      const vars = getVarsFn ? getVarsFn() : { i: idx, clave: val };
       steps.push(
         makeStep(
           line,
-          `Evaluando arr[${idx}] (${arrVal}) ${op} ${val} → ${res ? 'Coincidencia' : 'No coincide'}`,
+          `Evaluando ${arrName}[${idx}] (${arrVal}) ${op} ${val} → ${res ? 'Verdadero' : 'Falso'}`,
           'compare',
-          { i: idx, clave: val },
-          tempArray
+          vars,
+          overrides
         )
       );
 
@@ -561,24 +744,33 @@ return function* (__initialArr, __clave, __hooks) {
       return res;
     },
 
-    *__asignar(arr: number[], idx: number, value: number, line: number = 1) {
+    *__asignar(
+      targetArr: number[],
+      arrName: string,
+      idx: number,
+      value: number,
+      line: number = 1,
+      getVarsFn?: () => VariableSnapshot
+    ) {
+      resetTransientStates();
       swapsCount++;
-      arr[idx] = value;
-
-      currentElements = currentElements.map((el, i) => {
-        if (i === idx) {
-          return { ...el, value, state: 'swapped' as const };
+      if (Array.isArray(targetArr)) {
+        targetArr[idx] = value;
+        const entry = ensureTrackedArray(targetArr, arrName);
+        if (entry.elements[idx]) {
+          entry.elements[idx].value = value;
+          entry.elements[idx].state = 'swapped';
+          entry.elements[idx].nonColorIndicator = '⇄';
         }
-        return el;
-      });
+      }
 
+      const vars = getVarsFn ? getVarsFn() : { idx, value };
       steps.push(
         makeStep(
           line,
-          `Asignación: arr[${idx}] ← ${value}`,
+          `Asignación en memoria: ${arrName}[${idx}] ← ${value}`,
           'assign',
-          { idx, value },
-          currentElements
+          vars
         )
       );
 
@@ -586,20 +778,26 @@ return function* (__initialArr, __clave, __hooks) {
       return value;
     },
 
-    *__intercambiar(arr: number[], i: number, j: number, line: number = 1) {
+    *__intercambiar(targetArr: number[], i: number, j: number, line: number = 1) {
+      resetTransientStates();
       swapsCount++;
-      const temp = arr[i];
-      arr[i] = arr[j];
-      arr[j] = temp;
+      if (Array.isArray(targetArr)) {
+        const temp = targetArr[i];
+        targetArr[i] = targetArr[j];
+        targetArr[j] = temp;
 
-      const tempEl = currentElements[i];
-      currentElements[i] = { ...currentElements[j], state: 'swapped' };
-      currentElements[j] = { ...tempEl, state: 'swapped' };
+        const entry = ensureTrackedArray(targetArr, 'arr');
+        if (entry.elements[i] && entry.elements[j]) {
+          const tempEl = entry.elements[i];
+          entry.elements[i] = { ...entry.elements[j], state: 'swapped', nonColorIndicator: '⇄' };
+          entry.elements[j] = { ...tempEl, state: 'swapped', nonColorIndicator: '⇄' };
+        }
+      }
 
       steps.push(
         makeStep(
           line,
-          `Intercambio: arr[${i}] ⇄ arr[${j}] (${arr[i]} ⇄ ${arr[j]})`,
+          `Intercambio: [${i}] ⇄ [${j}] (${targetArr?.[i]} ⇄ ${targetArr?.[j]})`,
           'swap',
           { i, j }
         )
@@ -612,7 +810,7 @@ return function* (__initialArr, __clave, __hooks) {
   try {
     const factory = new Function(generatorHeader);
     const generatorFn = factory();
-    const iterator = generatorFn(workingArray, targetKey, hooks);
+    const iterator = generatorFn(fallbackArray, targetKey, hooks);
 
     let current = iterator.next();
     let stepsCounter = 0;
@@ -631,8 +829,7 @@ return function* (__initialArr, __clave, __hooks) {
     }
 
     if (steps.length === 0) {
-      // Si el código no ejecutó ningún bucle o sentencia medible, crear al menos un paso inicial
-      steps.push(makeStep(1, 'Código ejecutado sin operaciones sobre el arreglo', 'finish'));
+      steps.push(makeStep(1, 'Código ejecutado sin operaciones sobre arreglos', 'finish'));
     }
 
     // Actualizar totalSteps en cada paso

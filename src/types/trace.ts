@@ -17,6 +17,11 @@ export interface ArrayElement {
   nonColorIndicator?: string;
 }
 
+export interface NamedArrayState {
+  name: string;
+  elements: ArrayElement[];
+}
+
 export interface MemoryFrame {
   id: string;
   name: string;
@@ -64,6 +69,7 @@ export interface Step {
   activeLineByLang: Record<SupportedLanguage, number>;
   highlights: StepLineHighlight[];
   array: ArrayElement[];
+  namedArrays?: NamedArrayState[];
   frames: MemoryFrame[];
   explanation: string;
   metrics: StepMetrics;

@@ -1,4 +1,4 @@
-﻿import type { Step, ArrayElement, MemoryFrame, StepLineHighlight } from '../../types/trace';
+import type { Step, ArrayElement, MemoryFrame, StepLineHighlight } from '../../types/trace';
 import type { AlgorithmMetadata, SupportedLanguage } from '../../types/algorithm';
 
 export const SELECTION_SORT_METADATA: AlgorithmMetadata = {
@@ -304,8 +304,10 @@ export function generateSelectionSortTrace(initialData: number[]): Step[] {
     currentArray[min] = temp;
 
     currentArray[i].state = 'swapped';
+    currentArray[i].nonColorIndicator = '⇄';
     if (i !== min) {
       currentArray[min].state = 'swapped';
+      currentArray[min].nonColorIndicator = '⇄';
     }
 
     pushStep(

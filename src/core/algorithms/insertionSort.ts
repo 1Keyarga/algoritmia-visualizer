@@ -1,4 +1,4 @@
-﻿import type { Step, ArrayElement, MemoryFrame, StepLineHighlight } from '../../types/trace';
+import type { Step, ArrayElement, MemoryFrame, StepLineHighlight } from '../../types/trace';
 import type { AlgorithmMetadata, SupportedLanguage } from '../../types/algorithm';
 
 export const INSERTION_SORT_METADATA: AlgorithmMetadata = {
@@ -172,7 +172,7 @@ export function generateInsertionSortTrace(initialData: number[]): Step[] {
 
   // Inicialmente el primer elemento (índice 0) se considera un subarreglo ordenado de 1 elemento
   const sortedIndices = new Set<number>([0]);
-  currentArray[0] = { ...currentArray[0], state: 'sorted', nonColorIndicator: undefined };
+  currentArray[0] = { ...currentArray[0], state: 'sorted', nonColorIndicator: '✔' };
 
   let lastI = 1;
 
@@ -192,7 +192,7 @@ export function generateInsertionSortTrace(initialData: number[]): Step[] {
 
     // clave = arr[i]
     currentArray = currentArray.map((item, idx) => {
-      if (sortedIndices.has(idx) && idx !== i) return { ...item, state: 'sorted', nonColorIndicator: undefined };
+      if (sortedIndices.has(idx) && idx !== i) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
       if (idx === i) return { ...item, state: 'selected', nonColorIndicator: 'clave' };
       return { ...item, state: 'default', nonColorIndicator: undefined };
     });
@@ -223,7 +223,7 @@ export function generateInsertionSortTrace(initialData: number[]): Step[] {
     // Bucle mientras j >= 0 y arr[j] > clave
     while (j >= 0) {
       currentArray = currentArray.map((item, idx) => {
-        if (sortedIndices.has(idx) && idx !== i) return { ...item, state: 'sorted', nonColorIndicator: undefined };
+        if (sortedIndices.has(idx) && idx !== i) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
         if (idx === i) return { ...item, state: 'selected', nonColorIndicator: 'clave' };
         if (idx === j) return { ...item, state: 'comparing', nonColorIndicator: 'j' };
         return { ...item, state: 'default', nonColorIndicator: undefined };
@@ -253,6 +253,7 @@ export function generateInsertionSortTrace(initialData: number[]): Step[] {
           ...currentArray[j],
           id: `item-${j + 1}-${currentArray[j].value}`,
           state: 'swapped',
+          nonColorIndicator: '→',
         };
 
         pushStep(
@@ -302,7 +303,7 @@ export function generateInsertionSortTrace(initialData: number[]): Step[] {
       originalIndex: i,
       state: 'swapped',
       label: LETTERS[(j + 1) % LETTERS.length],
-      nonColorIndicator: undefined,
+      nonColorIndicator: '↓',
     };
 
     for (let k = 0; k <= i; k++) {
@@ -322,7 +323,7 @@ export function generateInsertionSortTrace(initialData: number[]): Step[] {
     );
 
     currentArray = currentArray.map((item, idx) => {
-      if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
+      if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
       return { ...item, state: 'default', nonColorIndicator: undefined };
     });
   }

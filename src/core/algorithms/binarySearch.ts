@@ -164,7 +164,9 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
         bestCase: 'O(1)',
       },
       activeIndices: {
-        i: midVal,
+        left: leftVal,
+        right: rightVal,
+        mid: midVal,
       },
       operationType,
     });
@@ -221,16 +223,16 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
 
     currentArray = currentArray.map((item, idx) => {
       if (idx < left || idx > right) {
-        return { ...item, state: 'sorted', nonColorIndicator: undefined, opacity: 0.3 }; // Fuera de rango (descartado)
+        return { ...item, state: 'discarded', nonColorIndicator: '✗' }; // Fuera de rango (descartado)
       }
       if (idx === mid) {
-        return { ...item, state: 'comparing', nonColorIndicator: undefined }; // Punto medio
+        return { ...item, state: 'comparing', nonColorIndicator: '?' }; // Punto medio
       }
       if (idx === left) {
-        return { ...item, state: 'swapped', nonColorIndicator: undefined }; // Límite izquierdo
+        return { ...item, state: 'selected', nonColorIndicator: 'ini' }; // Límite izquierdo
       }
       if (idx === right) {
-        return { ...item, state: 'swapped', nonColorIndicator: undefined }; // Límite derecho
+        return { ...item, state: 'selected', nonColorIndicator: 'fin' }; // Límite derecho
       }
       return { ...item, state: 'default', nonColorIndicator: undefined };
     });
@@ -266,7 +268,7 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
       );
 
       foundIndex = mid;
-      currentArray[mid] = { ...currentArray[mid], state: 'sorted', nonColorIndicator: undefined };
+      currentArray[mid] = { ...currentArray[mid], state: 'sorted', nonColorIndicator: '✔' };
 
       pushStep(
         { pseudocode: 7, python: 7, cpp: 7, java: 7 },
@@ -310,7 +312,7 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
         // Marcar mitad izquierda como descartada
         currentArray = currentArray.map((item, idx) => {
           if (idx <= mid) {
-            return { ...item, state: 'sorted', nonColorIndicator: undefined, opacity: 0.3 };
+            return { ...item, state: 'discarded', nonColorIndicator: '✗' };
           }
           return item;
         });
@@ -346,7 +348,7 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
         // Marcar mitad derecha como descartada
         currentArray = currentArray.map((item, idx) => {
           if (idx >= mid) {
-            return { ...item, state: 'sorted', nonColorIndicator: undefined, opacity: 0.3 };
+            return { ...item, state: 'discarded', nonColorIndicator: '✗' };
           }
           return item;
         });
@@ -369,7 +371,7 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
 
   // No encontrado
   if (foundIndex === -1) {
-    currentArray = currentArray.map(item => ({ ...item, state: 'sorted', nonColorIndicator: '✗', opacity: 0.3 }));
+    currentArray = currentArray.map(item => ({ ...item, state: 'discarded', nonColorIndicator: '✗' }));
 
     pushStep(
       { pseudocode: 4, python: 4, cpp: 4, java: 4 },

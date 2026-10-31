@@ -71,7 +71,7 @@ export function generateLinearSearchTrace(initialData: number[], target: number 
   const createFrames = (iVal?: number, foundVal?: boolean): MemoryFrame[] => {
     const vars: Record<string, string | number | boolean | null | undefined> = {
       i: iVal !== undefined ? iVal : null,
-      key: target,
+      clave: target,
       n: n,
     };
 
@@ -145,10 +145,10 @@ export function generateLinearSearchTrace(initialData: number[], target: number 
   // Escaneo secuencial
   let foundIndex = -1;
   for (let i = 0; i < n; i++) {
-    // Marcar posición actual como escaneando
+    // Marcar posición actual como escaneando y anteriores como descartadas
     currentArray = currentArray.map((item, idx) => {
-      if (idx < i) return { ...item, state: 'sorted', nonColorIndicator: undefined }; // Ya escaneado
-      if (idx === i) return { ...item, state: 'comparing', nonColorIndicator: undefined }; // Escaneando
+      if (idx < i) return { ...item, state: 'discarded', nonColorIndicator: '✗' }; // Ya escaneado y descartado
+      if (idx === i) return { ...item, state: 'comparing', nonColorIndicator: '?' }; // Escaneando
       return { ...item, state: 'default', nonColorIndicator: undefined };
     });
 
@@ -180,7 +180,7 @@ export function generateLinearSearchTrace(initialData: number[], target: number 
       );
 
       foundIndex = i;
-      currentArray[i] = { ...currentArray[i], state: 'sorted', nonColorIndicator: undefined };
+      currentArray[i] = { ...currentArray[i], state: 'sorted', nonColorIndicator: '✔' };
 
       pushStep(
         { pseudocode: 4, python: 4, cpp: 4, java: 4 },
@@ -206,7 +206,7 @@ export function generateLinearSearchTrace(initialData: number[], target: number 
 
   // No encontrado
   if (foundIndex === -1) {
-    currentArray = currentArray.map(item => ({ ...item, state: 'sorted', nonColorIndicator: undefined }));
+    currentArray = currentArray.map(item => ({ ...item, state: 'discarded', nonColorIndicator: '✗' }));
 
     pushStep(
       { pseudocode: 5, python: 5, cpp: 7, java: 7 },
