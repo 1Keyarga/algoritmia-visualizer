@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   GENERAL_C_STARTER,
   GENERAL_JS_STARTER,
@@ -34,6 +34,14 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
   const [syntaxError, setSyntaxError] = useState<string | null>(null);
   const [errorLine, setErrorLine] = useState<number | null>(null);
   const [executionStats, setExecutionStats] = useState<{ totalSteps: number } | null>(null);
+  const activeLineRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll hacia la línea activa durante la ejecución paso a paso
+  useEffect(() => {
+    if (isExecuting && currentStep?.activeLine && activeLineRef.current) {
+      activeLineRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [isExecuting, currentStep?.activeLine]);
 
   // Al cambiar de lenguaje
   const handleSelectLanguage = (lang: 'c' | 'javascript') => {
@@ -193,6 +201,7 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
               return (
                 <div
                   key={lineNum}
+                  ref={isActive ? activeLineRef : null}
                   className={`flex items-center px-2 py-0.5 border-l-4 ${border} ${bg} transition-colors min-w-0`}
                 >
                   <span className="w-7 text-right pr-2 text-slate-600 select-none text-[11px] shrink-0">

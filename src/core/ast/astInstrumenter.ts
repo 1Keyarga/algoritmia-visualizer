@@ -106,12 +106,17 @@ export function validateStudentSyntax(sourceCode: string): {
 }
 
 /**
- * Motor de Trazado e Instrumentación de Código del Estudiante.
+ * Motor de Trazado e Instrumentación de Código del Estudiante (v2 - Bottom-Up AST + Call Stack Real).
  * 
- * 1. Normaliza el código fuente (C o JavaScript) preservando los números de línea 1:1.
- * 2. Soporta cualquier nombre de arreglo (arr, datos, vector, aux, etc.) y múltiples arreglos simultáneos.
- * 3. Analiza el AST para interceptar comparaciones, intercambios y asignaciones sobre cualquier arreglo.
- * 4. Ejecuta la traza paso a paso registrando el estado de todos los arreglos y variables de ámbito.
+ * Capacidades:
+ * 1. Normaliza C o JavaScript preservando líneas 1:1 y tipos de variables (int, float, double, char, bool).
+ * 2. Preserva la semántica de división entera en C: (a / b) -> Math.trunc((a) / (b)) cuando son enteros.
+ * 3. Reescribe el AST de abajo hacia arriba (Post-Order Bottom-Up) para soportar anidamiento arbitrario
+ *    de llamadas a funciones, accesos indexados (conteo[datos[i]] += 1) y expresiones compuestas.
+ * 4. Soporta operadores de asignación compuesta (+=, -=, *=, /=, %=) e incremento/decremento (++, --) en arreglos.
+ * 5. Protege contra bucles infinitos con o sin llaves (while(1);) inyectando puntos de control por iteración.
+ * 6. Captura el estado post-ejecución de asignaciones escalares y mantiene una Pila de Llamadas (Call Stack)
+ *    real con marcos apilados para funciones auxiliares y recursivas (Quick Sort, Merge Sort, Búsqueda Binaria).
  */
 export function instrumentAndTraceStudentCode(
   sourceCode: string,
@@ -119,11 +124,16 @@ export function instrumentAndTraceStudentCode(
   targetKey: number = 45,
   maxSteps: number = 2000
 ): ASTInstrumentationResult {
-  // 1. Normalizar si es C / C++ preservando números de línea 1:1
-  const { code: normalizedCode, detectedLanguage, mainArrayValues, primaryArrayName } =
-    normalizeCToJavaScript(sourceCode);
+  // 1. Normalizar si es C / C++ preservando números de línea 1:1 y tipos declarados
+  const {
+    code: normalizedCode,
+    detectedLanguage,
+    mainArrayValues,
+    primaryArrayName,
+    variableTypes,
+  } = normalizeCToJavaScript(sourceCode);
 
-  // Validar sintaxis
+  // Validar sintaxis con Acorn
   let ast: any;
   try {
     ast = acorn.parse(normalizedCode, {
@@ -143,31 +153,44 @@ export function instrumentAndTraceStudentCode(
     };
   }
 
-  // 2. Extraer todas las variables, parámetros y funciones declaradas por el estudiante
-  const declaredVariables = new Set<string>([
-    'arr', 'i', 'j', 'k', 'temp', 'min', 'clave', 'inicio', 'fin', 'medio', 'n', 'key', 'left', 'right', 'mid'
-  ]);
+  // 2. Extraer funciones y variables por ámbito de función (para Call Stack real)
+  const declaredVariables = new Set<string>(['arr']);
+  const functionLocalVars = new Map<string, Set<string>>();
   const declaredFunctions = new Set<string>();
   let firstDeclaredFunction: string | null = null;
 
-  function findDeclarations(node: any) {
+  function collectDeclarations(node: any, currentFuncName: string | null) {
     if (!node || typeof node !== 'object') return;
-    if (node.type === 'VariableDeclaration' && Array.isArray(node.declarations)) {
-      for (const decl of node.declarations) {
-        if (decl.id && decl.id.type === 'Identifier') {
-          declaredVariables.add(decl.id.name);
-        }
+
+    let activeFunc = currentFuncName;
+
+    if (node.type === 'FunctionDeclaration' && node.id?.name) {
+      const fnName = node.id.name;
+      declaredFunctions.add(fnName);
+      if (!firstDeclaredFunction) {
+        firstDeclaredFunction = fnName;
       }
-    } else if (node.type === 'FunctionDeclaration') {
-      if (node.id && node.id.name) {
-        declaredFunctions.add(node.id.name);
-        if (!firstDeclaredFunction) {
-          firstDeclaredFunction = node.id.name;
-        }
+      activeFunc = fnName;
+      if (!functionLocalVars.has(fnName)) {
+        functionLocalVars.set(fnName, new Set<string>());
       }
+      const fnSet = functionLocalVars.get(fnName)!;
       if (Array.isArray(node.params)) {
         for (const p of node.params) {
-          if (p.type === 'Identifier') declaredVariables.add(p.name);
+          if (p.type === 'Identifier') {
+            declaredVariables.add(p.name);
+            fnSet.add(p.name);
+          }
+        }
+      }
+    } else if (node.type === 'VariableDeclaration' && Array.isArray(node.declarations)) {
+      for (const decl of node.declarations) {
+        if (decl.id?.type === 'Identifier') {
+          const varName = decl.id.name;
+          declaredVariables.add(varName);
+          if (activeFunc && functionLocalVars.has(activeFunc)) {
+            functionLocalVars.get(activeFunc)!.add(varName);
+          }
         }
       }
     }
@@ -175,33 +198,55 @@ export function instrumentAndTraceStudentCode(
     for (const key of Object.keys(node)) {
       const child = node[key];
       if (Array.isArray(child)) {
-        child.forEach(findDeclarations);
+        for (const item of child) {
+          collectDeclarations(item, activeFunc);
+        }
       } else if (child && typeof child === 'object') {
-        findDeclarations(child);
+        collectDeclarations(child, activeFunc);
       }
     }
   }
-  findDeclarations(ast);
+  collectDeclarations(ast, null);
 
-  // Variables para serializar en el helper de snapshot (tanto escalares como arreglos).
-  // Se usa try/catch porque typeof no evita el error en la Temporal Dead Zone de let/const.
-  const scopeVarTokens = Array.from(declaredVariables)
-    .filter(v => v !== 'Math' && v !== '__hooks' && v !== '__initialArr' && v !== '__clave')
-    .map(v => `(function(){try{return{[${JSON.stringify(v)}]:${v}}}catch(e){return{}}})()`)
-    .join(', ');
+  function buildSnapshotExpr(varNames: Iterable<string>): string {
+    const tokens = Array.from(varNames)
+      .filter(v => v !== 'Math' && v !== '__hooks' && v !== '__initialArr' && v !== '__clave')
+      .map(v => `(function(){try{return{[${JSON.stringify(v)}]:${v}}}catch(e){return{}}})()`)
+      .join(', ');
+    return `() => Object.assign({}, ${tokens})`;
+  }
 
-  const snapshotExpr = `() => Object.assign({}, ${scopeVarTokens})`;
+  const globalSnapshotExpr = buildSnapshotExpr(declaredVariables);
 
-  // 3. Modificaciones de código (Source-to-Source)
+  // 3. Motor de Reescritura AST Bottom-Up (Post-Order)
   interface Replacement {
     start: number;
     end: number;
     text: string;
-    priority: number;
   }
-  const replacements: Replacement[] = [];
+  let replacements: Replacement[] = [];
 
-  // Detecta cualquier acceso indexado sobre un identificador: arr[i], datos[j], aux[k], etc.
+  // Obtiene el código de un rango [start, end] aplicando todas las transformaciones de sus nodos hijos
+  function renderRange(start: number, end: number): string {
+    const inner = replacements
+      .filter(r => r.start >= start && r.end <= end)
+      .sort((a, b) => b.start - a.start);
+
+    let slice = normalizedCode.slice(start, end);
+    for (const r of inner) {
+      const relStart = r.start - start;
+      const relEnd = r.end - start;
+      slice = slice.slice(0, relStart) + r.text + slice.slice(relEnd);
+    }
+    return slice;
+  }
+
+  // Registra el reemplazo de un nodo consolidando y limpiando los reemplazos internos ya absorbidos
+  function replaceNode(start: number, end: number, text: string) {
+    replacements = replacements.filter(r => !(r.start >= start && r.end <= end));
+    replacements.push({ start, end, text });
+  }
+
   function isArrayAccess(node: any): boolean {
     return Boolean(
       node &&
@@ -212,152 +257,228 @@ export function instrumentAndTraceStudentCode(
     );
   }
 
-  function walk(node: any, parent: any) {
+  // Determina si un nodo involucra un literal o variable de punto flotante en C
+  function isFloatingPointExpr(node: any): boolean {
+    if (!node || typeof node !== 'object') return false;
+    if (node.type === 'Literal') {
+      const raw = String(node.raw ?? node.value ?? '');
+      return raw.includes('.');
+    }
+    if (node.type === 'Identifier') {
+      const t = variableTypes[node.name];
+      return t === 'float' || t === 'double';
+    }
+    if (node.type === 'BinaryExpression') {
+      return isFloatingPointExpr(node.left) || isFloatingPointExpr(node.right);
+    }
+    return false;
+  }
+
+  // Recorrido Post-Order (primero transforma hijos, luego transforma el padre usando renderRange)
+  function transformAST(node: any, parent: any, currentFuncName: string | null) {
     if (!node || typeof node !== 'object') return;
 
-    // Convertir funciones normales a generadores (function* foo)
-    if (node.type === 'FunctionDeclaration') {
-      const funcStart = node.start;
-      replacements.push({
-        start: funcStart,
-        end: funcStart + 8, // 'function'
-        text: 'function*',
-        priority: 10,
-      });
+    const activeFunc =
+      node.type === 'FunctionDeclaration' && node.id?.name ? node.id.name : currentFuncName;
+
+    // 1. Primero transformar recursivamente todos los nodos hijos (Post-Order)
+    for (const key of Object.keys(node)) {
+      if (key === 'loc' || key === 'range') continue;
+      const child = node[key];
+      if (Array.isArray(child)) {
+        for (const item of child) {
+          transformAST(item, node, activeFunc);
+        }
+      } else if (child && typeof child === 'object' && typeof child.type === 'string') {
+        transformAST(child, node, activeFunc);
+      }
     }
 
-    // Convertir llamadas a funciones del usuario en llamadas delegadas yield*
+    const line = node.loc?.start?.line ?? 1;
+    const activeVarsSet =
+      activeFunc && functionLocalVars.has(activeFunc)
+        ? functionLocalVars.get(activeFunc)!
+        : declaredVariables;
+    const snapshotExpr = buildSnapshotExpr(activeVarsSet);
+
+    // 2. Transformar llamadas a funciones del usuario: fn(...) -> (yield* fn(...))
     if (
       node.type === 'CallExpression' &&
-      node.callee &&
-      node.callee.type === 'Identifier' &&
+      node.callee?.type === 'Identifier' &&
       declaredFunctions.has(node.callee.name)
     ) {
-      replacements.push({
-        start: node.start,
-        end: node.start,
-        text: '(yield* ',
-        priority: 15,
-      });
-      replacements.push({
-        start: node.end,
-        end: node.end,
-        text: ')',
-        priority: 15,
-      });
+      const callCode = renderRange(node.start, node.end);
+      replaceNode(node.start, node.end, `(yield* ${callCode})`);
+      return;
     }
 
-    // Inyección de paso en sentencias ejecutables
-    const isStatement = [
-      'VariableDeclaration',
-      'ExpressionStatement',
-      'IfStatement',
-      'ForStatement',
-      'WhileStatement',
-      'ReturnStatement',
-    ].includes(node.type);
-
-    if (isStatement && parent && (parent.type === 'BlockStatement' || parent.type === 'Program')) {
-      const line = node.loc?.start?.line ?? 1;
-      const injection = `yield* __paso(${line}, ${snapshotExpr}); `;
-      replacements.push({
-        start: node.start,
-        end: node.start,
-        text: injection,
-        priority: 5,
-      });
-    }
-
-    // Interceptar comparaciones sobre cualquier arreglo (arr[i] > arr[j], izq[i] <= der[j], datos[i] == clave)
+    // 3. Transformar expresiones binarias (Comparaciones sobre arreglos y División entera en C)
     if (node.type === 'BinaryExpression') {
       const op = node.operator;
       const isCompareOp = ['<', '>', '<=', '>=', '===', '==', '!==', '!='].includes(op);
 
       if (isCompareOp) {
-        const line = node.loc?.start?.line ?? 1;
         const leftIsArr = isArrayAccess(node.left);
         const rightIsArr = isArrayAccess(node.right);
 
         if (leftIsArr && rightIsArr) {
           const leftArrName = node.left.object.name;
           const rightArrName = node.right.object.name;
-          const leftIdxCode = normalizedCode.slice(node.left.property.start, node.left.property.end);
-          const rightIdxCode = normalizedCode.slice(node.right.property.start, node.right.property.end);
-          replacements.push({
-            start: node.start,
-            end: node.end,
-            text: `(yield* __comparar(${leftArrName}, ${JSON.stringify(leftArrName)}, ${leftIdxCode}, ${rightArrName}, ${JSON.stringify(rightArrName)}, ${rightIdxCode}, ${JSON.stringify(op)}, ${line}, ${snapshotExpr}))`,
-            priority: 20,
-          });
+          const leftIdxCode = renderRange(node.left.property.start, node.left.property.end);
+          const rightIdxCode = renderRange(node.right.property.start, node.right.property.end);
+          replaceNode(
+            node.start,
+            node.end,
+            `(yield* __comparar(${leftArrName}, ${JSON.stringify(leftArrName)}, ${leftIdxCode}, ${rightArrName}, ${JSON.stringify(rightArrName)}, ${rightIdxCode}, ${JSON.stringify(op)}, ${line}, ${snapshotExpr}))`
+          );
           return;
         } else if (leftIsArr) {
           const arrName = node.left.object.name;
-          const idxCode = normalizedCode.slice(node.left.property.start, node.left.property.end);
-          const valCode = normalizedCode.slice(node.right.start, node.right.end);
-          replacements.push({
-            start: node.start,
-            end: node.end,
-            text: `(yield* __compararValor(${arrName}, ${JSON.stringify(arrName)}, ${idxCode}, ${valCode}, ${JSON.stringify(op)}, false, ${line}, ${snapshotExpr}))`,
-            priority: 20,
-          });
+          const idxCode = renderRange(node.left.property.start, node.left.property.end);
+          const valCode = renderRange(node.right.start, node.right.end);
+          replaceNode(
+            node.start,
+            node.end,
+            `(yield* __compararValor(${arrName}, ${JSON.stringify(arrName)}, ${idxCode}, ${valCode}, ${JSON.stringify(op)}, false, ${line}, ${snapshotExpr}))`
+          );
           return;
         } else if (rightIsArr) {
           const arrName = node.right.object.name;
-          const idxCode = normalizedCode.slice(node.right.property.start, node.right.property.end);
-          const valCode = normalizedCode.slice(node.left.start, node.left.end);
-          replacements.push({
-            start: node.start,
-            end: node.end,
-            text: `(yield* __compararValor(${arrName}, ${JSON.stringify(arrName)}, ${idxCode}, ${valCode}, ${JSON.stringify(op)}, true, ${line}, ${snapshotExpr}))`,
-            priority: 20,
-          });
+          const idxCode = renderRange(node.right.property.start, node.right.property.end);
+          const valCode = renderRange(node.left.start, node.left.end);
+          replaceNode(
+            node.start,
+            node.end,
+            `(yield* __compararValor(${arrName}, ${JSON.stringify(arrName)}, ${idxCode}, ${valCode}, ${JSON.stringify(op)}, true, ${line}, ${snapshotExpr}))`
+          );
           return;
         }
       }
-    }
 
-    // Interceptar asignaciones sobre cualquier arreglo: nombreArr[j] = valor
-    if (node.type === 'AssignmentExpression') {
-      if (isArrayAccess(node.left)) {
-        const line = node.loc?.start?.line ?? 1;
-        const arrName = node.left.object.name;
-        const idxCode = normalizedCode.slice(node.left.property.start, node.left.property.end);
-        const valCode = normalizedCode.slice(node.right.start, node.right.end);
-        replacements.push({
-          start: node.start,
-          end: node.end,
-          text: `(yield* __asignar(${arrName}, ${JSON.stringify(arrName)}, ${idxCode}, ${valCode}, ${line}, ${snapshotExpr}))`,
-          priority: 25,
-        });
+      // P-01: En lenguaje C, truncar la división entera (ej. (izq + der) / 2 -> Math.trunc((izq + der) / 2))
+      if (op === '/' && detectedLanguage === 'c' && !isFloatingPointExpr(node)) {
+        const leftCode = renderRange(node.left.start, node.left.end);
+        const rightCode = renderRange(node.right.start, node.right.end);
+        replaceNode(node.start, node.end, `Math.trunc((${leftCode}) / (${rightCode}))`);
         return;
       }
     }
 
-    // Recorrer nodos hijos
-    for (const key of Object.keys(node)) {
-      const child = node[key];
-      if (Array.isArray(child)) {
-        for (const item of child) {
-          walk(item, node);
-        }
-      } else if (child && typeof child === 'object') {
-        walk(child, node);
+    // 4. Transformar asignaciones a arreglos (P-03: soporta =, +=, -=, *=, /=, %=)
+    if (node.type === 'AssignmentExpression' && isArrayAccess(node.left)) {
+      const arrName = node.left.object.name;
+      const idxCode = renderRange(node.left.property.start, node.left.property.end);
+      const valCode = renderRange(node.right.start, node.right.end);
+      const op = node.operator || '=';
+      replaceNode(
+        node.start,
+        node.end,
+        `(yield* __asignar(${arrName}, ${JSON.stringify(arrName)}, ${idxCode}, ${valCode}, ${JSON.stringify(op)}, ${line}, ${snapshotExpr}))`
+      );
+      return;
+    }
+
+    // 5. Transformar incremento/decremento sobre arreglos (P-03: arr[i]++, --arr[i])
+    if (node.type === 'UpdateExpression' && isArrayAccess(node.argument)) {
+      const arrName = node.argument.object.name;
+      const idxCode = renderRange(node.argument.property.start, node.argument.property.end);
+      const op = node.operator;
+      const isPrefix = Boolean(node.prefix);
+      replaceNode(
+        node.start,
+        node.end,
+        `(yield* __actualizar(${arrName}, ${JSON.stringify(arrName)}, ${idxCode}, ${JSON.stringify(op)}, ${isPrefix}, ${line}, ${snapshotExpr}))`
+      );
+      return;
+    }
+
+    // 6. Transformar sentencias return para capturar el valor de retorno (P-06)
+    if (node.type === 'ReturnStatement') {
+      if (node.argument) {
+        const argCode = renderRange(node.argument.start, node.argument.end);
+        replaceNode(
+          node.start,
+          node.end,
+          `return (yield* __retornar(${line}, (${argCode}), ${snapshotExpr}));`
+        );
+      } else {
+        replaceNode(
+          node.start,
+          node.end,
+          `{ yield* __retornar(${line}, undefined, ${snapshotExpr}); return; }`
+        );
       }
+      return;
+    }
+
+    // 7. Proteger y trazar bucles (ForStatement, WhileStatement, DoWhileStatement) con o sin llaves (P-02)
+    if (
+      node.type === 'ForStatement' ||
+      node.type === 'WhileStatement' ||
+      node.type === 'DoWhileStatement'
+    ) {
+      if (node.body) {
+        if (node.body.type === 'BlockStatement') {
+          const bodyInner = renderRange(node.body.start + 1, node.body.end - 1);
+          replaceNode(
+            node.body.start,
+            node.body.end,
+            `{ yield* __iteracion(${line}, ${snapshotExpr}); ${bodyInner} }`
+          );
+        } else {
+          const singleStmtCode = renderRange(node.body.start, node.body.end);
+          const bodyLine = node.body.loc?.start?.line ?? line;
+          replaceNode(
+            node.body.start,
+            node.body.end,
+            `{ yield* __iteracion(${line}, ${snapshotExpr}); ${singleStmtCode} yield* __paso(${bodyLine}, ${snapshotExpr}); }`
+          );
+        }
+      }
+      return;
+    }
+
+    // 8. Transformar declaraciones y expresiones escalares capturando su estado POST-ejecución (P-05)
+    if (
+      (node.type === 'VariableDeclaration' || node.type === 'ExpressionStatement') &&
+      parent &&
+      (parent.type === 'BlockStatement' || parent.type === 'Program')
+    ) {
+      // Si es una asignación o actualización directa sobre un arreglo, __asignar/__actualizar ya emite el paso
+      if (
+        node.type === 'ExpressionStatement' &&
+        ((node.expression?.type === 'AssignmentExpression' && isArrayAccess(node.expression.left)) ||
+          (node.expression?.type === 'UpdateExpression' && isArrayAccess(node.expression.argument)))
+      ) {
+        return;
+      }
+
+      const stmtCode = renderRange(node.start, node.end);
+      replaceNode(
+        node.start,
+        node.end,
+        `${stmtCode} yield* __paso(${line}, ${snapshotExpr});`
+      );
+      return;
+    }
+
+    // 9. Envolver declaraciones de función con gestión de Call Stack (__pushFrame / __popFrame) (P-06)
+    if (node.type === 'FunctionDeclaration' && node.id?.name && node.body?.type === 'BlockStatement') {
+      const fnName = node.id.name;
+      const headerToBody = renderRange(node.id.end, node.body.start);
+      const bodyInner = renderRange(node.body.start + 1, node.body.end - 1);
+      replaceNode(
+        node.start,
+        node.end,
+        `function* ${fnName}${headerToBody}{ __hooks.__pushFrame(${JSON.stringify(fnName)}, ${snapshotExpr}); try { ${bodyInner} } finally { __hooks.__popFrame(); } }`
+      );
+      return;
     }
   }
 
-  walk(ast, null);
+  transformAST(ast, null, null);
 
-  // Aplicar reemplazos de atrás hacia adelante
-  replacements.sort((a, b) => b.start - a.start || b.priority - a.priority);
-
-  let transformedCode = normalizedCode;
-  for (const rep of replacements) {
-    transformedCode =
-      transformedCode.slice(0, rep.start) +
-      rep.text +
-      transformedCode.slice(rep.end);
-  }
+  const transformedCode = renderRange(0, normalizedCode.length);
 
   // Punto de entrada: ejecutar main() si existe, o la primera función declarada
   let invocation = '';
@@ -370,7 +491,7 @@ export function instrumentAndTraceStudentCode(
   // Envoltura completa del generador
   const generatorHeader = `
 return function* (__initialArr, __clave, __hooks) {
-  const { __paso, __comparar, __compararValor, __asignar, __intercambiar } = __hooks;
+  const { __paso, __iteracion, __comparar, __compararValor, __asignar, __actualizar, __intercambiar, __retornar } = __hooks;
   let arr = __initialArr;
 
   function* swap(a, i, j) { yield* __intercambiar(a, i, j); }
@@ -381,7 +502,7 @@ return function* (__initialArr, __clave, __hooks) {
 };
 `;
 
-  // 4. Inicializar conjunto de datos de respaldo
+  // 4. Inicializar conjunto de datos y Pila de Ejecución (Call Stack)
   const fallbackArray: number[] =
     mainArrayValues && mainArrayValues.length > 0
       ? [...mainArrayValues]
@@ -391,6 +512,16 @@ return function* (__initialArr, __clave, __hooks) {
   let comparisonsCount = 0;
   let swapsCount = 0;
   let operationsCount = 0;
+
+  // Pila real de marcos de ejecución (Call Stack)
+  interface RuntimeStackFrame {
+    id: string;
+    name: string;
+    getVarsFn: () => VariableSnapshot;
+    returnValue?: string | number | boolean | null;
+  }
+  const runtimeCallStack: RuntimeStackFrame[] = [];
+  let frameIdCounter = 0;
 
   // Mapa de todos los arreglos rastreados por referencia en memoria
   interface TrackedArrayEntry {
@@ -425,7 +556,6 @@ return function* (__initialArr, __clave, __hooks) {
       if (preferredName && preferredName !== '__initialArr') {
         entry.name = preferredName;
       }
-      // Sincronizar longitud y valores si el arreglo mutó directamente (ej. push o inicialización)
       if (entry.elements.length !== arrRef.length) {
         entry.elements = arrRef.map((val, idx) => ({
           id: `${entry!.idPrefix}-item-${idx}`,
@@ -443,40 +573,98 @@ return function* (__initialArr, __clave, __hooks) {
     return entry;
   }
 
-  // Registrar el arreglo de respaldo inicial por si el usuario aún no inicializa su arreglo en la línea 1
   ensureTrackedArray(fallbackArray, primaryArrayName || 'arr');
 
-  function extractScopeAndArrays(
-    rawVars: VariableSnapshot,
-    highlightOverrides?: Map<number[], Map<number, { state: ElementState; indicator?: string }>>
-  ): {
-    scalarVars: Record<string, string | number | boolean | null | undefined>;
-    namedArrays: NamedArrayState[];
-    primaryElements: ArrayElement[];
+  function inferVariableType(key: string, val: any): string {
+    if (variableTypes[key]) {
+      return variableTypes[key];
+    }
+    if (Array.isArray(val) || (typeof val === 'string' && val.startsWith('→'))) {
+      return 'int[]';
+    }
+    if (typeof val === 'boolean') return 'bool';
+    if (typeof val === 'number') {
+      return Number.isInteger(val) ? 'int' : 'float';
+    }
+    if (typeof val === 'string') return 'char*';
+    return 'int';
+  }
+
+  function sanitizeFrameVariables(rawVars: VariableSnapshot): {
+    scalars: Record<string, string | number | boolean | null | undefined>;
+    types: Record<string, string>;
   } {
-    const scalarVars: Record<string, string | number | boolean | null | undefined> = {};
-    const activeArrayRefs = new Set<number[]>();
+    const scalars: Record<string, string | number | boolean | null | undefined> = {};
+    const types: Record<string, string> = {};
 
     for (const [key, val] of Object.entries(rawVars)) {
       if (Array.isArray(val)) {
-        // Ignorar el arreglo fallback inyectado si el estudiante declaró sus propios arreglos en main()
         if (key === 'arr' && val === fallbackArray && declaredFunctions.has('main') && trackedArrays.size > 1) {
           continue;
         }
         ensureTrackedArray(val, key);
-        activeArrayRefs.add(val);
-        scalarVars[key] = `→ [0..${ Math.max(0, val.length - 1) }]`;
+        scalars[key] = `→ [0..${Math.max(0, val.length - 1)}]`;
+        types[key] = variableTypes[key] || 'int[]';
       } else if (
         typeof val === 'number' ||
         typeof val === 'boolean' ||
         typeof val === 'string' ||
         val === null
       ) {
-        scalarVars[key] = val;
+        scalars[key] = val;
+        types[key] = inferVariableType(key, val);
       }
     }
+    return { scalars, types };
+  }
 
-    // Si en este paso ya se habían registrado arreglos del usuario, eliminar el fallbackArray si no se usa
+  function buildStepFramesAndArrays(
+    currentRawVars: VariableSnapshot,
+    highlightOverrides?: Map<number[], Map<number, { state: ElementState; indicator?: string }>>
+  ): {
+    frames: MemoryFrame[];
+    namedArrays: NamedArrayState[];
+    primaryElements: ArrayElement[];
+    topScalarVars: VariableSnapshot;
+  } {
+    // 1. Construir la pila de frames desde el tope (función activa) hasta la base (main / global)
+    const frames: MemoryFrame[] = [];
+    let topScalarVars: VariableSnapshot = currentRawVars;
+
+    if (runtimeCallStack.length > 0) {
+      for (let i = runtimeCallStack.length - 1; i >= 0; i--) {
+        const rtFrame = runtimeCallStack[i];
+        const isTop = i === runtimeCallStack.length - 1;
+        const raw = isTop && Object.keys(currentRawVars).length > 0 ? currentRawVars : rtFrame.getVarsFn();
+        if (isTop) topScalarVars = raw;
+
+        const { scalars, types } = sanitizeFrameVariables(raw);
+        if (rtFrame.returnValue !== undefined) {
+          scalars['retorno'] = rtFrame.returnValue;
+          types['retorno'] = inferVariableType('retorno', rtFrame.returnValue);
+        }
+
+        frames.push({
+          id: rtFrame.id,
+          name: `${rtFrame.name}()`,
+          isActive: isTop,
+          variables: scalars,
+          variableTypes: types,
+          returnValue: rtFrame.returnValue,
+        });
+      }
+    } else {
+      const { scalars, types } = sanitizeFrameVariables(currentRawVars);
+      frames.push({
+        id: 'frame-student-root',
+        name: firstDeclaredFunction ? `${firstDeclaredFunction}()` : 'Programa',
+        isActive: true,
+        variables: scalars,
+        variableTypes: types,
+      });
+    }
+
+    // 2. Construir lista de arreglos rastreados
     const userArrayEntries = Array.from(trackedArrays.values()).filter(e => e.ref !== fallbackArray);
     const entriesToRender =
       userArrayEntries.length > 0 ? userArrayEntries : Array.from(trackedArrays.values());
@@ -510,7 +698,7 @@ return function* (__initialArr, __clave, __hooks) {
             state: 'default' as ElementState,
           }));
 
-    return { scalarVars, namedArrays, primaryElements };
+    return { frames, namedArrays, primaryElements, topScalarVars };
   }
 
   function resetTransientStates() {
@@ -532,31 +720,10 @@ return function* (__initialArr, __clave, __hooks) {
     highlightOverrides?: Map<number[], Map<number, { state: ElementState; indicator?: string }>>
   ): Step {
     operationsCount++;
-    const { scalarVars, namedArrays, primaryElements } = extractScopeAndArrays(
+    const { frames, namedArrays, primaryElements, topScalarVars } = buildStepFramesAndArrays(
       rawVars,
       highlightOverrides
     );
-
-    const activeFrameName = declaredFunctions.has('main')
-      ? 'main()'
-      : firstDeclaredFunction
-      ? `${firstDeclaredFunction}()`
-      : 'Programa';
-
-    const frames: MemoryFrame[] = [
-      {
-        id: 'frame-student',
-        name: activeFrameName,
-        isActive: true,
-        variables: scalarVars,
-      },
-      {
-        id: 'frame-global',
-        name: 'Memoria Global',
-        isActive: false,
-        variables: { n: primaryElements.length },
-      },
-    ];
 
     const lineMap: Record<SupportedLanguage, number> = {
       pseudocode: line,
@@ -574,17 +741,26 @@ return function* (__initialArr, __clave, __hooks) {
     ];
 
     const activeIndices: Record<string, number | undefined> = {};
-    if (typeof rawVars.i === 'number') activeIndices.i = rawVars.i;
-    if (typeof rawVars.j === 'number') activeIndices.j = rawVars.j;
-    if (typeof rawVars.k === 'number') activeIndices.k = rawVars.k;
-    if (typeof rawVars.min === 'number') activeIndices.min = rawVars.min;
-    if (typeof rawVars.medio === 'number') activeIndices.mid = rawVars.medio;
-    if (typeof rawVars.mid === 'number') activeIndices.mid = rawVars.mid;
-    if (typeof rawVars.clave === 'number') activeIndices.keyVal = rawVars.clave;
-    if (typeof rawVars.inicio === 'number') activeIndices.left = rawVars.inicio;
-    if (typeof rawVars.left === 'number') activeIndices.left = rawVars.left;
-    if (typeof rawVars.fin === 'number') activeIndices.right = rawVars.fin;
-    if (typeof rawVars.right === 'number') activeIndices.right = rawVars.right;
+    const checkIdx = (name: string, targetKeyName: string) => {
+      if (typeof topScalarVars[name] === 'number') {
+        activeIndices[targetKeyName] = topScalarVars[name];
+      }
+    };
+    checkIdx('i', 'i');
+    checkIdx('j', 'j');
+    checkIdx('k', 'k');
+    checkIdx('min', 'min');
+    checkIdx('medio', 'mid');
+    checkIdx('mid', 'mid');
+    checkIdx('clave', 'keyVal');
+    checkIdx('inicio', 'left');
+    checkIdx('izq', 'left');
+    checkIdx('bajo', 'left');
+    checkIdx('left', 'left');
+    checkIdx('fin', 'right');
+    checkIdx('der', 'right');
+    checkIdx('alto', 'right');
+    checkIdx('right', 'right');
 
     return {
       stepIndex: steps.length + 1,
@@ -610,13 +786,49 @@ return function* (__initialArr, __clave, __hooks) {
     };
   }
 
-  // Hooks interceptores universales para cualquier arreglo
+  // Hooks interceptores universales
   const hooks = {
+    __pushFrame(fnName: string, getVarsFn: () => VariableSnapshot) {
+      frameIdCounter++;
+      runtimeCallStack.push({
+        id: `frame-${fnName}-${frameIdCounter}`,
+        name: fnName,
+        getVarsFn,
+      });
+    },
+
+    __popFrame() {
+      runtimeCallStack.pop();
+    },
+
     *__paso(line: number, getVarsFn: () => VariableSnapshot) {
       resetTransientStates();
       const vars = getVarsFn();
-      steps.push(makeStep(line, `Ejecución de sentencia en línea ${line}`, 'check', vars));
+      steps.push(makeStep(line, `Sentencia ejecutada en línea ${line}`, 'check', vars));
       yield;
+    },
+
+    *__iteracion(line: number, getVarsFn: () => VariableSnapshot) {
+      resetTransientStates();
+      const vars = getVarsFn();
+      steps.push(makeStep(line, `Iteración de bucle en línea ${line}`, 'iterate_inner', vars));
+      yield;
+    },
+
+    *__retornar(line: number, retVal: any, getVarsFn: () => VariableSnapshot) {
+      resetTransientStates();
+      const vars = getVarsFn();
+      if (runtimeCallStack.length > 0) {
+        runtimeCallStack[runtimeCallStack.length - 1].returnValue =
+          retVal !== undefined ? retVal : 'void';
+      }
+      const desc =
+        retVal !== undefined
+          ? `Retornando valor: ${retVal} (línea ${line})`
+          : `Retornando de la función (línea ${line})`;
+      steps.push(makeStep(line, desc, 'finish', vars));
+      yield;
+      return retVal;
     },
 
     *__comparar(
@@ -632,8 +844,10 @@ return function* (__initialArr, __clave, __hooks) {
     ) {
       resetTransientStates();
       comparisonsCount++;
-      const valI = Array.isArray(leftArr) ? leftArr[i] : undefined;
-      const valJ = Array.isArray(rightArr) ? rightArr[j] : undefined;
+      const idxI = Math.trunc(Number(i));
+      const idxJ = Math.trunc(Number(j));
+      const valI = Array.isArray(leftArr) ? leftArr[idxI] : undefined;
+      const valJ = Array.isArray(rightArr) ? rightArr[idxJ] : undefined;
 
       let res = false;
       switch (op) {
@@ -653,20 +867,20 @@ return function* (__initialArr, __clave, __hooks) {
       const overrides = new Map<number[], Map<number, { state: ElementState; indicator?: string }>>();
       if (Array.isArray(leftArr)) {
         const m = new Map<number, { state: ElementState; indicator?: string }>();
-        m.set(i, { state: 'comparing', indicator: '?' });
+        m.set(idxI, { state: 'comparing', indicator: '?' });
         overrides.set(leftArr, m);
       }
       if (Array.isArray(rightArr)) {
         const m = overrides.get(rightArr) || new Map<number, { state: ElementState; indicator?: string }>();
-        m.set(j, { state: 'comparing', indicator: '?' });
+        m.set(idxJ, { state: 'comparing', indicator: '?' });
         overrides.set(rightArr, m);
       }
 
-      const vars = getVarsFn ? getVarsFn() : { i, j };
+      const vars = getVarsFn ? getVarsFn() : { i: idxI, j: idxJ };
       steps.push(
         makeStep(
           line,
-          `Comparación: ${leftName}[${i}] (${valI}) ${op} ${rightName}[${j}] (${valJ}) → ${res ? 'Verdadero' : 'Falso'}`,
+          `Comparación: ${leftName}[${idxI}] (${valI}) ${op} ${rightName}[${idxJ}] (${valJ}) → ${res ? 'Verdadero' : 'Falso'}`,
           'compare',
           vars,
           overrides
@@ -689,7 +903,8 @@ return function* (__initialArr, __clave, __hooks) {
     ) {
       resetTransientStates();
       comparisonsCount++;
-      const arrVal = Array.isArray(targetArr) ? targetArr[idx] : undefined;
+      const cleanIdx = Math.trunc(Number(idx));
+      const arrVal = Array.isArray(targetArr) ? targetArr[cleanIdx] : undefined;
 
       let res = false;
       if (reverse) {
@@ -722,18 +937,18 @@ return function* (__initialArr, __clave, __hooks) {
       if (Array.isArray(targetArr)) {
         const m = new Map<number, { state: ElementState; indicator?: string }>();
         const isEqualityMatch = (op === '==' || op === '===') && res;
-        m.set(idx, {
+        m.set(cleanIdx, {
           state: isEqualityMatch ? 'sorted' : 'comparing',
           indicator: isEqualityMatch ? '✔' : '?',
         });
         overrides.set(targetArr, m);
       }
 
-      const vars = getVarsFn ? getVarsFn() : { i: idx, clave: val };
+      const vars = getVarsFn ? getVarsFn() : { i: cleanIdx, clave: val };
       steps.push(
         makeStep(
           line,
-          `Evaluando ${arrName}[${idx}] (${arrVal}) ${op} ${val} → ${res ? 'Verdadero' : 'Falso'}`,
+          `Evaluando ${arrName}[${cleanIdx}] (${arrVal}) ${op} ${val} → ${res ? 'Verdadero' : 'Falso'}`,
           'compare',
           vars,
           overrides
@@ -749,57 +964,115 @@ return function* (__initialArr, __clave, __hooks) {
       arrName: string,
       idx: number,
       value: number,
+      operator: string = '=',
       line: number = 1,
       getVarsFn?: () => VariableSnapshot
     ) {
       resetTransientStates();
       swapsCount++;
+      const cleanIdx = Math.trunc(Number(idx));
+      let finalVal = value;
+
       if (Array.isArray(targetArr)) {
-        targetArr[idx] = value;
+        const prevVal = Number(targetArr[cleanIdx]) || 0;
+        switch (operator) {
+          case '+=': finalVal = prevVal + value; break;
+          case '-=': finalVal = prevVal - value; break;
+          case '*=': finalVal = prevVal * value; break;
+          case '/=':
+            finalVal =
+              detectedLanguage === 'c' ? Math.trunc(prevVal / value) : prevVal / value;
+            break;
+          case '%=': finalVal = prevVal % value; break;
+          default: finalVal = value; break;
+        }
+
+        targetArr[cleanIdx] = finalVal;
         const entry = ensureTrackedArray(targetArr, arrName);
-        if (entry.elements[idx]) {
-          entry.elements[idx].value = value;
-          entry.elements[idx].state = 'swapped';
-          entry.elements[idx].nonColorIndicator = '⇄';
+        if (entry.elements[cleanIdx]) {
+          entry.elements[cleanIdx].value = finalVal;
+          entry.elements[cleanIdx].state = 'swapped';
+          entry.elements[cleanIdx].nonColorIndicator = '⇄';
         }
       }
 
-      const vars = getVarsFn ? getVarsFn() : { idx, value };
+      const vars = getVarsFn ? getVarsFn() : { idx: cleanIdx, value: finalVal };
+      const desc =
+        operator === '='
+          ? `Asignación en memoria: ${arrName}[${cleanIdx}] ← ${finalVal}`
+          : `Actualización en memoria: ${arrName}[${cleanIdx}] ${operator} ${value} → ${finalVal}`;
+
+      steps.push(makeStep(line, desc, 'assign', vars));
+
+      yield;
+      return finalVal;
+    },
+
+    *__actualizar(
+      targetArr: number[],
+      arrName: string,
+      idx: number,
+      operator: '++' | '--',
+      isPrefix: boolean,
+      line: number = 1,
+      getVarsFn?: () => VariableSnapshot
+    ) {
+      resetTransientStates();
+      swapsCount++;
+      const cleanIdx = Math.trunc(Number(idx));
+      const oldVal = Array.isArray(targetArr) ? Number(targetArr[cleanIdx]) || 0 : 0;
+      const newVal = operator === '++' ? oldVal + 1 : oldVal - 1;
+
+      if (Array.isArray(targetArr)) {
+        targetArr[cleanIdx] = newVal;
+        const entry = ensureTrackedArray(targetArr, arrName);
+        if (entry.elements[cleanIdx]) {
+          entry.elements[cleanIdx].value = newVal;
+          entry.elements[cleanIdx].state = 'swapped';
+          entry.elements[cleanIdx].nonColorIndicator = '⇄';
+        }
+      }
+
+      const vars = getVarsFn ? getVarsFn() : { idx: cleanIdx, value: newVal };
       steps.push(
         makeStep(
           line,
-          `Asignación en memoria: ${arrName}[${idx}] ← ${value}`,
+          `Actualización (${operator}): ${arrName}[${cleanIdx}] pasa de ${oldVal} a ${newVal}`,
           'assign',
           vars
         )
       );
 
       yield;
-      return value;
+      return isPrefix ? newVal : oldVal;
     },
 
     *__intercambiar(targetArr: number[], i: number, j: number, line: number = 1) {
       resetTransientStates();
       swapsCount++;
+      const idxI = Math.trunc(Number(i));
+      const idxJ = Math.trunc(Number(j));
+
       if (Array.isArray(targetArr)) {
-        const temp = targetArr[i];
-        targetArr[i] = targetArr[j];
-        targetArr[j] = temp;
+        const temp = targetArr[idxI];
+        targetArr[idxI] = targetArr[idxJ];
+        targetArr[idxJ] = temp;
 
         const entry = ensureTrackedArray(targetArr, 'arr');
-        if (entry.elements[i] && entry.elements[j]) {
-          const tempEl = entry.elements[i];
-          entry.elements[i] = { ...entry.elements[j], state: 'swapped', nonColorIndicator: '⇄' };
-          entry.elements[j] = { ...tempEl, state: 'swapped', nonColorIndicator: '⇄' };
+        if (entry.elements[idxI] && entry.elements[idxJ]) {
+          const tempEl = entry.elements[idxI];
+          entry.elements[idxI] = { ...entry.elements[idxJ], state: 'swapped', nonColorIndicator: '⇄' };
+          entry.elements[idxJ] = { ...tempEl, state: 'swapped', nonColorIndicator: '⇄' };
         }
       }
 
+      const vars = globalSnapshotExpr ? {} : { i: idxI, j: idxJ };
       steps.push(
         makeStep(
           line,
-          `Intercambio: [${i}] ⇄ [${j}] (${targetArr?.[i]} ⇄ ${targetArr?.[j]})`,
+          `Intercambio: [${idxI}] ⇄ [${idxJ}] (${targetArr?.[idxI]} ⇄ ${targetArr?.[idxJ]})`,
           'swap',
-          { i, j }
+          vars
         )
       );
       yield;
@@ -829,7 +1102,7 @@ return function* (__initialArr, __clave, __hooks) {
     }
 
     if (steps.length === 0) {
-      steps.push(makeStep(1, 'Código ejecutado sin operaciones sobre arreglos', 'finish'));
+      steps.push(makeStep(1, 'Código ejecutado sin operaciones registradas', 'finish'));
     }
 
     // Actualizar totalSteps en cada paso

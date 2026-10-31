@@ -22,14 +22,17 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
       ? namedArrays
       : [{ name: 'arr', elements: array }];
 
-  // Extraer variables del marco activo (estudiante o main)
+  // Extraer marco activo (tope de la pila de llamadas)
   const activeFrame = frames.find(f => f.isActive) || frames[0];
   const variables = activeFrame ? activeFrame.variables : {};
+  const variableTypes = activeFrame?.variableTypes || {};
+  // Pila de llamadas en orden cronológico (base -> tope activo)
+  const callStack = [...frames].reverse();
 
   // Variables activas de puntero/índice
   const getPointersForIndex = (idx: number, arrayLength: number) => {
     const pointers: { name: string; color: string }[] = [];
-    const addIfMatch = (val: number | undefined, name: string, color: string) => {
+    const addIfMatch = (val: number | string | boolean | null | undefined, name: string, color: string) => {
       if (typeof val === 'number' && val === idx && idx >= 0 && idx < arrayLength) {
         pointers.push({ name, color });
       }
@@ -42,6 +45,9 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
     addIfMatch(activeIndices.mid, 'medio', 'bg-emerald-500 text-slate-950 border-emerald-400');
     addIfMatch(activeIndices.left, 'izq', 'bg-blue-500 text-white border-blue-400');
     addIfMatch(activeIndices.right, 'der', 'bg-purple-500 text-white border-purple-400');
+    addIfMatch(variables.bajo, 'bajo', 'bg-blue-500 text-white border-blue-400');
+    addIfMatch(variables.alto, 'alto', 'bg-purple-500 text-white border-purple-400');
+    addIfMatch(variables.pos, 'pos', 'bg-emerald-500 text-slate-950 border-emerald-400');
 
     return pointers;
   };
@@ -286,29 +292,50 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
         })}
       </div>
 
-      {/* 3. Panel de Registros de Variables y Entorno de Ejecución */}
+      {/* 3. Panel de Registros de Variables y Pila de Ejecución */}
       <div className="bg-[#151724] border border-[#24273c] rounded-xl p-3 shrink-0">
-        <div className="flex items-center justify-between pb-2 mb-2 border-b border-[#24273c]">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 mb-2 border-b border-[#24273c]">
           <span className="text-[10px] uppercase font-bold tracking-widest text-slate-300 flex items-center gap-1.5">
             <Cpu className="w-3.5 h-3.5 text-indigo-400" />
             Variables de Ámbito ({activeFrame ? activeFrame.name : 'main()'})
           </span>
-          <span className="text-[10px] font-mono text-slate-400">
-            Registros Escalares y Punteros a Arreglos
-          </span>
+
+          {/* Pila de Llamadas (Call Stack) en vivo */}
+          <div className="flex items-center gap-1 flex-wrap">
+            <span className="text-[9px] uppercase font-mono text-slate-400 mr-1">Pila:</span>
+            {callStack.map((frame, idx) => (
+              <React.Fragment key={frame.id || idx}>
+                {idx > 0 && <span className="text-[10px] text-slate-500 font-mono">➔</span>}
+                <span
+                  className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+                    frame.isActive
+                      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 font-bold'
+                      : 'bg-[#12131e] text-slate-400 border-[#25283e]'
+                  }`}
+                >
+                  {frame.name}
+                  {frame.isActive ? ' • activo' : ''}
+                </span>
+              </React.Fragment>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2">
           {Object.entries(variables).map(([key, val]) => {
-            const isPointer = ['i', 'j', 'k', 'min', 'medio', 'clave', 'left', 'right', 'inicio', 'fin', 'mid'].includes(key);
-            const isTemp = key === 'temp';
+            const isPointer = ['i', 'j', 'k', 'min', 'medio', 'clave', 'left', 'right', 'inicio', 'fin', 'mid', 'izq', 'der', 'bajo', 'alto', 'pos'].includes(key);
+            const isTemp = key === 'temp' || key === 'pivote';
+            const isReturn = key === 'retorno';
             const isArrayRef = typeof val === 'string' && val.startsWith('→');
+            const declaredType = variableTypes[key] || (isArrayRef ? 'int[]' : isReturn ? 'return' : typeof val === 'boolean' ? 'bool' : typeof val === 'number' && !Number.isInteger(val) ? 'float' : 'int');
 
             return (
               <div
                 key={key}
                 className={`p-2 rounded-lg border flex flex-col justify-between font-mono ${
-                  isArrayRef
+                  isReturn
+                    ? 'bg-emerald-950/30 border-emerald-500/40'
+                    : isArrayRef
                     ? 'bg-[#16192b] border-emerald-500/30'
                     : isPointer
                     ? 'bg-[#1a1c2d] border-indigo-500/30'
@@ -318,12 +345,12 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
                 }`}
               >
                 <div className="flex items-center justify-between text-[9px] text-slate-400">
-                  <span className="font-bold text-slate-200">{key}</span>
-                  <span className="text-[8px] text-indigo-400">
-                    {isArrayRef ? 'int[]' : 'int'}
+                  <span className={`font-bold ${isReturn ? 'text-emerald-300' : 'text-slate-200'}`}>{key}</span>
+                  <span className={`text-[8px] ${isReturn ? 'text-emerald-400 font-bold' : 'text-indigo-400'}`}>
+                    {declaredType}
                   </span>
                 </div>
-                <div className="text-sm font-bold text-slate-100 mt-1 truncate" title={String(val ?? '—')}>
+                <div className={`text-sm font-bold mt-1 truncate ${isReturn ? 'text-emerald-200' : 'text-slate-100'}`} title={String(val ?? '—')}>
                   {val === undefined || val === null ? '—' : String(val)}
                 </div>
               </div>

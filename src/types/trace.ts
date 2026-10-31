@@ -27,6 +27,8 @@ export interface MemoryFrame {
   name: string;
   isActive: boolean;
   variables: Record<string, string | number | boolean | null | undefined>;
+  variableTypes?: Record<string, string>;
+  returnValue?: string | number | boolean | null;
 }
 
 export type OperationType = 
