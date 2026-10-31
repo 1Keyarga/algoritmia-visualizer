@@ -1,10 +1,20 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Step } from '../../types/trace';
 import { D3BarChart } from './D3BarChart';
+import { ArrayTableView } from './ArrayTableView';
 import { DivideAndConquerContainer } from './divide_and_conquer/DivideAndConquerContainer';
 import { SearchMapVisualizer } from './SearchMapVisualizer';
 import { StudentCodeVisualizer } from './StudentCodeVisualizer';
-import { BarChart3, GitFork, Search, Maximize2, Minimize2, Cpu } from 'lucide-react';
+import {
+  BarChart3,
+  GitFork,
+  Search,
+  Maximize2,
+  Minimize2,
+  Cpu,
+  Table2,
+  Flame,
+} from 'lucide-react';
 
 interface VisualizerPanelProps {
   currentStep: Step | null;
@@ -15,6 +25,8 @@ interface VisualizerPanelProps {
   algorithmFamily?: string;
   algorithmId?: string;
 }
+
+type ViewMode = 'primary' | 'bars' | 'table';
 
 export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
   currentStep,
@@ -30,21 +42,29 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
   const isCustomCode = algorithmFamily === 'custom' || algorithmId === 'custom-ast';
   const searchType = algorithmId === 'binary-search' ? 'binary' : 'linear';
 
+  const [viewMode, setViewMode] = useState<ViewMode>('primary');
+  const [showHeatmap, setShowHeatmap] = useState(false);
+
+  // Restablecer vista primaria al cambiar de familia de algoritmo
+  useEffect(() => {
+    setViewMode('primary');
+  }, [algorithmId]);
+
   return (
-    <div className="flex-1 bg-[#151622] p-4 flex flex-col min-h-[350px] select-none relative">
+    <div className="flex-1 bg-[#151622] p-4 flex flex-col min-h-[340px] select-none relative overflow-hidden">
       {/* Encabezado del panel de visualización */}
-      <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-[#232534] shrink-0">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-2.5 mb-2 border-b border-[#232534] shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
           {isCustomCode ? (
-            <Cpu className="w-4 h-4 text-indigo-400" />
+            <Cpu className="w-4 h-4 text-indigo-400 shrink-0" />
           ) : isDivideAndConquer ? (
-            <GitFork className="w-4 h-4 text-amber-400" />
+            <GitFork className="w-4 h-4 text-amber-400 shrink-0" />
           ) : isSearching ? (
-            <Search className="w-4 h-4 text-emerald-400" />
+            <Search className="w-4 h-4 text-emerald-400 shrink-0" />
           ) : (
-            <BarChart3 className="w-4 h-4 text-indigo-400" />
+            <BarChart3 className="w-4 h-4 text-indigo-400 shrink-0" />
           )}
-          <span className="text-xs font-bold tracking-wider text-slate-300 uppercase">
+          <span className="text-xs font-bold tracking-wider text-slate-300 uppercase shrink-0">
             {isCustomCode
               ? 'Depurador y Visualizador de Memoria'
               : isDivideAndConquer
@@ -56,16 +76,86 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
 
           {/* Explicación en línea para Divide y Vencerás */}
           {isDivideAndConquer && currentStep && (
-            <span className="text-[11px] text-slate-400 font-normal ml-2 hidden lg:inline truncate max-w-[420px]">
+            <span className="text-[11px] text-slate-400 font-normal ml-1 hidden xl:inline truncate max-w-[360px]">
               — {currentStep.explanation}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Métricas de comparaciones y movimientos */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Conmutador de Vista (RF-04 / T06): Árbol/Radar | Barras | Tabla */}
+          {!isCustomCode && (
+            <div className="flex items-center bg-[#1a1c2b] border border-[#2b2e44] rounded-lg p-0.5 text-[11px] font-medium">
+              {(isDivideAndConquer || isSearching) && (
+                <button
+                  onClick={() => setViewMode('primary')}
+                  className={`flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors cursor-pointer ${
+                    viewMode === 'primary'
+                      ? 'bg-indigo-600 text-white font-semibold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {isDivideAndConquer ? (
+                    <>
+                      <GitFork className="w-3 h-3" />
+                      <span>Árbol</span>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-3 h-3" />
+                      <span>Radar</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              <button
+                onClick={() =>
+                  setViewMode(isDivideAndConquer || isSearching ? 'bars' : 'primary')
+                }
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors cursor-pointer ${
+                  (isDivideAndConquer || isSearching ? viewMode === 'bars' : viewMode === 'primary')
+                    ? 'bg-indigo-600 text-white font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <BarChart3 className="w-3 h-3" />
+                <span>Barras</span>
+              </button>
+
+              <button
+                onClick={() => setViewMode('table')}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors cursor-pointer ${
+                  viewMode === 'table'
+                    ? 'bg-indigo-600 text-white font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Table2 className="w-3 h-3" />
+                <span>Tabla</span>
+              </button>
+            </div>
+          )}
+
+          {/* Botón de Mapa de Calor de Accesos (RF-19 / T19) */}
+          {!isCustomCode && (
+            <button
+              onClick={() => setShowHeatmap(!showHeatmap)}
+              className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[11px] font-mono transition-colors cursor-pointer ${
+                showHeatmap
+                  ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 font-bold'
+                  : 'bg-[#1c1d2c] border-[#2b2d42] text-slate-400 hover:text-slate-200'
+              }`}
+              title="Activar/Desactivar Mapa de Calor de Frecuencia de Accesos (RF-19)"
+            >
+              <Flame className={`w-3.5 h-3.5 ${showHeatmap ? 'text-amber-400' : 'text-slate-400'}`} />
+              <span className="hidden sm:inline">Mapa de Calor</span>
+            </button>
+          )}
+
+          {/* Métricas de comparaciones y movimientos en Divide y Vencerás */}
           {isDivideAndConquer && currentStep && (
-            <div className="hidden md:flex items-center gap-2 text-[10px] font-mono">
+            <div className="hidden lg:flex items-center gap-1.5 text-[10px] font-mono">
               <span className="px-2 py-0.5 rounded bg-[#1c1d2c] border border-[#2b2d42] text-slate-300">
                 Comp: {currentStep.metrics.comparisons}
               </span>
@@ -77,7 +167,7 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
 
           {/* Indicador de paso actual */}
           <div className="flex items-center gap-2 bg-[#1c1d2c] px-3 py-1 rounded-full border border-[#2b2d42]">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-amber-400" />
             <span className="text-xs font-mono font-semibold text-slate-200">
               Paso {stepIndex + 1} de {totalSteps}
             </span>
@@ -103,9 +193,16 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
         {currentStep ? (
           isCustomCode ? (
             <StudentCodeVisualizer currentStep={currentStep} />
+          ) : viewMode === 'table' ? (
+            <ArrayTableView currentStep={currentStep} showHeatmap={showHeatmap} />
+          ) : viewMode === 'bars' ? (
+            <div className="flex-1 flex items-center justify-center min-h-full overflow-hidden">
+              <D3BarChart array={currentStep.array} showHeatmap={showHeatmap} />
+            </div>
           ) : isDivideAndConquer && currentStep.divideAndConquer ? (
             <DivideAndConquerContainer
               dcState={currentStep.divideAndConquer}
+              currentStep={currentStep}
             />
           ) : isSearching ? (
             <div className="flex-1 flex items-center justify-center min-h-full overflow-auto">
@@ -116,12 +213,14 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
               />
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center min-h-full overflow-auto">
-              <D3BarChart array={currentStep.array} />
+            <div className="flex-1 flex items-center justify-center min-h-full overflow-hidden">
+              <D3BarChart array={currentStep.array} showHeatmap={showHeatmap} />
             </div>
           )
         ) : (
-          <div className="flex-1 flex items-center justify-center text-slate-500 text-xs">Cargando visualización...</div>
+          <div className="flex-1 flex items-center justify-center text-slate-500 text-xs">
+            Cargando visualización...
+          </div>
         )}
       </div>
     </div>

@@ -15,6 +15,7 @@ export interface ArrayElement {
   state: ElementState;
   label?: string;
   nonColorIndicator?: string;
+  accessCount?: number;
 }
 
 export interface NamedArrayState {
@@ -113,6 +114,8 @@ export interface RecursionTreeNode {
   rightId?: string;
   label: string;
   isLeftChild?: boolean;
+  pivotValue?: number;
+  pivotIndex?: number;
 }
 
 export interface ParallelWorkerTask {

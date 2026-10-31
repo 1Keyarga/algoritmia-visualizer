@@ -20,6 +20,7 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
   const minIndex = activeIndices?.min;
   const keyVal = activeIndices?.keyVal;
   const keyIndex = activeIndices?.keyIndex;
+  const pivotIndex = activeIndices?.pivot;
   const leftIndex = activeIndices?.left;
   const rightIndex = activeIndices?.right;
   const midIndex = activeIndices?.mid;
@@ -48,6 +49,7 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
                 const isI = iIndex === idx;
                 const isMin = minIndex === idx;
                 const isKey = (keyIndex !== undefined && keyIndex === idx) || (keyVal !== undefined && isI && jIndex !== undefined);
+                const isPivot = pivotIndex !== undefined && pivotIndex === idx;
                 const isLeft = leftIndex === idx;
                 const isRight = rightIndex === idx;
                 const isMid = midIndex === idx;
@@ -55,7 +57,10 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
                 let indicator = null;
                 let badgeStyle = 'bg-amber-500/30 text-amber-300 border-amber-500/60 shadow-amber-500/20';
 
-                if (isMin && isI && jIndex !== undefined) {
+                if (isPivot) {
+                  indicator = 'pivote';
+                  badgeStyle = 'bg-purple-500/30 text-purple-300 border-purple-500/60 shadow-purple-500/20';
+                } else if (isMin && isI && jIndex !== undefined) {
                   indicator = 'i, min';
                   badgeStyle = 'bg-purple-500/30 text-purple-300 border-purple-500/60 shadow-purple-500/20';
                 } else if (isMin) {
@@ -96,7 +101,7 @@ export const ArrayGrid: React.FC<ArrayGridProps> = ({
                     className="w-12 xl:w-14 text-center shrink-0 text-[10px] font-black flex items-center justify-center"
                   >
                     {indicator && (
-                      <span className={`px-1.5 py-0.5 rounded-md border shadow-md animate-pulse ${badgeStyle}`}>
+                      <span className={`px-1.5 py-0.5 rounded-md border shadow-xs ${badgeStyle}`}>
                         {indicator}
                       </span>
                     )}

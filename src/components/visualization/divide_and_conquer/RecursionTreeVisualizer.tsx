@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import type { RecursionTreeNode, DivideAndConquerState } from '../../../types/trace';
-import { ZoomIn, ZoomOut, Target, RefreshCw } from 'lucide-react';
+import { ZoomIn, ZoomOut, Target, Maximize } from 'lucide-react';
 import { useContainerSize } from '../../../hooks/useContainerSize';
 
 interface RecursionTreeVisualizerProps {
@@ -22,37 +22,41 @@ export const RecursionTreeVisualizer: React.FC<RecursionTreeVisualizerProps> = (
   const gRef = useRef<SVGGElement>(null);
   const zoomBehavior = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const currentTransform = useRef<d3.ZoomTransform>(d3.zoomIdentity);
+  const userHasPannedRef = useRef<boolean>(false);
   const viewSize = useContainerSize(containerRef);
 
   const [isAutoTracking, setIsAutoTracking] = useState(false);
-  const [selectedNode, setSelectedNode] = useState<PositionedNode | null>(null);
-  const [tooltipPos, setTooltipPos] = useState<{ x: number; y: number } | null>(null);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const { nodes, activeNodeId } = dcState;
 
-  // 1. Geometría del Árbol
+  // 1. Geometría proporcionada y sin desbordes para cualquier cantidad de elementos
   const { positionedNodes, connections, bounds } = useMemo(() => {
     const nodeArray = Object.values(nodes);
     if (nodeArray.length === 0) {
       return { positionedNodes: [], connections: [], bounds: null };
     }
 
-    const SPACING_PER_ELEMENT = 120;
-    const PADDING_X = 180;
-    const PADDING_Y = 120;
-    const LEVEL_HEIGHT = 180;
+    const rootNode = nodeArray.find(n => n.depth === 0) || nodeArray[0];
+    const totalElements = Math.max(1, rootNode.range[1] - rootNode.range[0] + 1);
+    const SPACING_PER_ELEMENT = totalElements > 12 ? 68 : totalElements > 8 ? 78 : 90;
+    const PADDING_X = 80;
+    const PADDING_Y = 64;
+    const LEVEL_HEIGHT = 128;
 
     const posMap: Record<string, PositionedNode> = {};
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
 
     nodeArray.forEach(node => {
       const start = node.range[0];
       const end = node.range[1];
-      const count = end - start + 1;
+      const count = Math.max(1, end - start + 1);
 
-      const width = Math.max(100, count * 40 + 30);
-      const height = 85;
+      const width = Math.max(118, count * 34 + 24);
+      const height = 78;
 
       const centerIndex = (start + end) / 2;
       const x = PADDING_X + centerIndex * SPACING_PER_ELEMENT;
@@ -90,246 +94,245 @@ export const RecursionTreeVisualizer: React.FC<RecursionTreeVisualizerProps> = (
     return {
       positionedNodes: Object.values(posMap),
       connections: conns,
-      bounds: { minX, maxX, minY, maxY, width: maxX - minX, height: maxY - minY },
+      bounds: {
+        minX,
+        maxX,
+        minY,
+        maxY,
+        width: Math.max(160, maxX - minX),
+        height: Math.max(100, maxY - minY),
+      },
     };
   }, [nodes]);
 
-  // 2. D3 Zoom — se bindea al SVG y almacena el transform actual
+  // 2. Configurar D3 Zoom sobre el lienzo SVG
   useEffect(() => {
     if (!svgRef.current || !gRef.current) return;
     const svg = d3.select(svgRef.current);
     const g = d3.select(gRef.current);
 
-    zoomBehavior.current = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.1, 3])
-      .on('zoom', (event) => {
+    zoomBehavior.current = d3
+      .zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.25, 2.2])
+      .on('zoom', event => {
         currentTransform.current = event.transform;
         g.attr('transform', event.transform.toString());
       })
-      .on('start', (event) => {
-        // Solo desactivar auto-tracking si el usuario arrastra manualmente
+      .on('start', event => {
         if (event.sourceEvent) {
+          userHasPannedRef.current = true;
           setIsAutoTracking(false);
         }
       });
 
-    // Aplicar al SVG — esto habilita drag y wheel en todo el viewport SVG
     svg.call(zoomBehavior.current);
-
-    // Prevenir doble-click zoom (confunde al usuario)
     svg.on('dblclick.zoom', null);
   }, []);
 
-  const fitToView = useCallback((animate: boolean) => {
-    if (!svgRef.current || !bounds || !zoomBehavior.current) return;
-    const vw = viewSize.width;
-    const vh = viewSize.height;
-    if (vw < 8 || vh < 8) return;
+  // 3. Encajar el árbol automáticamente en el contenedor
+  const fitToView = useCallback(
+    (animate: boolean) => {
+      if (!svgRef.current || !bounds || !zoomBehavior.current) return;
+      const vw = viewSize.width;
+      const vh = viewSize.height;
+      if (vw < 20 || vh < 20) return;
 
-    const padding = 60;
-    const scale = Math.min(
-      (vw - padding * 2) / (bounds.width || 1),
-      (vh - padding * 2) / (bounds.height || 1),
-      1.2
-    );
+      const paddingX = 48;
+      const paddingY = 36;
+      const scale = Math.min(
+        (vw - paddingX * 2) / Math.max(1, bounds.width),
+        (vh - paddingY * 2) / Math.max(1, bounds.height),
+        1.05
+      );
 
-    const cx = bounds.minX + bounds.width / 2;
-    const cy = bounds.minY + bounds.height / 2;
-    const transform = d3.zoomIdentity
-      .translate(vw / 2, vh / 2)
-      .scale(scale)
-      .translate(-cx, -cy);
+      const clampedScale = Math.max(0.35, scale);
+      const cx = bounds.minX + bounds.width / 2;
+      const cy = bounds.minY + bounds.height / 2;
+      const transform = d3.zoomIdentity
+        .translate(vw / 2, vh / 2)
+        .scale(clampedScale)
+        .translate(-cx, -cy);
 
-    const svg = d3.select(svgRef.current);
-    if (animate) {
-      svg.transition().duration(400).call(zoomBehavior.current.transform, transform);
-    } else {
-      svg.call(zoomBehavior.current.transform, transform);
+      const svg = d3.select(svgRef.current);
+      if (animate) {
+        svg
+          .transition()
+          .duration(260)
+          .ease(d3.easeCubicOut)
+          .call(zoomBehavior.current.transform, transform);
+      } else {
+        svg.call(zoomBehavior.current.transform, transform);
+      }
+    },
+    [bounds, viewSize.width, viewSize.height]
+  );
+
+  // Auto-encajar cuando cambia el tamaño del contenedor o crece el árbol (si el usuario no ha arrastrado manualmente)
+  useEffect(() => {
+    if (!bounds || viewSize.width < 20 || viewSize.height < 20) return;
+    if (!isAutoTracking && !userHasPannedRef.current) {
+      fitToView(positionedNodes.length > 1);
     }
-  }, [bounds, viewSize.width, viewSize.height]);
+  }, [bounds?.width, bounds?.height, viewSize.width, viewSize.height, isAutoTracking, fitToView, positionedNodes.length]);
 
-  // 4. Auto-Tracking del Nodo Activo — centra en el nodo activo a un zoom legible
-  const centerOnNode = useCallback((nodeId: string, animate: boolean) => {
-    if (!svgRef.current || !zoomBehavior.current) return;
-    const pNode = positionedNodes.find(n => n.node.id === nodeId);
-    if (!pNode) return;
-
-    const vw = viewSize.width;
-    const vh = viewSize.height;
-    if (vw < 8 || vh < 8) return;
-
-    // Escala confortable: lo suficientemente cerca para leer los nodos
-    const comfortScale = 0.75;
-    const transform = d3.zoomIdentity
-      .translate(vw / 2, vh / 2)
-      .scale(comfortScale)
-      .translate(-pNode.x, -pNode.y);
-
-    const svg = d3.select(svgRef.current);
-    if (animate) {
-      svg.transition().duration(500).ease(d3.easeCubicOut).call(zoomBehavior.current.transform, transform);
-    } else {
-      svg.call(zoomBehavior.current.transform, transform);
+  // Al reiniciar al paso inicial (un solo nodo raíz), volver a encajar automáticamente
+  useEffect(() => {
+    if (positionedNodes.length <= 1) {
+      userHasPannedRef.current = false;
+      fitToView(false);
     }
-  }, [positionedNodes, viewSize.width, viewSize.height]);
+  }, [positionedNodes.length, fitToView]);
+
+  // 4. Modo Seguimiento Opcional del Nodo Activo
+  const centerOnNode = useCallback(
+    (nodeId: string, animate: boolean) => {
+      if (!svgRef.current || !zoomBehavior.current) return;
+      const pNode = positionedNodes.find(n => n.node.id === nodeId);
+      if (!pNode) return;
+
+      const vw = viewSize.width;
+      const vh = viewSize.height;
+      if (vw < 20 || vh < 20) return;
+
+      const comfortScale = 0.85;
+      const transform = d3.zoomIdentity
+        .translate(vw / 2, vh / 2)
+        .scale(comfortScale)
+        .translate(-pNode.x, -pNode.y);
+
+      const svg = d3.select(svgRef.current);
+      if (animate) {
+        svg
+          .transition()
+          .duration(300)
+          .ease(d3.easeCubicOut)
+          .call(zoomBehavior.current.transform, transform);
+      } else {
+        svg.call(zoomBehavior.current.transform, transform);
+      }
+    },
+    [positionedNodes, viewSize.width, viewSize.height]
+  );
 
   useEffect(() => {
     if (!activeNodeId || !isAutoTracking) return;
     centerOnNode(activeNodeId, true);
   }, [activeNodeId, isAutoTracking, centerOnNode]);
 
-  // Handlers
   const handleZoomIn = () => {
     if (svgRef.current && zoomBehavior.current) {
-      d3.select(svgRef.current).transition().duration(300).call(zoomBehavior.current.scaleBy, 1.3);
+      userHasPannedRef.current = true;
+      d3.select(svgRef.current).transition().duration(200).call(zoomBehavior.current.scaleBy, 1.25);
     }
   };
 
   const handleZoomOut = () => {
     if (svgRef.current && zoomBehavior.current) {
-      d3.select(svgRef.current).transition().duration(300).call(zoomBehavior.current.scaleBy, 0.7);
+      userHasPannedRef.current = true;
+      d3.select(svgRef.current).transition().duration(200).call(zoomBehavior.current.scaleBy, 0.8);
     }
   };
 
   const handleResetView = () => {
+    userHasPannedRef.current = false;
     setIsAutoTracking(false);
     fitToView(true);
   };
 
   const handleToggleAutoTracking = () => {
-    const newState = !isAutoTracking;
-    setIsAutoTracking(newState);
-    if (newState && activeNodeId) {
-      // Al activar, centrar inmediatamente en el nodo activo a zoom legible
-      setTimeout(() => centerOnNode(activeNodeId, true), 50);
+    const nextState = !isAutoTracking;
+    setIsAutoTracking(nextState);
+    if (nextState && activeNodeId) {
+      centerOnNode(activeNodeId, true);
+    } else if (!nextState) {
+      userHasPannedRef.current = false;
+      fitToView(true);
     }
   };
-
-  // Calcula la posición óptima del tooltip relativa al contenedor, clampeada
-  const computeTooltipPos = useCallback((pNode: PositionedNode): { x: number; y: number; above: boolean } | null => {
-    if (!containerRef.current) return null;
-    const t = currentTransform.current;
-    const containerRect = containerRef.current.getBoundingClientRect();
-    const containerW = containerRect.width;
-    const containerH = containerRect.height;
-
-    const TOOLTIP_W = 260;
-    const TOOLTIP_H = 220;
-    const GAP = 14;
-
-    // Coordenadas del nodo en espacio de pantalla (relativas al contenedor)
-    const screenX = t.applyX(pNode.x);
-    const screenNodeTop = t.applyY(pNode.y - pNode.height / 2);
-    const screenNodeBottom = t.applyY(pNode.y + pNode.height / 2);
-
-    // Decidir si va arriba o abajo
-    const spaceBelow = containerH - screenNodeBottom;
-    const above = spaceBelow < TOOLTIP_H + GAP && screenNodeTop > TOOLTIP_H + GAP;
-
-    let posY = above ? screenNodeTop - GAP : screenNodeBottom + GAP;
-
-    // Clampear horizontalmente
-    let posX = Math.max(TOOLTIP_W / 2 + 8, Math.min(screenX, containerW - TOOLTIP_W / 2 - 8));
-    // Clampear verticalmente
-    if (above) {
-      posY = Math.max(8, posY);
-    } else {
-      posY = Math.min(containerH - TOOLTIP_H - 8, posY);
-    }
-
-    return { x: posX, y: posY, above };
-  }, []);
-
-  // Click en un nodo
-  const handleNodeClick = (pNode: PositionedNode, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (selectedNode?.node.id === pNode.node.id) {
-      setSelectedNode(null);
-      setTooltipPos(null);
-      return;
-    }
-    setSelectedNode(pNode);
-    const pos = computeTooltipPos(pNode);
-    if (pos) setTooltipPos(pos);
-  };
-
-  // Cerrar tooltip al hacer click en el fondo
-  const handleBackgroundClick = () => {
-    setSelectedNode(null);
-    setTooltipPos(null);
-  };
-
-  // Actualizar posición del tooltip cuando cambia el transform (pan/zoom)
-  useEffect(() => {
-    if (!selectedNode || !svgRef.current) return;
-
-    const svg = d3.select(svgRef.current);
-    const updateTooltipOnZoom = () => {
-      const pos = computeTooltipPos(selectedNode);
-      if (pos) setTooltipPos(pos);
-    };
-
-    svg.on('zoom.tooltip', updateTooltipOnZoom);
-    return () => { svg.on('zoom.tooltip', null); };
-  }, [selectedNode, computeTooltipPos]);
 
   const getNodeBadge = (state: RecursionTreeNode['state']) => {
     switch (state) {
       case 'dividing':
-        return { text: 'Dividiendo', bg: 'bg-slate-700/50 text-slate-300 border-slate-600' };
+        return { text: 'Dividiendo', bg: 'bg-sky-500/20 text-sky-300 border-sky-500/40' };
       case 'processing':
-        return { text: 'Procesando', bg: 'bg-amber-500/20 text-amber-300 border-amber-500/50' };
+        return { text: 'Activo', bg: 'bg-amber-500/20 text-amber-300 border-amber-500/50' };
       case 'base_case':
         return { text: 'Caso Base', bg: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50' };
       case 'combining':
         return { text: 'Combinando', bg: 'bg-purple-500/25 text-purple-300 border-purple-500/60' };
       case 'solved':
       case 'completed':
-        return { text: 'Resuelto', bg: 'bg-emerald-500/30 text-emerald-200 border-emerald-400 font-bold' };
+        return { text: 'Ordenado ✔', bg: 'bg-emerald-500/25 text-emerald-200 border-emerald-400/60 font-bold' };
       default:
-        return { text: 'Pendiente', bg: 'bg-[#151722] text-slate-500 border-[#232537]' };
+        return { text: 'Pendiente', bg: 'bg-[#151722] text-slate-400 border-[#232537]' };
     }
   };
+
+  const selectedNode = positionedNodes.find(p => p.node.id === selectedNodeId) || null;
 
   return (
     <div
       ref={containerRef}
       className="relative w-full h-full bg-[#0d0e15] overflow-hidden select-none"
     >
-      {/* Controles Flotantes */}
-      <div className="absolute top-4 right-4 z-20 flex flex-col gap-2">
-        <div className="flex items-center gap-1 bg-[#181a27]/90 border border-[#2b2d42] backdrop-blur p-1 rounded-lg shadow-lg">
-          <button onClick={handleZoomIn} title="Acercar" className="p-2 hover:bg-[#25283d] rounded-md text-slate-300 transition-colors cursor-pointer">
-            <ZoomIn className="w-4 h-4" />
-          </button>
-          <button onClick={handleZoomOut} title="Alejar" className="p-2 hover:bg-[#25283d] rounded-md text-slate-300 transition-colors cursor-pointer">
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          <button onClick={handleResetView} title="Reiniciar Vista" className="p-2 hover:bg-[#25283d] rounded-md text-slate-300 transition-colors cursor-pointer">
-            <RefreshCw className="w-4 h-4" />
-          </button>
-          <div className="w-[1px] h-5 bg-[#2b2d42] mx-1" />
-          <button
-            onClick={handleToggleAutoTracking}
-            title={isAutoTracking ? "Seguimiento automático activo" : "Activar seguimiento automático"}
-            className={`p-2 rounded-md transition-all flex items-center gap-1.5 border cursor-pointer ${
-              isAutoTracking
-                ? 'bg-emerald-600/90 border-emerald-500 text-white shadow-xs'
-                : 'bg-[#181a27] border-[#2b2d42] text-slate-400 hover:bg-[#25283d] hover:text-slate-200 hover:border-[#4a4e66]'
-            }`}
-          >
-            <Target className="w-4 h-4" />
-            <span className="text-[10px] font-mono font-medium">
-              {isAutoTracking ? 'Seguimiento' : 'Libre'}
-            </span>
-          </button>
-        </div>
+      {/* Barra flotante superior derecha: Zoom y Encaje Automático */}
+      <div className="absolute top-3 right-3 z-20 flex items-center gap-1 bg-[#161825]/95 border border-[#2a2d42] px-1.5 py-1 rounded-lg shadow-md">
+        <button
+          onClick={handleZoomIn}
+          title="Acercar árbol"
+          className="p-1.5 hover:bg-[#23263a] rounded text-slate-300 hover:text-white transition-colors cursor-pointer"
+        >
+          <ZoomIn className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={handleZoomOut}
+          title="Alejar árbol"
+          className="p-1.5 hover:bg-[#23263a] rounded text-slate-300 hover:text-white transition-colors cursor-pointer"
+        >
+          <ZoomOut className="w-3.5 h-3.5" />
+        </button>
+        <button
+          onClick={handleResetView}
+          title="Encajar árbol completo en pantalla"
+          className="px-2 py-1 hover:bg-[#23263a] rounded text-[10px] font-mono text-slate-300 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
+        >
+          <Maximize className="w-3 h-3 text-indigo-400" />
+          <span>Encajar</span>
+        </button>
+        <div className="w-[1px] h-4 bg-[#2b2d42] mx-0.5" />
+        <button
+          onClick={handleToggleAutoTracking}
+          title={isAutoTracking ? 'Desactivar enfoque en nodo activo' : 'Enfocar nodo activo'}
+          className={`px-2 py-1 rounded text-[10px] font-mono flex items-center gap-1 border transition-colors cursor-pointer ${
+            isAutoTracking
+              ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 font-bold'
+              : 'bg-transparent border-transparent text-slate-400 hover:bg-[#23263a] hover:text-slate-200'
+          }`}
+        >
+          <Target className="w-3 h-3" />
+          <span>{isAutoTracking ? 'Enfoque Activo' : 'Vista Global'}</span>
+        </button>
       </div>
 
-      {/* Lienzo SVG interactivo */}
+      {/* Leyenda compacta del árbol en esquina superior izquierda */}
+      <div className="absolute top-3 left-3 z-20 hidden sm:flex items-center gap-2 bg-[#161825]/90 border border-[#26293e] px-2.5 py-1 rounded-lg text-[10px] font-mono text-slate-300 pointer-events-none">
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-amber-400" /> Nodo Activo
+        </span>
+        <span className="text-slate-600">•</span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-purple-400" /> Combinando/Pivote
+        </span>
+        <span className="text-slate-600">•</span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-emerald-400" /> Subarreglo Ordenado
+        </span>
+      </div>
+
+      {/* Lienzo SVG del Árbol de Recursión */}
       <svg
         ref={svgRef}
-        className="w-full h-full"
+        className="w-full h-full block"
         style={{ cursor: 'grab' }}
         onMouseDown={() => {
           if (svgRef.current) svgRef.current.style.cursor = 'grabbing';
@@ -340,17 +343,10 @@ export const RecursionTreeVisualizer: React.FC<RecursionTreeVisualizerProps> = (
         onMouseLeave={() => {
           if (svgRef.current) svgRef.current.style.cursor = 'grab';
         }}
-        onClick={handleBackgroundClick}
+        onClick={() => setSelectedNodeId(null)}
       >
-        <defs>
-          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-        </defs>
-
         <g ref={gRef}>
-          {/* Conexiones / Aristas */}
+          {/* Aristas de llamada recursiva */}
           <g className="connections">
             {connections.map(conn => {
               const startX = conn.from.x;
@@ -358,76 +354,107 @@ export const RecursionTreeVisualizer: React.FC<RecursionTreeVisualizerProps> = (
               const endX = conn.to.x;
               const endY = conn.to.y - conn.to.height / 2;
 
-              const isCombining = conn.to.node.state === 'combining' || conn.from.node.state === 'combining';
-              const isActive = conn.to.node.id === activeNodeId || conn.from.node.id === activeNodeId;
-              const isSolved = conn.to.node.state === 'solved' || conn.to.node.state === 'completed';
+              const isCombining =
+                conn.to.node.state === 'combining' || conn.from.node.state === 'combining';
+              const isActive =
+                conn.to.node.id === activeNodeId || conn.from.node.id === activeNodeId;
+              const isSolved =
+                conn.to.node.state === 'solved' || conn.to.node.state === 'completed';
 
-              let color = '#232537';
+              let color = '#2a2e45';
               let strokeW = 2;
-              if (isActive) { color = '#fbbf24'; strokeW = 3; }
-              else if (isCombining) { color = '#c084fc'; strokeW = 3.5; }
-              else if (isSolved) { color = '#10b981'; strokeW = 2.5; }
+              if (isActive) {
+                color = '#fbbf24';
+                strokeW = 2.5;
+              } else if (isCombining) {
+                color = '#c084fc';
+                strokeW = 2.5;
+              } else if (isSolved) {
+                color = '#10b981';
+                strokeW = 2;
+              }
+
+              const midX = (startX + endX) / 2;
+              const midY = (startY + endY) / 2;
 
               return (
                 <g key={conn.id}>
                   <path
-                    d={`M ${startX} ${startY} C ${startX} ${(startY + endY) / 2}, ${endX} ${(startY + endY) / 2}, ${endX} ${endY}`}
+                    d={`M ${startX} ${startY} C ${startX} ${midY}, ${endX} ${midY}, ${endX} ${endY}`}
                     fill="none"
                     stroke={color}
                     strokeWidth={strokeW}
-                    strokeDasharray={isCombining ? '6,6' : 'none'}
-                    className="transition-all duration-300"
+                    strokeDasharray={isCombining ? '5,4' : 'none'}
                   />
-                  {conn.from.node.state === 'dividing' && isActive && (
-                    <>
-                      <rect x={(startX + endX) / 2 - 25} y={(startY + endY) / 2 - 10} width="50" height="20" rx="4" fill="#1e1f32" stroke="#444866" />
-                      <text x={(startX + endX) / 2} y={(startY + endY) / 2 + 4} fill="#94a3b8" fontSize="10" fontFamily="monospace" textAnchor="middle">
-                        Hilo {conn.isLeft ? '1' : '2'}
-                      </text>
-                    </>
-                  )}
+                  <rect
+                    x={midX - 18}
+                    y={midY - 8}
+                    width={36}
+                    height={16}
+                    rx={4}
+                    fill="#131521"
+                    stroke={color}
+                    strokeWidth={1}
+                  />
+                  <text
+                    x={midX}
+                    y={midY + 3}
+                    fill="#cbd5e1"
+                    fontSize="9"
+                    fontFamily="JetBrains Mono, monospace"
+                    textAnchor="middle"
+                  >
+                    {conn.isLeft ? 'Izq' : 'Der'}
+                  </text>
                 </g>
               );
             })}
           </g>
 
-          {/* Nodos */}
+          {/* Nodos de subproblemas */}
           <g className="nodes">
             {positionedNodes.map(pNode => {
               const { node, x, y, width, height } = pNode;
               const isActive = node.id === activeNodeId;
-              const isSelected = selectedNode?.node.id === node.id;
+              const isSelected = selectedNodeId === node.id;
               const badge = getNodeBadge(node.state);
               const currentVals = node.currentValues || node.values;
 
-              let bg = '#151622';
-              let border = '#232537';
-              if (isActive) { bg = '#1e1f32'; border = '#fbbf24'; }
-              else if (isSelected) { bg = '#1a1c2e'; border = '#6366f1'; }
-              else if (node.state === 'combining') { bg = '#1a1625'; border = '#a855f7'; }
-              else if (node.state === 'base_case') { bg = '#121f1b'; border = '#10b981'; }
-              else if (node.state === 'solved' || node.state === 'completed') { bg = '#121b18'; border = '#34d399'; }
+              let bg = '#151724';
+              let border = '#2b2f47';
+              if (isActive) {
+                bg = '#1e2036';
+                border = '#fbbf24';
+              } else if (isSelected) {
+                bg = '#1b1e34';
+                border = '#818cf8';
+              } else if (node.state === 'combining') {
+                bg = '#1d162b';
+                border = '#a855f7';
+              } else if (node.state === 'base_case' || node.state === 'solved' || node.state === 'completed') {
+                bg = '#11221e';
+                border = '#10b981';
+              }
 
               return (
                 <g
                   key={node.id}
                   transform={`translate(${x - width / 2}, ${y - height / 2})`}
-                  className="transition-all duration-300"
                   style={{ cursor: 'pointer' }}
-                  onClick={(e) => handleNodeClick(pNode, e)}
+                  onClick={e => {
+                    e.stopPropagation();
+                    setSelectedNodeId(prev => (prev === node.id ? null : node.id));
+                  }}
                 >
                   <rect
                     width={width}
                     height={height}
-                    rx="8"
+                    rx="10"
                     fill={bg}
                     stroke={border}
-                    strokeWidth={isActive ? 2.5 : isSelected ? 2 : 1.5}
-                    filter={isActive ? 'url(#glow)' : undefined}
-                    className="transition-all duration-300"
+                    strokeWidth={isActive ? 2.5 : 1.5}
                   />
 
-                  {/* Contenido del nodo renderizado con foreignObject */}
                   <foreignObject
                     width={width}
                     height={height}
@@ -435,25 +462,47 @@ export const RecursionTreeVisualizer: React.FC<RecursionTreeVisualizerProps> = (
                     y={0}
                     style={{ pointerEvents: 'none' }}
                   >
-                    <div className="w-full h-full flex flex-col justify-between p-2">
-                      <div className="flex justify-between items-center px-1">
-                        <span className="text-[10px] font-mono text-slate-400 font-bold">
+                    <div className="w-full h-full flex flex-col justify-between p-2 box-border">
+                      {/* Cabecera del nodo: Rango [inicio..fin], pivote opcional y estado */}
+                      <div className="flex items-center justify-between gap-1 px-0.5">
+                        <span className="text-[10px] font-mono text-indigo-300 font-bold">
                           [{node.range[0]}..{node.range[1]}]
                         </span>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded border ${badge.bg}`}>
+                        {node.pivotValue !== undefined && (
+                          <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-purple-500/25 text-purple-200 border border-purple-400/40">
+                            piv:{node.pivotValue}
+                          </span>
+                        )}
+                        <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded border ${badge.bg}`}>
                           {badge.text}
                         </span>
                       </div>
 
-                      <div className="flex items-center justify-center gap-1.5 px-1">
+                      {/* Celdas del subarreglo dentro del nodo */}
+                      <div className="flex items-center justify-center gap-1">
                         {currentVals.map((val, idx) => {
-                          let cellBg = 'bg-[#1c1d2c] border-[#2b2d42] text-slate-200';
-                          if (node.state === 'base_case') cellBg = 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300';
-                          if (node.state === 'combining') cellBg = 'bg-purple-500/20 border-purple-500/40 text-purple-300';
-                          if (node.state === 'solved' || node.state === 'completed') cellBg = 'bg-emerald-950 border-emerald-700/60 text-emerald-400 font-bold';
+                          const globalIdx = node.range[0] + idx;
+                          const isPivotCell =
+                            node.pivotIndex !== undefined && globalIdx === node.pivotIndex;
+
+                          let cellCls = 'bg-[#1d2033] border-[#323652] text-slate-100';
+                          if (isPivotCell) {
+                            cellCls = 'bg-purple-500/30 border-purple-400 text-purple-100 font-black';
+                          } else if (
+                            node.state === 'base_case' ||
+                            node.state === 'solved' ||
+                            node.state === 'completed'
+                          ) {
+                            cellCls = 'bg-emerald-950/80 border-emerald-500/50 text-emerald-200 font-bold';
+                          } else if (node.state === 'combining') {
+                            cellCls = 'bg-purple-950/60 border-purple-500/40 text-purple-200';
+                          }
 
                           return (
-                            <div key={idx} className={`w-8 h-8 flex items-center justify-center text-xs font-mono font-bold border rounded ${cellBg} shadow-sm`}>
+                            <div
+                              key={idx}
+                              className={`w-7 h-7 flex items-center justify-center text-[11px] font-mono font-bold border rounded ${cellCls}`}
+                            >
                               {val}
                             </div>
                           );
@@ -468,70 +517,32 @@ export const RecursionTreeVisualizer: React.FC<RecursionTreeVisualizerProps> = (
         </g>
       </svg>
 
-      {/* Tooltip HTML — se posiciona como overlay absoluto sobre el contenedor */}
-      {selectedNode && tooltipPos && (
-        <div
-          className="absolute z-30 pointer-events-none"
-          style={{
-            left: `${tooltipPos.x}px`,
-            top: `${tooltipPos.y}px`,
-            transform: 'translateX(-50%)',
-          }}
-        >
-          <div className="bg-[#1a1c2e] border-2 border-[#2b2d42] rounded-xl shadow-2xl p-4 text-[11px] w-[280px]">
-            <div className="font-bold text-indigo-300 mb-3 flex items-center gap-2">
-              <span className="text-[10px] font-mono bg-indigo-500/20 px-2 py-0.5 rounded">
-                [{selectedNode.node.range[0]}..{selectedNode.node.range[1]}]
-              </span>
-              <span>{getNodeBadge(selectedNode.node.state).text}</span>
+      {/* Inspector fijo en esquina inferior izquierda al seleccionar un nodo (no se sale de pantalla) */}
+      {selectedNode && (
+        <div className="absolute bottom-3 left-3 z-20 bg-[#171929]/95 border border-[#2f334d] rounded-xl p-3 shadow-xl text-xs font-mono w-64">
+          <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#262940]">
+            <span className="font-bold text-indigo-300">
+              Subproblema [{selectedNode.node.range[0]}..{selectedNode.node.range[1]}]
+            </span>
+            <span className={`text-[9px] px-1.5 py-0.5 rounded border ${getNodeBadge(selectedNode.node.state).bg}`}>
+              {getNodeBadge(selectedNode.node.state).text}
+            </span>
+          </div>
+          <div className="space-y-1 text-[11px] text-slate-300">
+            <div className="flex justify-between">
+              <span className="text-slate-400">Nivel recursivo:</span>
+              <span>Profundidad {selectedNode.node.depth}</span>
             </div>
-
-            <div className="space-y-2 text-slate-300">
-              <div className="flex justify-between">
-                <span className="text-slate-500">Valores:</span>
-                <span className="font-mono font-semibold">
-                  [{(selectedNode.node.currentValues || selectedNode.node.values).join(', ')}]
-                </span>
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-slate-500">Inicio:</span>
-                <span className="font-mono font-semibold">{selectedNode.node.range[0]}</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-slate-500">Fin:</span>
-                <span className="font-mono font-semibold">{selectedNode.node.range[1]}</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-slate-500">Profundidad:</span>
-                <span className="font-mono">{selectedNode.node.depth}</span>
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-slate-500">Tamaño:</span>
-                <span className="font-mono">{selectedNode.node.range[1] - selectedNode.node.range[0] + 1} elems</span>
-              </div>
-
-              {selectedNode.node.state === 'combining' && (
-                <div className="mt-3 pt-2 border-t border-[#2b2d42]">
-                  <div className="text-purple-300 text-[10px]">Combinando subarrays ordenados</div>
-                </div>
-              )}
-
-              {selectedNode.node.state === 'base_case' && (
-                <div className="mt-3 pt-2 border-t border-[#2b2d42]">
-                  <div className="text-emerald-400 text-[10px]">Caso base: 1 elemento (ya ordenado)</div>
-                </div>
-              )}
-
-              {selectedNode.node.state === 'dividing' && (
-                <div className="mt-3 pt-2 border-t border-[#2b2d42]">
-                  <div className="text-slate-400 text-[10px]">Dividiendo en subproblemas</div>
-                </div>
-              )}
+            <div className="flex justify-between">
+              <span className="text-slate-400">Elementos:</span>
+              <span>[{(selectedNode.node.currentValues || selectedNode.node.values).join(', ')}]</span>
             </div>
+            {selectedNode.node.pivotValue !== undefined && (
+              <div className="flex justify-between text-purple-300">
+                <span>Pivote:</span>
+                <span>{selectedNode.node.pivotValue}</span>
+              </div>
+            )}
           </div>
         </div>
       )}

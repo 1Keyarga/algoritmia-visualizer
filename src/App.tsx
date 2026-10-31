@@ -6,6 +6,7 @@ import { generateBubbleSortTrace } from './core/algorithms/bubbleSort';
 import { generateSelectionSortTrace } from './core/algorithms/selectionSort';
 import { generateInsertionSortTrace } from './core/algorithms/insertionSort';
 import { generateMergeSortTrace } from './core/algorithms/mergeSort';
+import { generateQuickSortTrace } from './core/algorithms/quickSort';
 import { generateLinearSearchTrace } from './core/algorithms/linearSearch';
 import { generateBinarySearchTrace } from './core/algorithms/binarySearch';
 import { generateRandomDataset } from './core/utils/generator';
@@ -61,28 +62,42 @@ export function App() {
   }, [isDivideAndConquer]);
 
   const steps = useMemo(() => {
+    let rawSteps: Step[];
     if (selectedAlgorithm.id === 'custom-ast') {
-      return customSteps || generateBubbleSortTrace(dataset, isOptimized);
+      rawSteps = customSteps || generateBubbleSortTrace(dataset, isOptimized);
+    } else if (selectedAlgorithm.id === 'merge-sort') {
+      rawSteps = generateMergeSortTrace(dataset);
+    } else if (selectedAlgorithm.id === 'quick-sort') {
+      rawSteps = generateQuickSortTrace(dataset);
+    } else if (selectedAlgorithm.id === 'insertion-sort') {
+      rawSteps = generateInsertionSortTrace(dataset);
+    } else if (selectedAlgorithm.id === 'selection-sort') {
+      rawSteps = generateSelectionSortTrace(dataset);
+    } else if (selectedAlgorithm.id === 'linear-search') {
+      rawSteps = generateLinearSearchTrace(dataset, searchTarget);
+    } else if (selectedAlgorithm.id === 'binary-search') {
+      rawSteps = generateBinarySearchTrace(dataset, searchTarget);
+    } else {
+      rawSteps = generateBubbleSortTrace(dataset, isOptimized);
     }
-    if (selectedAlgorithm.id === 'merge-sort') {
-      return generateMergeSortTrace(dataset);
-    }
-    if (selectedAlgorithm.id === 'insertion-sort') {
-      return generateInsertionSortTrace(dataset);
-    }
-    if (selectedAlgorithm.id === 'selection-sort') {
-      return generateSelectionSortTrace(dataset);
-    }
-    if (selectedAlgorithm.id === 'linear-search') {
-      return generateLinearSearchTrace(dataset, searchTarget);
-    }
-    if (selectedAlgorithm.id === 'binary-search') {
-      return generateBinarySearchTrace(dataset, searchTarget);
-    }
-    if (selectedAlgorithm.id.startsWith('bubble-sort')) {
-      return generateBubbleSortTrace(dataset, isOptimized);
-    }
-    return generateBubbleSortTrace(dataset, isOptimized);
+
+    // Calcular frecuencia acumulada de accesos por celda (RF-19 / T19)
+    const accessByIndex: number[] = [];
+    return rawSteps.map(step => {
+      const enrichedArray = step.array.map((el, idx) => {
+        if (el.state === 'comparing' || el.state === 'swapped' || el.state === 'selected') {
+          accessByIndex[idx] = (accessByIndex[idx] || 0) + 1;
+        }
+        return {
+          ...el,
+          accessCount: accessByIndex[idx] || 0,
+        };
+      });
+      return {
+        ...step,
+        array: enrichedArray,
+      };
+    });
   }, [dataset, selectedAlgorithm, isOptimized, searchTarget, customSteps]);
 
   const playback = usePlayback(steps);

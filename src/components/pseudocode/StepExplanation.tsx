@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import type { Step } from '../../types/trace';
 
 interface StepExplanationProps {
@@ -20,7 +20,7 @@ export const StepExplanation: React.FC<StepExplanationProps> = ({
         <span className="text-[10px] font-bold tracking-wider text-indigo-400 uppercase">
           ¿Por qué este paso?
         </span>
-        <p className="text-xs text-slate-300 leading-relaxed font-sans min-h-[36px]">
+        <p className="text-xs text-slate-300 leading-relaxed font-sans h-[42px] overflow-y-auto pr-1">
           {currentStep?.explanation || 'Esperando inicio de la ejecución del algoritmo.'}
         </p>
       </div>

@@ -76,9 +76,9 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
               : 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
           }`}>
             {operationType === 'compare' ? (
-              <Binary className="w-5 h-5 animate-pulse" />
+              <Binary className="w-5 h-5" />
             ) : operationType === 'swap' ? (
-              <ArrowRightLeft className="w-5 h-5 animate-bounce" />
+              <ArrowRightLeft className="w-5 h-5" />
             ) : operationType === 'assign' ? (
               <Layers className="w-5 h-5" />
             ) : (
@@ -215,8 +215,7 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
                             {pointers.map((p, pIdx) => (
                               <div
                                 key={pIdx}
-                                className="flex flex-col items-center animate-bounce"
-                                style={{ animationDuration: '1.2s' }}
+                                className="flex flex-col items-center transition-all duration-200"
                               >
                                 <span
                                   className={`text-[9px] font-mono font-black px-1.5 py-0.5 rounded-full border shadow-sm ${p.color}`}

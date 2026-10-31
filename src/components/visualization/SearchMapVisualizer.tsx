@@ -105,7 +105,7 @@ export const SearchMapVisualizer: React.FC<SearchMapVisualizerProps> = ({
         <div className="flex items-center gap-2 bg-[#1b1e32] border border-[#2b2f4c] px-3 py-1.5 rounded-lg">
           {isFound ? (
             <>
-              <CheckCircle2 className="w-4 h-4 text-emerald-400 animate-bounce" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
               <span className="text-xs font-semibold text-emerald-300">
                 ¡Encontrado en índice {resultado}!
               </span>
@@ -119,7 +119,7 @@ export const SearchMapVisualizer: React.FC<SearchMapVisualizerProps> = ({
             </>
           ) : (
             <>
-              <Compass className="w-4 h-4 text-indigo-400 animate-spin" />
+              <Compass className="w-4 h-4 text-indigo-400" />
               <span className="text-xs font-semibold text-slate-300">
                 {algorithmType === 'binary' ? 'Búsqueda en curso (bisección)' : 'Escaneando secuencialmente'}
               </span>
@@ -203,37 +203,37 @@ export const SearchMapVisualizer: React.FC<SearchMapVisualizerProps> = ({
 
             return (
               <div key={item.id || idx} className="flex flex-col items-center">
-                {/* Puntero Superior Flotante */}
-                <div className="h-10 flex flex-col items-center justify-end mb-1">
+                {/* Puntero Superior Estabilizado */}
+                <div className="h-10 flex items-end justify-center gap-1 mb-1">
+                  {isLeft && (
+                    <div className="flex flex-col items-center">
+                      <span className="text-[9px] font-mono font-bold bg-indigo-600 text-white px-1.5 py-0.5 rounded shadow-sm">
+                        ini
+                      </span>
+                      <ArrowDown className="w-3 h-3 text-indigo-400 -mt-0.5" />
+                    </div>
+                  )}
+
                   {isMid && (
-                    <div className="flex flex-col items-center animate-bounce">
-                      <span className="text-[10px] font-mono font-bold bg-amber-500 text-slate-950 px-1.5 py-0.5 rounded shadow-sm flex items-center gap-0.5">
-                        <Flame className="w-2.5 h-2.5" /> medio
+                    <div className="flex flex-col items-center">
+                      <span className="text-[9px] font-mono font-bold bg-amber-500 text-slate-950 px-1.5 py-0.5 rounded shadow-sm flex items-center gap-0.5">
+                        <Flame className="w-2.5 h-2.5" /> med
                       </span>
-                      <ArrowDown className="w-3.5 h-3.5 text-amber-400 -mt-0.5" />
+                      <ArrowDown className="w-3 h-3 text-amber-400 -mt-0.5" />
                     </div>
                   )}
 
-                  {!isMid && isLeft && (
+                  {isRight && (
                     <div className="flex flex-col items-center">
-                      <span className="text-[10px] font-mono font-bold bg-indigo-600 text-white px-1.5 py-0.5 rounded shadow-sm">
-                        inicio
-                      </span>
-                      <ArrowDown className="w-3.5 h-3.5 text-indigo-400 -mt-0.5" />
-                    </div>
-                  )}
-
-                  {!isMid && isRight && (
-                    <div className="flex flex-col items-center">
-                      <span className="text-[10px] font-mono font-bold bg-purple-600 text-white px-1.5 py-0.5 rounded shadow-sm">
+                      <span className="text-[9px] font-mono font-bold bg-purple-600 text-white px-1.5 py-0.5 rounded shadow-sm">
                         fin
                       </span>
-                      <ArrowDown className="w-3.5 h-3.5 text-purple-400 -mt-0.5" />
+                      <ArrowDown className="w-3 h-3 text-purple-400 -mt-0.5" />
                     </div>
                   )}
 
                   {isCurrentI && (
-                    <div className="flex flex-col items-center animate-bounce">
+                    <div className="flex flex-col items-center">
                       <span className="text-[10px] font-mono font-bold bg-amber-500 text-slate-950 px-1.5 py-0.5 rounded shadow-sm flex items-center gap-0.5">
                         <Flame className="w-2.5 h-2.5" /> i
                       </span>

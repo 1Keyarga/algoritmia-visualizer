@@ -647,9 +647,10 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
         ...currentArray[inicio + idx],
         value: temp[idx],
         state: 'swapped',
-        nonColorIndicator: undefined,
+        nonColorIndicator: '⇄',
       };
       movesCount++;
+      treeNodes[parentNodeId].currentValues = currentArray.slice(inicio, fin + 1).map(x => x.value);
 
       pushStep(
         { pseudocode: 25, python: 25, cpp: 19, java: 19 },

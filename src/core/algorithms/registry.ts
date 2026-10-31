@@ -3,6 +3,7 @@ import { BUBBLE_SORT_CLASSIC_METADATA, BUBBLE_SORT_OPTIMIZED_METADATA } from './
 import { SELECTION_SORT_METADATA } from './selectionSort';
 import { INSERTION_SORT_METADATA } from './insertionSort';
 import { MERGE_SORT_METADATA } from './mergeSort';
+import { QUICK_SORT_METADATA } from './quickSort';
 import { LINEAR_SEARCH_METADATA } from './linearSearch';
 import { BINARY_SEARCH_METADATA } from './binarySearch';
 
@@ -33,6 +34,7 @@ export const ALGORITHMS_CATALOG: AlgorithmMetadata[] = [
   SELECTION_SORT_METADATA,
   INSERTION_SORT_METADATA,
   MERGE_SORT_METADATA,
+  QUICK_SORT_METADATA,
   LINEAR_SEARCH_METADATA,
   BINARY_SEARCH_METADATA,
   CUSTOM_AST_METADATA,
