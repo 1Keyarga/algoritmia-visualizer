@@ -31,27 +31,27 @@ export const ArrayTableView: React.FC<ArrayTableViewProps> = ({
     switch (state) {
       case 'comparing':
         return {
-          label: `Comparando ${indicator ? `(${indicator})` : '(?)'}`,
+          label: indicator ? `Comparando (${indicator})` : 'Comparando',
           cls: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
         };
       case 'swapped':
         return {
-          label: `Intercambiado ${indicator ? `(${indicator})` : '(⇄)'}`,
+          label: indicator ? `Intercambiado (${indicator})` : 'Intercambiado',
           cls: 'bg-sky-500/20 text-sky-300 border-sky-500/40',
         };
       case 'selected':
         return {
-          label: `Seleccionado ${indicator ? `(${indicator})` : '(★)'}`,
+          label: indicator ? `Seleccionado (${indicator})` : 'Seleccionado',
           cls: 'bg-purple-500/20 text-purple-300 border-purple-500/40',
         };
       case 'sorted':
         return {
-          label: `Ordenado ${indicator ? `(${indicator})` : '(✔)'}`,
+          label: 'Ordenado',
           cls: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
         };
       case 'discarded':
         return {
-          label: `Descartado ${indicator ? `(${indicator})` : '(✗)'}`,
+          label: 'Descartado',
           cls: 'bg-slate-800 text-slate-400 border-slate-700',
         };
       default:

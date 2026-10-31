@@ -123,9 +123,6 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
               <div className="text-[11px] font-bold tracking-wider text-slate-200 uppercase">
                 Editor de Código ({activeLanguage === 'c' ? 'C / C++' : 'JavaScript'})
               </div>
-              <div className="text-[10px] text-slate-400">
-                Trazado y depuración de memoria en tiempo de ejecución
-              </div>
             </div>
           </div>
 

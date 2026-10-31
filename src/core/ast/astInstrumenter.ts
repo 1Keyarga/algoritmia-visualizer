@@ -992,7 +992,7 @@ return function* (__initialArr, __clave, __hooks) {
         if (entry.elements[cleanIdx]) {
           entry.elements[cleanIdx].value = finalVal;
           entry.elements[cleanIdx].state = 'swapped';
-          entry.elements[cleanIdx].nonColorIndicator = '⇄';
+          entry.elements[cleanIdx].nonColorIndicator = undefined;
         }
       }
 
@@ -1029,7 +1029,7 @@ return function* (__initialArr, __clave, __hooks) {
         if (entry.elements[cleanIdx]) {
           entry.elements[cleanIdx].value = newVal;
           entry.elements[cleanIdx].state = 'swapped';
-          entry.elements[cleanIdx].nonColorIndicator = '⇄';
+          entry.elements[cleanIdx].nonColorIndicator = undefined;
         }
       }
 
@@ -1061,8 +1061,8 @@ return function* (__initialArr, __clave, __hooks) {
         const entry = ensureTrackedArray(targetArr, 'arr');
         if (entry.elements[idxI] && entry.elements[idxJ]) {
           const tempEl = entry.elements[idxI];
-          entry.elements[idxI] = { ...entry.elements[idxJ], state: 'swapped', nonColorIndicator: '⇄' };
-          entry.elements[idxJ] = { ...tempEl, state: 'swapped', nonColorIndicator: '⇄' };
+          entry.elements[idxI] = { ...entry.elements[idxJ], state: 'swapped', nonColorIndicator: undefined };
+          entry.elements[idxJ] = { ...tempEl, state: 'swapped', nonColorIndicator: undefined };
         }
       }
 
@@ -1070,7 +1070,7 @@ return function* (__initialArr, __clave, __hooks) {
       steps.push(
         makeStep(
           line,
-          `Intercambio: [${idxI}] ⇄ [${idxJ}] (${targetArr?.[idxI]} ⇄ ${targetArr?.[idxJ]})`,
+          `Intercambio: [${idxI}] y [${idxJ}] (${targetArr?.[idxI]} y ${targetArr?.[idxJ]})`,
           'swap',
           vars
         )

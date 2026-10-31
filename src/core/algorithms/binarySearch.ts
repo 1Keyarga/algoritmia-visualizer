@@ -223,16 +223,16 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
 
     currentArray = currentArray.map((item, idx) => {
       if (idx < left || idx > right) {
-        return { ...item, state: 'discarded', nonColorIndicator: '✗' }; // Fuera de rango (descartado)
+        return { ...item, state: 'discarded', nonColorIndicator: undefined };
       }
       if (idx === mid) {
-        return { ...item, state: 'comparing', nonColorIndicator: '?' }; // Punto medio
+        return { ...item, state: 'comparing', nonColorIndicator: 'med' };
       }
       if (idx === left) {
-        return { ...item, state: 'selected', nonColorIndicator: 'ini' }; // Límite izquierdo
+        return { ...item, state: 'selected', nonColorIndicator: 'ini' };
       }
       if (idx === right) {
-        return { ...item, state: 'selected', nonColorIndicator: 'fin' }; // Límite derecho
+        return { ...item, state: 'selected', nonColorIndicator: 'fin' };
       }
       return { ...item, state: 'default', nonColorIndicator: undefined };
     });
@@ -268,7 +268,7 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
       );
 
       foundIndex = mid;
-      currentArray[mid] = { ...currentArray[mid], state: 'sorted', nonColorIndicator: '✔' };
+      currentArray[mid] = { ...currentArray[mid], state: 'sorted', nonColorIndicator: undefined };
 
       pushStep(
         { pseudocode: 7, python: 7, cpp: 7, java: 7 },
@@ -312,7 +312,7 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
         // Marcar mitad izquierda como descartada
         currentArray = currentArray.map((item, idx) => {
           if (idx <= mid) {
-            return { ...item, state: 'discarded', nonColorIndicator: '✗' };
+            return { ...item, state: 'discarded', nonColorIndicator: undefined };
           }
           return item;
         });
@@ -348,7 +348,7 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
         // Marcar mitad derecha como descartada
         currentArray = currentArray.map((item, idx) => {
           if (idx >= mid) {
-            return { ...item, state: 'discarded', nonColorIndicator: '✗' };
+            return { ...item, state: 'discarded', nonColorIndicator: undefined };
           }
           return item;
         });
@@ -371,7 +371,7 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
 
   // No encontrado
   if (foundIndex === -1) {
-    currentArray = currentArray.map(item => ({ ...item, state: 'discarded', nonColorIndicator: '✗' }));
+    currentArray = currentArray.map(item => ({ ...item, state: 'discarded', nonColorIndicator: undefined }));
 
     pushStep(
       { pseudocode: 4, python: 4, cpp: 4, java: 4 },
@@ -387,7 +387,7 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
     pushStep(
       { pseudocode: 12, python: 12, cpp: 15, java: 15 },
       [{ lineNumber: 12, type: 'active', lineByLanguage: { pseudocode: 12, python: 12, cpp: 15, java: 15 } }],
-      `❌ VALOR NO ENCONTRADO: Se contrajo el espacio de búsqueda completamente sin encontrar el valor ${target}. Retornando -1.`,
+      `Valor no encontrado: se agotó el rango de búsqueda sin hallar ${target}. Retornando -1.`,
       'finish',
       left,
       right,

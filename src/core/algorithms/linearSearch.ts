@@ -147,8 +147,8 @@ export function generateLinearSearchTrace(initialData: number[], target: number 
   for (let i = 0; i < n; i++) {
     // Marcar posición actual como escaneando y anteriores como descartadas
     currentArray = currentArray.map((item, idx) => {
-      if (idx < i) return { ...item, state: 'discarded', nonColorIndicator: '✗' }; // Ya escaneado y descartado
-      if (idx === i) return { ...item, state: 'comparing', nonColorIndicator: '?' }; // Escaneando
+      if (idx < i) return { ...item, state: 'discarded', nonColorIndicator: undefined };
+      if (idx === i) return { ...item, state: 'comparing', nonColorIndicator: 'i' };
       return { ...item, state: 'default', nonColorIndicator: undefined };
     });
 
@@ -173,14 +173,14 @@ export function generateLinearSearchTrace(initialData: number[], target: number 
           { lineNumber: 3, type: 'active', lineByLanguage: { pseudocode: 3, python: 3, cpp: 3, java: 3 } },
           { lineNumber: 4, type: 'next', badgeText: 'encontrado', lineByLanguage: { pseudocode: 4, python: 4, cpp: 4, java: 4 } },
         ],
-        `Comparando arr[${i}] (${val}) = clave (${target}): ¡COINCIDENCIA! Valor encontrado en índice ${i}.`,
+        `Comparando arr[${i}] (${val}) = clave (${target}): coincidencia en índice ${i}.`,
         'compare',
         i,
         true
       );
 
       foundIndex = i;
-      currentArray[i] = { ...currentArray[i], state: 'sorted', nonColorIndicator: '✔' };
+      currentArray[i] = { ...currentArray[i], state: 'sorted', nonColorIndicator: undefined };
 
       pushStep(
         { pseudocode: 4, python: 4, cpp: 4, java: 4 },
@@ -206,12 +206,12 @@ export function generateLinearSearchTrace(initialData: number[], target: number 
 
   // No encontrado
   if (foundIndex === -1) {
-    currentArray = currentArray.map(item => ({ ...item, state: 'discarded', nonColorIndicator: '✗' }));
+    currentArray = currentArray.map(item => ({ ...item, state: 'discarded', nonColorIndicator: undefined }));
 
     pushStep(
       { pseudocode: 5, python: 5, cpp: 7, java: 7 },
       [{ lineNumber: 5, type: 'active', lineByLanguage: { pseudocode: 5, python: 5, cpp: 7, java: 7 } }],
-      `❌ VALOR NO ENCONTRADO: Se recorrió todo el arreglo (${n} elementos) y el valor ${target} no existe. Retornando -1.`,
+      `Valor no encontrado: se recorrió todo el arreglo (${n} elementos) y ${target} no existe. Retornando -1.`,
       'finish',
       undefined,
       false

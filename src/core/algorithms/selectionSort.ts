@@ -201,7 +201,7 @@ export function generateSelectionSortTrace(initialData: number[]): Step[] {
 
     // Asignación min = i
     currentArray = currentArray.map((item, idx) => {
-      if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
+      if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
       if (idx === min) return { ...item, state: 'selected', nonColorIndicator: 'min' };
       return { ...item, state: 'default', nonColorIndicator: undefined };
     });
@@ -219,7 +219,7 @@ export function generateSelectionSortTrace(initialData: number[]): Step[] {
     for (let j = i + 1; j < n; j++) {
       // Marcar j como comparing y min como selected
       currentArray = currentArray.map((item, idx) => {
-        if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
+        if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
         if (idx === min) return { ...item, state: 'selected', nonColorIndicator: 'min' };
         if (idx === j) return { ...item, state: 'comparing', nonColorIndicator: '(j)' };
         return { ...item, state: 'default', nonColorIndicator: undefined };
@@ -259,7 +259,7 @@ export function generateSelectionSortTrace(initialData: number[]): Step[] {
         min = j;
 
         currentArray = currentArray.map((item, idx) => {
-          if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
+          if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
           if (idx === min) return { ...item, state: 'selected', nonColorIndicator: 'min' };
           return { ...item, state: 'default', nonColorIndicator: undefined };
         });
@@ -291,7 +291,7 @@ export function generateSelectionSortTrace(initialData: number[]): Step[] {
       }
 
       currentArray = currentArray.map((item, idx) => {
-        if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
+        if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
         if (idx === min) return { ...item, state: 'selected', nonColorIndicator: 'min' };
         return { ...item, state: 'default', nonColorIndicator: undefined };
       });
@@ -304,10 +304,10 @@ export function generateSelectionSortTrace(initialData: number[]): Step[] {
     currentArray[min] = temp;
 
     currentArray[i].state = 'swapped';
-    currentArray[i].nonColorIndicator = '⇄';
+    currentArray[i].nonColorIndicator = undefined;
     if (i !== min) {
       currentArray[min].state = 'swapped';
-      currentArray[min].nonColorIndicator = '⇄';
+      currentArray[min].nonColorIndicator = undefined;
     }
 
     pushStep(
@@ -327,11 +327,11 @@ export function generateSelectionSortTrace(initialData: number[]): Step[] {
     currentArray[i] = {
       ...currentArray[i],
       state: 'sorted',
-      nonColorIndicator: '✔',
+      nonColorIndicator: undefined,
     };
 
     currentArray = currentArray.map((item, idx) => {
-      if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
+      if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
       return { ...item, state: 'default', nonColorIndicator: undefined };
     });
   }
@@ -341,7 +341,7 @@ export function generateSelectionSortTrace(initialData: number[]): Step[] {
   currentArray = currentArray.map(item => ({
     ...item,
     state: 'sorted',
-    nonColorIndicator: '✔',
+    nonColorIndicator: undefined,
   }));
 
   // Retornar arr

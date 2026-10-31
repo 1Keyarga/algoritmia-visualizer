@@ -66,12 +66,12 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
           )}
           <span className="text-xs font-bold tracking-wider text-slate-300 uppercase shrink-0">
             {isCustomCode
-              ? 'Depurador y Visualizador de Memoria'
+              ? 'Ejecución de Código'
               : isDivideAndConquer
               ? 'Divide y Vencerás'
               : isSearching
-              ? 'Mapa Térmico de Búsqueda'
-              : 'Lienzo de Visualización'}
+              ? 'Búsqueda'
+              : 'Visualización'}
           </span>
 
           {/* Explicación en línea truncada sin romper nunca la fila */}

@@ -18,7 +18,7 @@ export const StepExplanation: React.FC<StepExplanationProps> = ({
     <div className="bg-[#14151f] border border-[#232534] rounded-xl p-3.5 flex flex-col gap-3 shadow-lg">
       <div className="flex flex-col gap-1 border-l-2 border-indigo-500 pl-3">
         <span className="text-[10px] font-bold tracking-wider text-indigo-400 uppercase">
-          ¿Por qué este paso?
+          Explicación del paso
         </span>
         <p className="text-xs text-slate-300 leading-relaxed font-sans h-[42px] overflow-y-auto pr-1">
           {currentStep?.explanation || 'Esperando inicio de la ejecución del algoritmo.'}

@@ -390,7 +390,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
     pushStep(
       { pseudocode: 4, python: 4, cpp: 3, java: 3 },
       [{ lineNumber: 4, type: 'active', lineByLanguage: { pseudocode: 4, python: 4, cpp: 3, java: 3 } }],
-      `Calculando medio = ⌊(${inicio} + ${fin}) / 2⌋ = ${medio}. Dividiendo en [${inicio}..${medio}] y [${medio + 1}..${fin}].`,
+      `Calculando medio = ((${inicio} + ${fin}) / 2) = ${medio}. Dividiendo en [${inicio}..${medio}] y [${medio + 1}..${fin}].`,
       'assign',
       nodeId,
       'divide',
@@ -647,7 +647,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
         ...currentArray[inicio + idx],
         value: temp[idx],
         state: 'swapped',
-        nonColorIndicator: '⇄',
+        nonColorIndicator: undefined,
       };
       movesCount++;
       treeNodes[parentNodeId].currentValues = currentArray.slice(inicio, fin + 1).map(x => x.value);

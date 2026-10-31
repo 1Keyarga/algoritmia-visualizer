@@ -165,7 +165,7 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
   const cloneArray = (arr: ArrayElement[]): ArrayElement[] =>
     arr.map((item, idx) => {
       if (sortedPositions.has(idx) && item.state === 'default') {
-        return { ...item, state: 'sorted', nonColorIndicator: '✔' };
+        return { ...item, state: 'sorted', nonColorIndicator: undefined };
       }
       return { ...item };
     });
@@ -277,7 +277,7 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
     // Resaltar pivote en arr[alto]
     currentArray = currentArray.map((item, idx) => {
       if (idx === alto) return { ...item, state: 'selected', nonColorIndicator: 'pivote' };
-      if (sortedPositions.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
+      if (sortedPositions.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
       return { ...item, state: 'default', nonColorIndicator: undefined };
     });
 
@@ -304,7 +304,7 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
         if (idx === alto) return { ...item, state: 'selected', nonColorIndicator: 'pivote' };
         if (idx === j) return { ...item, state: 'comparing', nonColorIndicator: 'j' };
         if (idx === i && i >= bajo) return { ...item, state: 'selected', nonColorIndicator: 'i' };
-        if (sortedPositions.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
+        if (sortedPositions.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
         return { ...item, state: 'default', nonColorIndicator: undefined };
       });
 
@@ -330,8 +330,8 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
         if (i !== j) {
           swapsCount++;
           const temp = currentArray[i];
-          currentArray[i] = { ...currentArray[j], state: 'swapped', nonColorIndicator: '⇄' };
-          currentArray[j] = { ...temp, state: 'swapped', nonColorIndicator: '⇄' };
+          currentArray[i] = { ...currentArray[j], state: 'swapped', nonColorIndicator: undefined };
+          currentArray[j] = { ...temp, state: 'swapped', nonColorIndicator: undefined };
           currentArray[alto] = { ...currentArray[alto], state: 'selected', nonColorIndicator: 'pivote' };
           treeNodes[nodeId].currentValues = currentArray.slice(bajo, alto + 1).map(x => x.value);
 
@@ -341,11 +341,11 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
               { lineNumber: 13, type: 'executed', lineByLanguage: { pseudocode: 13, python: 13, cpp: 12, java: 12 } },
               { lineNumber: 14, type: 'active', badgeText: 'swap', lineByLanguage: { pseudocode: 14, python: 14, cpp: 13, java: 13 } },
             ],
-            `Incrementando i = ${i} e intercambiando arr[${i}] (${currentArray[i].value}) ⇄ arr[${j}] (${currentArray[j].value}).`,
+            `Incrementando i = ${i} e intercambiando arr[${i}] (${currentArray[i].value}) y arr[${j}] (${currentArray[j].value}).`,
             'swap',
             nodeId,
             'divide',
-            `Intercambio en partición: arr[${i}] ⇄ arr[${j}]`,
+            `Intercambio en partición: arr[${i}] y arr[${j}]`,
             { left: bajo, right: alto, pivot: alto, i, j },
             { pivote: pivotVal, i, j }
           );
@@ -372,13 +372,13 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
       swapsCount++;
       const temp = currentArray[pi];
       currentArray[pi] = { ...currentArray[alto], state: 'swapped', nonColorIndicator: 'pivote' };
-      currentArray[alto] = { ...temp, state: 'swapped', nonColorIndicator: '⇄' };
+      currentArray[alto] = { ...temp, state: 'swapped', nonColorIndicator: undefined };
     }
 
     sortedPositions.add(pi);
     currentArray = currentArray.map((item, idx) => {
-      if (idx === pi) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
-      if (sortedPositions.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
+      if (idx === pi) return { ...item, state: 'sorted', nonColorIndicator: undefined };
+      if (sortedPositions.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
       return { ...item, state: 'default', nonColorIndicator: undefined };
     });
 
@@ -435,7 +435,7 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
       sortedPositions.add(bajo);
       treeNodes[nodeId].state = 'base_case';
       currentArray = currentArray.map((item, idx) => {
-        if (sortedPositions.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: '✔' };
+        if (sortedPositions.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
         return { ...item, state: 'default', nonColorIndicator: undefined };
       });
 
@@ -515,7 +515,7 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
   currentArray = currentArray.map(item => ({
     ...item,
     state: 'sorted',
-    nonColorIndicator: '✔',
+    nonColorIndicator: undefined,
   }));
   treeNodes[rootId].state = 'completed';
 

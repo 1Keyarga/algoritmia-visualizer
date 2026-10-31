@@ -121,10 +121,10 @@ export const SearchMapVisualizer: React.FC<SearchMapVisualizerProps> = ({
           )}
         </div>
 
-        {/* Medidor de territorio eliminado */}
+        {/* Medidor de elementos descartados */}
         <div className="flex flex-col gap-1 min-w-[180px]">
           <div className="flex justify-between text-[10px] font-mono">
-            <span className="text-slate-400">Territorio Descartado:</span>
+            <span className="text-slate-400">Descartados:</span>
             <span className="font-bold text-indigo-300">
               {discardedPercent}% ({discardedCount}/{n})
             </span>
@@ -267,20 +267,13 @@ export const SearchMapVisualizer: React.FC<SearchMapVisualizerProps> = ({
         </div>
       </div>
 
-      {/* 3. Panel Inferior de Análisis Territorial (siempre visible sin necesidad de scroll) */}
+      {/* 3. Explicación del paso actual */}
       <div className="bg-[#141624] border border-[#24273d] px-3 py-2 rounded-lg flex items-center gap-2.5 shrink-0">
         <div className="w-7 h-7 rounded-md bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
           <Compass className="w-3.5 h-3.5" />
         </div>
-        <div className="flex-1 min-w-0 text-xs text-slate-300 leading-snug font-sans">
-          <span className="font-semibold text-indigo-300 mr-1.5">
-            {algorithmType === 'binary'
-              ? 'Lógica de Reducción Bipartita:'
-              : 'Lógica de Inspección Secuencial:'}
-          </span>
-          <span className="text-slate-200">
-            {currentStep?.explanation || 'Preparando análisis térmico del espacio de búsqueda...'}
-          </span>
+        <div className="flex-1 min-w-0 text-xs text-slate-200 leading-snug font-sans">
+          {currentStep?.explanation || 'Preparando ejecución del algoritmo de búsqueda...'}
         </div>
       </div>
     </div>

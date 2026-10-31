@@ -122,7 +122,7 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
               <div className="text-[9px] text-slate-400">{comparingItems[0].arrName}[{comparingItems[0].index}]</div>
               <div className="text-xs font-bold text-amber-300">{comparingItems[0].value}</div>
             </div>
-            <div className="text-amber-400 font-black text-sm px-1">⟷</div>
+            <div className="text-amber-400 font-bold text-xs px-1">vs</div>
             <div className="text-center font-mono">
               <div className="text-[9px] text-slate-400">{comparingItems[1].arrName}[{comparingItems[1].index}]</div>
               <div className="text-xs font-bold text-amber-300">{comparingItems[1].value}</div>
@@ -158,15 +158,15 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
               key={`${namedArr.name}-${arrIdx}`}
               className="flex-1 bg-[#0d0e17] border border-[#212338] rounded-xl p-4 flex flex-col justify-center overflow-x-auto"
             >
-              <div className="text-[10px] uppercase font-bold tracking-widest text-slate-400 mb-2 flex items-center justify-between">
+              <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-2 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
                   <Hash className="w-3.5 h-3.5 text-indigo-400" />
-                  Segmento de Memoria: Arreglo{' '}
+                  Arreglo{' '}
                   <span className="text-indigo-300 font-mono font-black">{namedArr.name}[ ]</span>{' '}
                   <span className="text-slate-400">({elems.length} elementos)</span>
                 </span>
                 <span className="text-[9px] font-mono text-slate-400">
-                  Base 0x{(arrIdx + 1).toString(16).padStart(2, '0')}00 • Indexado 0..{Math.max(0, elems.length - 1)}
+                  0..{Math.max(0, elems.length - 1)}
                 </span>
               </div>
 
@@ -254,7 +254,7 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
                           style={{ height: `${fillHeightPct}%` }}
                         />
 
-                        {/* Estado / Indicador no cromático inferior (RNF-07) */}
+                        {/* Estado inferior */}
                         <div className="z-10 text-center">
                           <span
                             className={`text-[8px] font-mono px-1 py-0.2 rounded uppercase block truncate ${
@@ -268,11 +268,11 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
                             }`}
                           >
                             {isComparing
-                              ? '? Comp'
+                              ? 'Comp'
                               : isSwapped
-                              ? '⇄ Mod'
+                              ? 'Mod'
                               : isSorted
-                              ? '✔ OK'
+                              ? 'Listo'
                               : namedArr.name}
                           </span>
                         </div>
@@ -291,20 +291,20 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
         })}
       </div>
 
-      {/* 3. Panel de Registros de Variables y Pila de Ejecución */}
+      {/* 3. Panel de Variables y Pila de Ejecución */}
       <div className="bg-[#151724] border border-[#24273c] rounded-xl p-3 shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-2 pb-2 mb-2 border-b border-[#24273c]">
-          <span className="text-[10px] uppercase font-bold tracking-widest text-slate-300 flex items-center gap-1.5">
+          <span className="text-[10px] uppercase font-bold tracking-wider text-slate-300 flex items-center gap-1.5">
             <Cpu className="w-3.5 h-3.5 text-indigo-400" />
-            Variables de Ámbito ({activeFrame ? activeFrame.name : 'main()'})
+            Variables ({activeFrame ? activeFrame.name : 'main()'})
           </span>
 
-          {/* Pila de Llamadas (Call Stack) en vivo */}
+          {/* Pila de Llamadas */}
           <div className="flex items-center gap-1 flex-wrap">
             <span className="text-[9px] uppercase font-mono text-slate-400 mr-1">Pila:</span>
             {callStack.map((frame, idx) => (
               <React.Fragment key={frame.id || idx}>
-                {idx > 0 && <span className="text-[10px] text-slate-500 font-mono">➔</span>}
+                {idx > 0 && <span className="text-[10px] text-slate-500 font-mono">/</span>}
                 <span
                   className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
                     frame.isActive
@@ -313,7 +313,6 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
                   }`}
                 >
                   {frame.name}
-                  {frame.isActive ? ' • activo' : ''}
                 </span>
               </React.Fragment>
             ))}
