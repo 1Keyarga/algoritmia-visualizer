@@ -179,10 +179,35 @@ export function App() {
     }
   };
 
-  // CAPA PRINCIPAL: Selección de Módulo
+  const handleNavigateModule = (targetModule: AppModule) => {
+    if (targetModule === 'home') {
+      setIsPredictionModeActive(false);
+      setActiveModule('home');
+    } else if (targetModule === 'algorithms') {
+      if (selectedAlgorithm.id === 'custom-ast') {
+        setSelectedAlgorithm(ALGORITHMS_CATALOG[0]);
+      }
+      setIsPredictionModeActive(false);
+      setActiveModule('algorithms');
+      playback.reset();
+    } else if (targetModule === 'student_code') {
+      setSelectedAlgorithm(CUSTOM_AST_METADATA);
+      setIsPredictionModeActive(false);
+      setActiveModule('student_code');
+      playback.reset();
+    } else if (targetModule === 'guided_tasks') {
+      if (selectedAlgorithm.id === 'custom-ast') {
+        setSelectedAlgorithm(ALGORITHMS_CATALOG[0]);
+      }
+      setActiveModule('guided_tasks');
+      playback.reset();
+    }
+  };
+
+  // PORTADA DE INICIO (separada del entorno de trabajo para futuro login de estudiantes)
   if (activeModule === 'home') {
     return (
-      <div className="flex flex-col h-full w-full min-h-0 bg-[#111217] text-slate-100 font-sans">
+      <div className="flex flex-col h-full w-full min-h-0 bg-[#0d0e16] text-slate-100 font-sans">
         <HomeHub
           onEnterAlgorithmsModule={initialAlgo => {
             const target = initialAlgo || ALGORITHMS_CATALOG[0];
@@ -194,16 +219,8 @@ export function App() {
             setActiveModule('algorithms');
             playback.reset();
           }}
-          onEnterStudentCodeModule={() => {
-            setSelectedAlgorithm(CUSTOM_AST_METADATA);
-            setIsPredictionModeActive(false);
-            setActiveModule('student_code');
-            playback.reset();
-          }}
-          onEnterGuidedTasksModule={() => {
-            setActiveModule('guided_tasks');
-            playback.reset();
-          }}
+          onEnterStudentCodeModule={() => handleNavigateModule('student_code')}
+          onEnterGuidedTasksModule={() => handleNavigateModule('guided_tasks')}
           completedTasksCount={completedTaskIds.length}
         />
       </div>
@@ -217,13 +234,10 @@ export function App() {
 
   return (
     <div className="flex flex-col h-full w-full min-h-0 bg-[#111217] text-slate-100 font-sans">
-      {/* Barra de navegación dedicada exclusivamente al módulo activo */}
+      {/* Barra única del entorno de trabajo (Visurithm Workspace) */}
       <Navbar
         activeModule={activeModule}
-        onBackToHome={() => {
-          setIsPredictionModeActive(false);
-          setActiveModule('home');
-        }}
+        onNavigateModule={handleNavigateModule}
         selectedAlgorithm={selectedAlgorithm}
         onSelectAlgorithm={algo => {
           setSelectedAlgorithm(algo);

@@ -81,47 +81,26 @@ export const HomeHub: React.FC<HomeHubProps> = ({
   }, []);
 
   const currentFrame = HERO_PREVIEW_FRAMES[frameIdx];
+  const uniqueCatalogAlgorithms = ALGORITHMS_CATALOG.filter(
+    algo => algo.id !== 'bubble-sort-classic'
+  );
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#0d0e16] text-slate-100 overflow-y-auto select-none font-sans">
-      {/* Barra superior institucional sobria */}
-      <header className="h-14 bg-[#11131e] border-b border-[#1f2233] px-6 lg:px-12 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 rounded-md bg-indigo-600 flex items-center justify-center text-white font-bold text-xs tracking-tight">
-            <span>VA</span>
-          </div>
-          <span className="text-xs font-semibold tracking-wide text-slate-200">
-            Visualizador Interactivo de Algoritmos
-          </span>
-        </div>
-
-        <nav className="flex items-center gap-1 sm:gap-2">
-          <button
-            onClick={() => onEnterAlgorithmsModule()}
-            className="px-3 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-[#191c2c] transition-colors cursor-pointer"
-          >
-            Catálogo de Algoritmos
-          </button>
-          <button
-            onClick={onEnterStudentCodeModule}
-            className="px-3 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-[#191c2c] transition-colors cursor-pointer"
-          >
-            Código del Estudiante
-          </button>
-          <button
-            onClick={onEnterGuidedTasksModule}
-            className="px-3 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:text-white hover:bg-[#191c2c] transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <span>Tareas Guiadas</span>
-            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#182628] text-emerald-400 border border-emerald-800/60">
-              {completedTasksCount}/21
+      {/* Contenedor central de Portada (independiente del workspace del producto) */}
+      <div className="flex-1 max-w-6xl w-full mx-auto px-6 lg:px-10 py-7 lg:py-9 flex flex-col justify-between gap-8">
+        {/* Identidad superior limpia de portada (sin barra de navegación) */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-md bg-indigo-600 flex items-center justify-center text-white font-bold text-xs tracking-tight">
+              <span>V</span>
+            </div>
+            <span className="text-sm font-bold tracking-tight text-white">Visurithm</span>
+            <span className="text-xs text-slate-500 hidden sm:inline">
+              · Visualizador Interactivo de Algoritmos
             </span>
-          </button>
-        </nav>
-      </header>
-
-      {/* Contenedor central */}
-      <div className="flex-1 max-w-6xl w-full mx-auto px-6 lg:px-10 py-8 lg:py-10 flex flex-col justify-between gap-9">
+          </div>
+        </div>
         {/* Sección principal */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
           {/* Columna izquierda */}
@@ -227,7 +206,9 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                 <div className="w-8 h-8 rounded-lg bg-[#191d30] border border-[#292f4c] flex items-center justify-center text-indigo-400">
                   <Layers className="w-4 h-4" />
                 </div>
-                <span className="text-[11px] font-mono text-slate-400">8 algoritmos</span>
+                <span className="text-[11px] font-mono text-slate-400">
+                  {uniqueCatalogAlgorithms.length} algoritmos
+                </span>
               </div>
 
               <div>
@@ -239,7 +220,7 @@ export const HomeHub: React.FC<HomeHubProps> = ({
               </div>
 
               <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[#1d2136]">
-                {ALGORITHMS_CATALOG.map(algo => (
+                {uniqueCatalogAlgorithms.map(algo => (
                   <button
                     key={algo.id}
                     onClick={() => onEnterAlgorithmsModule(algo)}
