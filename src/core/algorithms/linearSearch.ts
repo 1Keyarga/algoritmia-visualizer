@@ -145,10 +145,10 @@ export function generateLinearSearchTrace(initialData: number[], target: number 
   // Escaneo secuencial
   let foundIndex = -1;
   for (let i = 0; i < n; i++) {
-    // Marcar posición actual como escaneando y anteriores como descartadas
+    // Posicionar cursor i en el bucle
     currentArray = currentArray.map((item, idx) => {
       if (idx < i) return { ...item, state: 'discarded', nonColorIndicator: undefined };
-      if (idx === i) return { ...item, state: 'comparing', nonColorIndicator: 'i' };
+      if (idx === i) return { ...item, state: 'selected', nonColorIndicator: 'i' };
       return { ...item, state: 'default', nonColorIndicator: undefined };
     });
 
@@ -156,10 +156,17 @@ export function generateLinearSearchTrace(initialData: number[], target: number 
     pushStep(
       { pseudocode: 2, python: 2, cpp: 2, java: 2 },
       [{ lineNumber: 2, type: 'active', lineByLanguage: { pseudocode: 2, python: 2, cpp: 2, java: 2 } }],
-      `Escaneando posición i = ${i}. Valor actual: ${currentArray[i].value}.`,
+      `Avanzando índice de búsqueda a i = ${i} (valor: ${currentArray[i].value}).`,
       'iterate_inner',
       i
     );
+
+    // Activar evaluación en la línea del condicional
+    currentArray = currentArray.map((item, idx) => {
+      if (idx < i) return { ...item, state: 'discarded', nonColorIndicator: undefined };
+      if (idx === i) return { ...item, state: 'comparing', nonColorIndicator: 'i' };
+      return { ...item, state: 'default', nonColorIndicator: undefined };
+    });
 
     comparisonsCount++;
     const val = currentArray[i].value;
@@ -196,7 +203,7 @@ export function generateLinearSearchTrace(initialData: number[], target: number 
       pushStep(
         { pseudocode: 3, python: 3, cpp: 3, java: 3 },
         [{ lineNumber: 3, type: 'active', lineByLanguage: { pseudocode: 3, python: 3, cpp: 3, java: 3 } }],
-        `Comparando arr[${i}] (${val}) = clave (${target}): No coincide. Continuando escaneo.`,
+        `Comparando arr[${i}] (${val}) = clave (${target}): No coincide. Se descarta posición ${i}.`,
         'compare',
         i,
         false

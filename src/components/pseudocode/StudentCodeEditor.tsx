@@ -49,6 +49,7 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
     setCode(lang === 'c' ? GENERAL_C_STARTER : GENERAL_JS_STARTER);
     setSyntaxError(null);
     setErrorLine(null);
+    setExecutionStats(null);
     onExitExecutionMode();
   };
 
@@ -57,6 +58,7 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
     setCode(activeLanguage === 'c' ? GENERAL_C_STARTER : GENERAL_JS_STARTER);
     setSyntaxError(null);
     setErrorLine(null);
+    setExecutionStats(null);
     onExitExecutionMode();
   };
 
@@ -269,7 +271,7 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
             )}
           </div>
 
-          {executionStats && (
+          {isExecuting && executionStats && (
             <span className="text-[10px] font-mono text-indigo-300">
               {executionStats.totalSteps} pasos generados
             </span>
@@ -280,17 +282,20 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
         <div className="flex items-center gap-2">
           {isExecuting ? (
             <button
-              onClick={onExitExecutionMode}
+              onClick={() => {
+                setExecutionStats(null);
+                onExitExecutionMode();
+              }}
               className="flex-1 flex items-center justify-center gap-1.5 bg-[#202234] hover:bg-[#2b2d45] border border-[#3b3f5c] text-slate-200 px-3 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-sm"
             >
               <RotateCcw className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Modificar Código ({activeLanguage === 'c' ? 'C / C++' : 'JavaScript'})</span>
+              <span>Editar Código ({activeLanguage === 'c' ? 'C / C++' : 'JavaScript'})</span>
             </button>
           ) : (
             <button
               onClick={handleCompileAndRun}
               disabled={!!syntaxError}
-              className="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 disabled:opacity-40 text-white px-3 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer shadow-md shadow-indigo-600/30"
+              className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer"
             >
               <Play className="w-3.5 h-3.5 fill-white" />
               <span>Compilar y Ejecutar ({activeLanguage === 'c' ? 'C / C++' : 'JavaScript'})</span>

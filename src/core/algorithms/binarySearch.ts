@@ -183,15 +183,27 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
   let right = n - 1;
   let foundIndex = -1;
 
-  // Inicialización de límites
+  // Inicialización de límite inicio
+  currentArray = currentArray.map((item, idx) => {
+    if (idx === left) return { ...item, state: 'selected', nonColorIndicator: 'ini' };
+    return { ...item, state: 'default', nonColorIndicator: undefined };
+  });
+
   pushStep(
     { pseudocode: 2, python: 2, cpp: 2, java: 2 },
     [{ lineNumber: 2, type: 'active', lineByLanguage: { pseudocode: 2, python: 2, cpp: 2, java: 2 } }],
     `Inicializando inicio = 0 (primer índice).`,
     'assign',
     left,
-    right
+    undefined
   );
+
+  // Inicialización de límite fin
+  currentArray = currentArray.map((item, idx) => {
+    if (idx === left) return { ...item, state: 'selected', nonColorIndicator: 'ini' };
+    if (idx === right) return { ...item, state: 'selected', nonColorIndicator: 'fin' };
+    return { ...item, state: 'default', nonColorIndicator: undefined };
+  });
 
   pushStep(
     { pseudocode: 3, python: 3, cpp: 3, java: 3 },
@@ -207,11 +219,25 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
   while (left <= right) {
     iteration++;
 
+    // Reflejar el rango activo [left..right] al evaluar el encabezado del bucle while
+    currentArray = currentArray.map((item, idx) => {
+      if (idx < left || idx > right) {
+        return { ...item, state: 'discarded', nonColorIndicator: undefined };
+      }
+      if (idx === left) {
+        return { ...item, state: 'selected', nonColorIndicator: 'ini' };
+      }
+      if (idx === right) {
+        return { ...item, state: 'selected', nonColorIndicator: 'fin' };
+      }
+      return { ...item, state: 'default', nonColorIndicator: undefined };
+    });
+
     // while condition
     pushStep(
       { pseudocode: 4, python: 4, cpp: 4, java: 4 },
       [{ lineNumber: 4, type: 'active', lineByLanguage: { pseudocode: 4, python: 4, cpp: 4, java: 4 } }],
-      `Iteración ${iteration}: Verificando inicio (${left}) ≤ fin (${right}): VERDADERO. Continuando búsqueda.`,
+      `Iteración ${iteration}: Verificando inicio (${left}) ≤ fin (${right}): VERDADERO. Rango activo [${left}..${right}].`,
       'iterate_inner',
       left,
       right

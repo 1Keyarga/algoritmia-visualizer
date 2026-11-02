@@ -188,12 +188,14 @@ export function generateInsertionSortTrace(initialData: number[]): Step[] {
       i
     );
 
-    const key = currentArray[i].value;
+    const keyItem = { ...currentArray[i] };
+    const key = keyItem.value;
+    let holeIdx = i;
 
     // clave = arr[i]
     currentArray = currentArray.map((item, idx) => {
-      if (sortedIndices.has(idx) && idx !== i) return { ...item, state: 'sorted', nonColorIndicator: undefined };
-      if (idx === i) return { ...item, state: 'selected', nonColorIndicator: 'clave' };
+      if (idx === holeIdx) return { ...item, state: 'selected', nonColorIndicator: 'clave' };
+      if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
       return { ...item, state: 'default', nonColorIndicator: undefined };
     });
 
@@ -210,6 +212,13 @@ export function generateInsertionSortTrace(initialData: number[]): Step[] {
     let j = i - 1;
 
     // j = i - 1
+    currentArray = currentArray.map((item, idx) => {
+      if (idx === holeIdx) return { ...item, state: 'selected', nonColorIndicator: 'clave' };
+      if (idx === j) return { ...item, state: 'selected', nonColorIndicator: 'j' };
+      if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
+      return { ...item, state: 'default', nonColorIndicator: undefined };
+    });
+
     pushStep(
       { pseudocode: 5, python: 5, cpp: 5, java: 5 },
       [{ lineNumber: 5, type: 'active', lineByLanguage: { pseudocode: 5, python: 5, cpp: 5, java: 5 } }],
@@ -223,9 +232,9 @@ export function generateInsertionSortTrace(initialData: number[]): Step[] {
     // Bucle mientras j >= 0 y arr[j] > clave
     while (j >= 0) {
       currentArray = currentArray.map((item, idx) => {
-        if (sortedIndices.has(idx) && idx !== i) return { ...item, state: 'sorted', nonColorIndicator: undefined };
-        if (idx === i) return { ...item, state: 'selected', nonColorIndicator: 'clave' };
+        if (idx === holeIdx) return { ...item, state: 'selected', nonColorIndicator: 'clave' };
         if (idx === j) return { ...item, state: 'comparing', nonColorIndicator: 'j' };
+        if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
         return { ...item, state: 'default', nonColorIndicator: undefined };
       });
 
@@ -247,14 +256,19 @@ export function generateInsertionSortTrace(initialData: number[]): Step[] {
           key
         );
 
-        // Desplazamiento: arr[j + 1] = arr[j]
+        // Desplazamiento: arr[j + 1] = arr[j], y la posición candidata para clave pasa a j
         shiftsCount++;
-        currentArray[j + 1] = {
-          ...currentArray[j],
-          id: `item-${j + 1}-${currentArray[j].value}`,
-          state: 'swapped',
-          nonColorIndicator: '→',
-        };
+        const shiftedItem = { ...currentArray[j], state: 'swapped' as const, nonColorIndicator: '→' };
+        currentArray[j + 1] = shiftedItem;
+        currentArray[j] = { ...keyItem, state: 'selected', nonColorIndicator: 'clave' };
+        holeIdx = j;
+
+        currentArray = currentArray.map((item, idx) => {
+          if (idx === j + 1) return { ...item, state: 'swapped', nonColorIndicator: '→' };
+          if (idx === holeIdx) return { ...item, state: 'selected', nonColorIndicator: 'clave' };
+          if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
+          return { ...item, state: 'default', nonColorIndicator: undefined };
+        });
 
         pushStep(
           { pseudocode: 7, python: 7, cpp: 7, java: 7 },
@@ -272,6 +286,13 @@ export function generateInsertionSortTrace(initialData: number[]): Step[] {
         j--;
 
         // j = j - 1
+        currentArray = currentArray.map((item, idx) => {
+          if (idx === holeIdx) return { ...item, state: 'selected', nonColorIndicator: 'clave' };
+          if (idx === j && j >= 0) return { ...item, state: 'selected', nonColorIndicator: 'j' };
+          if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
+          return { ...item, state: 'default', nonColorIndicator: undefined };
+        });
+
         pushStep(
           { pseudocode: 8, python: 8, cpp: 8, java: 8 },
           [{ lineNumber: 8, type: 'active', lineByLanguage: { pseudocode: 8, python: 8, cpp: 8, java: 8 } }],
@@ -281,6 +302,18 @@ export function generateInsertionSortTrace(initialData: number[]): Step[] {
           j,
           key
         );
+
+        if (j < 0) {
+          pushStep(
+            { pseudocode: 6, python: 6, cpp: 6, java: 6 },
+            [{ lineNumber: 6, type: 'active', lineByLanguage: { pseudocode: 6, python: 6, cpp: 6, java: 6 } }],
+            `Evaluando mientras: j = ${j} < 0: Condición FALSA. Se alcanzó el inicio del arreglo.`,
+            'check',
+            i,
+            j,
+            key
+          );
+        }
       } else {
         pushStep(
           { pseudocode: 6, python: 6, cpp: 6, java: 6 },
@@ -297,18 +330,21 @@ export function generateInsertionSortTrace(initialData: number[]): Step[] {
 
     // Inserción de la clave: arr[j + 1] = clave
     shiftsCount++;
-    currentArray[j + 1] = {
-      id: `item-${j + 1}-${key}`,
-      value: key,
-      originalIndex: i,
-      state: 'swapped',
-      label: LETTERS[(j + 1) % LETTERS.length],
-      nonColorIndicator: undefined,
-    };
-
     for (let k = 0; k <= i; k++) {
       sortedIndices.add(k);
     }
+
+    currentArray[j + 1] = {
+      ...keyItem,
+      state: 'swapped',
+      nonColorIndicator: 'clave',
+    };
+
+    currentArray = currentArray.map((item, idx) => {
+      if (idx === j + 1) return { ...item, state: 'swapped', nonColorIndicator: 'insertado' };
+      if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
+      return { ...item, state: 'default', nonColorIndicator: undefined };
+    });
 
     pushStep(
       { pseudocode: 9, python: 9, cpp: 10, java: 10 },

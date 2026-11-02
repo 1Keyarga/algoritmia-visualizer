@@ -177,6 +177,8 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
         ...v,
         values: [...v.values],
         currentValues: v.currentValues ? [...v.currentValues] : undefined,
+        variables: v.variables ? { ...v.variables } : undefined,
+        activeGlobalIndices: v.activeGlobalIndices ? [...v.activeGlobalIndices] : undefined,
       };
     }
     return copy;
@@ -202,6 +204,19 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
     activeIndices?: Step['activeIndices'],
     frameVars?: Record<string, any>
   ) => {
+    if (activeNodeId && treeNodes[activeNodeId]) {
+      treeNodes[activeNodeId].lastOperation = explanation;
+      treeNodes[activeNodeId].variables = {
+        bajo: treeNodes[activeNodeId].range[0],
+        alto: treeNodes[activeNodeId].range[1],
+        ...(frameVars || {}),
+      };
+      const activeIdxs: number[] = [];
+      if (activeIndices?.i !== undefined) activeIdxs.push(activeIndices.i);
+      if (activeIndices?.j !== undefined) activeIdxs.push(activeIndices.j);
+      treeNodes[activeNodeId].activeGlobalIndices = activeIdxs;
+    }
+
     operationsCount++;
     steps.push({
       stepIndex: steps.length + 1,

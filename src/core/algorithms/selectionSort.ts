@@ -217,11 +217,11 @@ export function generateSelectionSortTrace(initialData: number[]): Step[] {
     );
 
     for (let j = i + 1; j < n; j++) {
-      // Marcar j como comparing y min como selected
+      // Posicionar cursor j en la línea del bucle interno
       currentArray = currentArray.map((item, idx) => {
         if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
         if (idx === min) return { ...item, state: 'selected', nonColorIndicator: 'min' };
-        if (idx === j) return { ...item, state: 'comparing', nonColorIndicator: '(j)' };
+        if (idx === j) return { ...item, state: 'selected', nonColorIndicator: 'j' };
         return { ...item, state: 'default', nonColorIndicator: undefined };
       });
 
@@ -229,12 +229,20 @@ export function generateSelectionSortTrace(initialData: number[]): Step[] {
       pushStep(
         { pseudocode: 10, python: 8, cpp: 9, java: 9 },
         [{ lineNumber: 10, type: 'active', lineByLanguage: { pseudocode: 10, python: 8, cpp: 9, java: 9 } }],
-        `Bucle interno: comparando elemento en j = ${j} frente al mínimo actual en min = ${min}.`,
+        `Bucle interno: avanzando cursor a j = ${j} (valor: ${currentArray[j].value}).`,
         'iterate_inner',
         i,
         j,
         min
       );
+
+      // Activar comparación visual entre arr[j] y arr[min] en la línea del condicional
+      currentArray = currentArray.map((item, idx) => {
+        if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
+        if (idx === min) return { ...item, state: 'comparing', nonColorIndicator: 'min' };
+        if (idx === j) return { ...item, state: 'comparing', nonColorIndicator: 'j' };
+        return { ...item, state: 'default', nonColorIndicator: undefined };
+      });
 
       comparisonsCount++;
       const valJ = currentArray[j].value;
@@ -298,37 +306,36 @@ export function generateSelectionSortTrace(initialData: number[]): Step[] {
     }
 
     // Intercambiar arr[i] con arr[min]
-    swapsCount++;
-    const temp = currentArray[i];
-    currentArray[i] = currentArray[min];
-    currentArray[min] = temp;
-
-    currentArray[i].state = 'swapped';
-    currentArray[i].nonColorIndicator = undefined;
+    const prevValI = currentArray[i].value;
+    const minFoundVal = currentArray[min].value;
     if (i !== min) {
-      currentArray[min].state = 'swapped';
-      currentArray[min].nonColorIndicator = undefined;
+      swapsCount++;
+      const temp = currentArray[i];
+      currentArray[i] = currentArray[min];
+      currentArray[min] = temp;
     }
+
+    sortedIndices.add(i);
+    currentArray = currentArray.map((item, idx) => {
+      if (idx === i) return { ...item, state: 'swapped', nonColorIndicator: 'fijo' };
+      if (idx === min && i !== min) return { ...item, state: 'swapped', nonColorIndicator: undefined };
+      if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
+      return { ...item, state: 'default', nonColorIndicator: undefined };
+    });
 
     pushStep(
       { pseudocode: 13, python: 11, cpp: 14, java: 14 },
       [
         { lineNumber: 13, type: 'executed', badgeText: 'ejecutado', lineByLanguage: { pseudocode: 13, python: 11, cpp: 14, java: 14 } },
       ],
-      `Intercambiando arr[${i}] (${temp.value}) con el mínimo encontrado arr[${min}] (${currentArray[i].value}).`,
+      i !== min
+        ? `Intercambiando arr[${i}] (${prevValI}) con el mínimo encontrado arr[${min}] (${minFoundVal}). La posición ${i} queda ordenada.`
+        : `El mínimo (${minFoundVal}) ya se encuentra en la posición i = ${i}. La posición ${i} queda fijada como ordenada.`,
       'swap',
       i,
       undefined,
       min
     );
-
-    // Fijar elemento i como ordenado
-    sortedIndices.add(i);
-    currentArray[i] = {
-      ...currentArray[i],
-      state: 'sorted',
-      nonColorIndicator: undefined,
-    };
 
     currentArray = currentArray.map((item, idx) => {
       if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };

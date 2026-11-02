@@ -192,6 +192,8 @@ export function App() {
       playback.reset();
     } else if (targetModule === 'student_code') {
       setSelectedAlgorithm(CUSTOM_AST_METADATA);
+      setIsASTExecuting(false);
+      setCustomSteps(null);
       setIsPredictionModeActive(false);
       setActiveModule('student_code');
       playback.reset();
@@ -273,7 +275,11 @@ export function App() {
             isOpen={isPseudocodeOpen}
             onToggleOpen={() => setIsPseudocodeOpen(!isPseudocodeOpen)}
             isExecuting={isASTExecuting}
-            onExitExecutionMode={() => setIsASTExecuting(false)}
+            onExitExecutionMode={() => {
+              setIsASTExecuting(false);
+              setCustomSteps(null);
+              playback.reset();
+            }}
           />
         ) : (
           <PseudocodePanel
@@ -314,6 +320,7 @@ export function App() {
             isPredictionModeActive={isPredictionModeActive}
             onTogglePredictionMode={() => setIsPredictionModeActive(prev => !prev)}
             onAdvanceStep={playback.nextStep}
+            isAwaitingCompilation={activeModule === 'student_code' && !isASTExecuting}
           />
         </div>
 
@@ -346,6 +353,7 @@ export function App() {
         onGoToStep={playback.goToStep}
         onSetSpeed={playback.setSpeed}
         onReset={playback.reset}
+        disabled={activeModule === 'student_code' && !isASTExecuting}
       />
     </div>
   );

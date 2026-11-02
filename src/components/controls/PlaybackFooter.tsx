@@ -23,6 +23,7 @@ interface PlaybackFooterProps {
   onGoToStep: (step: number) => void;
   onSetSpeed: (speed: PlaybackSpeed) => void;
   onReset: () => void;
+  disabled?: boolean;
 }
 
 export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
@@ -38,9 +39,11 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
   onGoToStep,
   onSetSpeed,
   onReset,
+  disabled = false,
 }) => {
   const speeds: PlaybackSpeed[] = [0.5, 1, 2, 4];
-  const percent = totalSteps > 1 ? Math.round(((currentStepIndex + 1) / totalSteps) * 100) : 0;
+  const percent =
+    !disabled && totalSteps > 1 ? Math.round(((currentStepIndex + 1) / totalSteps) * 100) : 0;
 
   return (
     <footer className="bg-[#13141e] border-t border-[#232532] flex flex-col shrink-0 select-none z-20">
@@ -50,10 +53,11 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
           <input
             type="range"
             min={0}
-            max={Math.max(0, totalSteps - 1)}
-            value={currentStepIndex}
+            max={disabled ? 0 : Math.max(0, totalSteps - 1)}
+            value={disabled ? 0 : currentStepIndex}
+            disabled={disabled || totalSteps <= 1}
             onChange={(e) => onGoToStep(Number(e.target.value))}
-            className="w-full h-1.5 bg-[#25283a] rounded-lg appearance-none cursor-pointer accent-indigo-500 hover:h-2 transition-all"
+            className="w-full h-1.5 bg-[#25283a] rounded-lg appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed accent-indigo-500 hover:h-2 transition-all"
           />
         </div>
         <span className="text-[10px] font-mono text-slate-400 w-8 text-right shrink-0">
@@ -67,7 +71,7 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
         <div className="flex items-center gap-2 min-w-[140px]">
           <div className="bg-[#1c1d2c] px-3 py-1 rounded-lg border border-[#2b2d42]">
             <span className="text-xs font-mono text-slate-300 font-semibold">
-              Paso {currentStepIndex + 1} / {totalSteps}
+              {disabled ? 'Sin ejecución' : `Paso ${currentStepIndex + 1} / ${totalSteps}`}
             </span>
           </div>
         </div>
@@ -77,8 +81,8 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
           {/* Ir al inicio */}
           <button
             onClick={onGoToStart}
-            disabled={currentStepIndex === 0}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
+            disabled={disabled || currentStepIndex === 0}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed"
             title="Ir al inicio (Home)"
           >
             <SkipBack className="w-4 h-4" />
@@ -87,8 +91,8 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
           {/* Paso anterior */}
           <button
             onClick={onPrevStep}
-            disabled={currentStepIndex === 0}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
+            disabled={disabled || currentStepIndex === 0}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed"
             title="Paso anterior (Flecha Izquierda)"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -97,10 +101,11 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
           {/* Botón Reproducir / Pausar */}
           <button
             onClick={onTogglePlay}
-            className="w-10 h-10 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center transition-colors cursor-pointer"
+            disabled={disabled || totalSteps === 0}
+            className="w-10 h-10 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 text-white flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed"
             title={isPlaying ? 'Pausar (Espacio)' : 'Reproducir (Espacio)'}
           >
-            {isPlaying ? (
+            {isPlaying && !disabled ? (
               <Pause className="w-4 h-4 fill-white" />
             ) : (
               <Play className="w-4 h-4 fill-white ml-0.5" />
@@ -110,8 +115,8 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
           {/* Paso siguiente */}
           <button
             onClick={onNextStep}
-            disabled={currentStepIndex >= totalSteps - 1}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
+            disabled={disabled || currentStepIndex >= totalSteps - 1}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed"
             title="Paso siguiente (Flecha Derecha)"
           >
             <ChevronRight className="w-5 h-5" />
@@ -120,8 +125,8 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
           {/* Ir al final */}
           <button
             onClick={onGoToEnd}
-            disabled={currentStepIndex >= totalSteps - 1}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer"
+            disabled={disabled || currentStepIndex >= totalSteps - 1}
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed"
             title="Ir al final (End)"
           >
             <SkipForward className="w-4 h-4" />
@@ -134,8 +139,9 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
             {speeds.map((s) => (
               <button
                 key={s}
+                disabled={disabled}
                 onClick={() => onSetSpeed(s)}
-                className={`px-2.5 py-1 text-xs font-mono rounded-md transition-colors cursor-pointer ${
+                className={`px-2.5 py-1 text-xs font-mono rounded-md transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                   speed === s
                     ? 'bg-indigo-600 text-white font-bold shadow-xs'
                     : 'text-slate-400 hover:text-slate-200'
@@ -148,7 +154,8 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
 
           <button
             onClick={onReset}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1c1d29] hover:bg-[#25283d] border border-[#2b2e42] text-slate-300 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
+            disabled={disabled}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1c1d29] hover:bg-[#25283d] disabled:opacity-40 disabled:cursor-not-allowed border border-[#2b2e42] text-slate-300 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
             title="Reiniciar ejecución (R)"
           >
             <RotateCcw className="w-3.5 h-3.5" />

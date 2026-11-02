@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import type { RecursionTreeNode, DivideAndConquerState } from '../../../types/trace';
-import { ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize, X } from 'lucide-react';
 import { useContainerSize } from '../../../hooks/useContainerSize';
 
 interface RecursionTreeVisualizerProps {
@@ -228,7 +228,10 @@ export const RecursionTreeVisualizer: React.FC<RecursionTreeVisualizerProps> = (
     }
   };
 
-  const selectedNode = positionedNodes.find(p => p.node.id === selectedNodeId) || null;
+  const selectedNode = selectedNodeId
+    ? positionedNodes.find(p => p.node.id === selectedNodeId) || null
+    : null;
+  const inspectedNode = selectedNode?.node || null;
 
   return (
     <div
@@ -422,9 +425,16 @@ export const RecursionTreeVisualizer: React.FC<RecursionTreeVisualizerProps> = (
                           const globalIdx = node.range[0] + idx;
                           const isPivotCell =
                             node.pivotIndex !== undefined && globalIdx === node.pivotIndex;
+                          const isCellActiveInStep =
+                            isActive &&
+                            node.activeGlobalIndices &&
+                            node.activeGlobalIndices.includes(globalIdx);
 
                           let cellCls = 'bg-[#1d2033] border-[#323652] text-slate-100';
-                          if (isPivotCell) {
+                          if (isCellActiveInStep) {
+                            cellCls =
+                              'bg-amber-500/35 border-amber-400 text-amber-100 font-black';
+                          } else if (isPivotCell) {
                             cellCls =
                               'bg-purple-500/30 border-purple-400 text-purple-100 font-black';
                           } else if (
@@ -457,39 +467,103 @@ export const RecursionTreeVisualizer: React.FC<RecursionTreeVisualizerProps> = (
         </g>
       </svg>
 
-      {/* Detalle al hacer clic en un nodo */}
-      {selectedNode && (
-        <div className="absolute bottom-3 left-3 z-20 bg-[#171929]/95 border border-[#2f334d] rounded-xl p-3 shadow-xl text-xs font-mono w-64">
-          <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-[#262940]">
-            <span className="font-bold text-indigo-300">
-              Rango [{selectedNode.node.range[0]}..{selectedNode.node.range[1]}]
-            </span>
-            <span
-              className={`text-[9px] px-1.5 py-0.5 rounded border ${
-                getNodeBadge(selectedNode.node.state, 4).bg
-              }`}
-            >
-              {getNodeBadge(selectedNode.node.state, 4).text}
-            </span>
-          </div>
-          <div className="space-y-1 text-[11px] text-slate-300">
-            <div className="flex justify-between">
-              <span className="text-slate-400">Nivel:</span>
-              <span>{selectedNode.node.depth}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Valores:</span>
-              <span>
-                [{(selectedNode.node.currentValues || selectedNode.node.values).join(', ')}]
+      {/* Inspector de Nodo y Variables (aparece al hacer clic en un nodo; se cierra con la X, al hacer clic fuera o al volver a pulsar el nodo) */}
+      {inspectedNode && (
+        <div
+          onClick={e => e.stopPropagation()}
+          className="absolute bottom-3 left-3 z-20 bg-[#141624]/95 border border-[#2c314b] rounded-xl p-3 shadow-xl text-xs font-mono w-72 sm:w-80 space-y-2"
+        >
+          <div className="flex items-center justify-between pb-1.5 border-b border-[#252940]">
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-indigo-300">
+                Nodo [{inspectedNode.range[0]}..{inspectedNode.range[1]}]
+              </span>
+              <span className="text-[10px] text-slate-400">
+                (Nivel {inspectedNode.depth})
               </span>
             </div>
-            {selectedNode.node.pivotValue !== undefined && (
-              <div className="flex justify-between text-purple-300">
-                <span>Pivote:</span>
-                <span>{selectedNode.node.pivotValue}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`text-[9px] px-1.5 py-0.5 rounded border ${
+                  getNodeBadge(inspectedNode.state, 4).bg
+                }`}
+              >
+                {getNodeBadge(inspectedNode.state, 4).text}
+              </span>
+              <button
+                onClick={() => setSelectedNodeId(null)}
+                className="p-0.5 rounded bg-[#1f2337] hover:bg-[#2a2f4a] text-slate-400 hover:text-white border border-[#323856] transition-colors cursor-pointer"
+                title="Cerrar detalle del nodo"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
+
+          {/* Entrada vs Estado Actual en el Nodo */}
+          <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+            <div className="bg-[#10121d] border border-[#22263a] rounded px-2 py-1">
+              <div className="text-[9px] text-slate-400">Entrada inicial</div>
+              <div className="text-slate-200 font-semibold truncate">
+                [{inspectedNode.values.join(', ')}]
+              </div>
+            </div>
+            <div className="bg-[#10121d] border border-[#22263a] rounded px-2 py-1">
+              <div className="text-[9px] text-slate-400">Estado en nodo</div>
+              <div className="text-emerald-300 font-semibold truncate">
+                [{(inspectedNode.currentValues || inspectedNode.values).join(', ')}]
+              </div>
+            </div>
+          </div>
+
+          {/* Variables Locales del Nodo (combinar / particionar) */}
+          {inspectedNode.variables && Object.keys(inspectedNode.variables).length > 0 && (
+            <div className="space-y-1">
+              <div className="text-[9px] uppercase tracking-wider text-slate-400 font-sans font-bold">
+                Variables locales del nodo
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {Object.entries(inspectedNode.variables).map(([k, v]) => (
+                  <span
+                    key={k}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-[#1a1d30] border border-[#2b304d] text-slate-200"
+                  >
+                    <span className="text-indigo-300">{k}</span>={String(v ?? '—')}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Arreglo temporal temp[] durante combinar (Merge Sort) */}
+          {inspectedNode.tempBuffer && inspectedNode.tempBuffer.length > 0 && (
+            <div className="space-y-1">
+              <div className="text-[9px] uppercase tracking-wider text-purple-300 font-sans font-bold">
+                Arreglo auxiliar temp[] en combinar()
+              </div>
+              <div className="flex items-center gap-1 flex-wrap">
+                {inspectedNode.tempBuffer.map((val, idx) => (
+                  <div
+                    key={idx}
+                    className={`px-1.5 py-0.5 rounded border text-[10px] ${
+                      val !== null
+                        ? 'bg-purple-950/60 border-purple-500/50 text-purple-200 font-bold'
+                        : 'bg-[#10121d] border-[#23273d] text-slate-500'
+                    }`}
+                  >
+                    {val !== null ? val : '·'}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Operación registrada en este nodo */}
+          {inspectedNode.lastOperation && (
+            <div className="text-[10px] font-sans text-slate-300 bg-[#10121d] border border-[#22263a] rounded px-2 py-1.5 leading-snug">
+              {inspectedNode.lastOperation}
+            </div>
+          )}
         </div>
       )}
     </div>

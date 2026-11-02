@@ -191,7 +191,14 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
   const cloneNodes = (): Record<string, RecursionTreeNode> => {
     const copy: Record<string, RecursionTreeNode> = {};
     for (const [k, v] of Object.entries(treeNodes)) {
-      copy[k] = { ...v, values: [...v.values], currentValues: v.currentValues ? [...v.currentValues] : undefined };
+      copy[k] = {
+        ...v,
+        values: [...v.values],
+        currentValues: v.currentValues ? [...v.currentValues] : undefined,
+        variables: v.variables ? { ...v.variables } : undefined,
+        tempBuffer: v.tempBuffer ? [...v.tempBuffer] : undefined,
+        activeGlobalIndices: v.activeGlobalIndices ? [...v.activeGlobalIndices] : undefined,
+      };
     }
     return copy;
   };
@@ -216,6 +223,22 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
     activeIndices?: Step['activeIndices'],
     frameVars?: Record<string, any>
   ) => {
+    if ( activeNodeId && treeNodes[activeNodeId] ) {
+      treeNodes[activeNodeId].lastOperation = explanation;
+      if (frameVars) {
+        treeNodes[activeNodeId].variables = {
+          inicio: treeNodes[activeNodeId].range[0],
+          fin: treeNodes[activeNodeId].range[1],
+          medio: Math.floor((treeNodes[activeNodeId].range[0] + treeNodes[activeNodeId].range[1]) / 2),
+          ...frameVars,
+        };
+      }
+      const activeIdxs: number[] = [];
+      if (activeIndices?.i !== undefined) activeIdxs.push(activeIndices.i);
+      if (activeIndices?.j !== undefined) activeIdxs.push(activeIndices.j);
+      treeNodes[activeNodeId].activeGlobalIndices = activeIdxs;
+    }
+
     operationsCount++;
     steps.push({
       stepIndex: steps.length + 1,
@@ -461,7 +484,8 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
 
   function mergeDetailed(inicio: number, medio: number, fin: number, parentNodeId: string) {
     const len = fin - inicio + 1;
-    const temp: number[] = new Array(len);
+    const temp: Array<number | null> = new Array(len).fill(null);
+    treeNodes[parentNodeId].tempBuffer = [...temp];
 
     // Línea 10: temp = crear_arreglo(fin - inicio + 1)
     pushStep(
@@ -473,7 +497,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
       'combine',
       `Creando arreglo auxiliar temp[0..${len - 1}]`,
       { left: inicio, right: fin, mid: medio },
-      { tempLength: len }
+      { inicio, medio, fin, tam_temp: len }
     );
 
     let i = inicio;
@@ -484,13 +508,13 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
     pushStep(
       { pseudocode: 11, python: 11, cpp: 10, java: 10 },
       [{ lineNumber: 11, type: 'active', lineByLanguage: { pseudocode: 11, python: 11, cpp: 10, java: 10 } }],
-      `Inicializando punteros de combinación: i = ${i} (izq), j = ${j} (der), k = 0 (temp).`,
+      `Inicializando punteros de combinación: i = ${i} (subarreglo izq), j = ${j} (subarreglo der), k = 0 (temp).`,
       'assign',
       parentNodeId,
       'combine',
       `Punteros: i=${i}, j=${j}, k=${k}`,
       { i, j, left: inicio, right: fin, mid: medio },
-      { i, j, k }
+      { inicio, medio, fin, i, j, k }
     );
 
     // Línea 12: mientras i <= medio y j <= fin
@@ -520,11 +544,12 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
           'combine',
           `Comparación: arr[${i}] (${valI}) <= arr[${j}] (${valJ})`,
           { i, j, left: inicio, right: fin, mid: medio },
-          { i, j, k, 'arr[i]': valI, 'arr[j]': valJ }
+          { inicio, medio, fin, i, j, k, 'arr[i]': valI, 'arr[j]': valJ }
         );
 
         // Línea 14 & 15: temp[k] = arr[i]; i = i + 1
         temp[k] = valI;
+        treeNodes[parentNodeId].tempBuffer = [...temp];
         movesCount++;
 
         pushStep(
@@ -539,7 +564,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
           'combine',
           `temp[${k}] = ${valI}, i = ${i + 1}`,
           { i, j, left: inicio, right: fin, mid: medio },
-          { i: i + 1, j, k, 'temp[k]': valI }
+          { inicio, medio, fin, i: i + 1, j, k, 'temp[k]': valI }
         );
 
         i++;
@@ -557,10 +582,11 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
           'combine',
           `Comparación: arr[${j}] (${valJ}) < arr[${i}] (${valI})`,
           { i, j, left: inicio, right: fin, mid: medio },
-          { i, j, k, 'arr[i]': valI, 'arr[j]': valJ }
+          { inicio, medio, fin, i, j, k, 'arr[i]': valI, 'arr[j]': valJ }
         );
 
         temp[k] = valJ;
+        treeNodes[parentNodeId].tempBuffer = [...temp];
         movesCount++;
 
         pushStep(
@@ -575,7 +601,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
           'combine',
           `temp[${k}] = ${valJ}, j = ${j + 1}`,
           { i, j, left: inicio, right: fin, mid: medio },
-          { i, j: j + 1, k, 'temp[k]': valJ }
+          { inicio, medio, fin, i, j: j + 1, k, 'temp[k]': valJ }
         );
 
         j++;
@@ -593,7 +619,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
         'combine',
         `Avanzando índice temporal k = ${k}`,
         { i, j, left: inicio, right: fin, mid: medio },
-        { i, j, k }
+        { inicio, medio, fin, i, j, k }
       );
     }
 
@@ -601,6 +627,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
     while (i <= medio) {
       const valI = currentArray[i].value;
       temp[k] = valI;
+      treeNodes[parentNodeId].tempBuffer = [...temp];
       movesCount++;
 
       pushStep(
@@ -612,7 +639,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
         'combine',
         `Copiando restante izq: temp[${k}] = arr[${i}] (${valI})`,
         { i, left: inicio, right: fin, mid: medio },
-        { i: i + 1, j, k: k + 1, 'temp[k]': valI }
+        { inicio, medio, fin, i: i + 1, j, k: k + 1, 'temp[k]': valI }
       );
 
       i++;
@@ -623,6 +650,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
     while (j <= fin) {
       const valJ = currentArray[j].value;
       temp[k] = valJ;
+      treeNodes[parentNodeId].tempBuffer = [...temp];
       movesCount++;
 
       pushStep(
@@ -634,7 +662,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
         'combine',
         `Copiando restante der: temp[${k}] = arr[${j}] (${valJ})`,
         { j, left: inicio, right: fin, mid: medio },
-        { i, j: j + 1, k: k + 1, 'temp[k]': valJ }
+        { inicio, medio, fin, i, j: j + 1, k: k + 1, 'temp[k]': valJ }
       );
 
       j++;
@@ -643,9 +671,10 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
 
     // Línea 24 & 25: Copiar temporal de vuelta al arreglo original
     for (let idx = 0; idx < k; idx++) {
+      const writtenVal = temp[idx] as number;
       currentArray[inicio + idx] = {
         ...currentArray[inicio + idx],
-        value: temp[idx],
+        value: writtenVal,
         state: 'swapped',
         nonColorIndicator: undefined,
       };
@@ -658,16 +687,17 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
           { lineNumber: 24, type: 'active', lineByLanguage: { pseudocode: 24, python: 24, cpp: 18, java: 18 } },
           { lineNumber: 25, type: 'executed', badgeText: 'copiado', lineByLanguage: { pseudocode: 25, python: 25, cpp: 19, java: 19 } },
         ],
-        `Copiando temporal al arreglo original: arr[${inicio + idx}] = temp[${idx}] (${temp[idx]}).`,
+        `Copiando temporal al arreglo original: arr[${inicio + idx}] = temp[${idx}] (${writtenVal}).`,
         'assign',
         parentNodeId,
         'combine',
-        `Volcando temp[${idx}] (${temp[idx]}) a arr[${inicio + idx}]`,
+        `Volcando temp[${idx}] (${writtenVal}) a arr[${inicio + idx}]`,
         { i: inicio + idx, left: inicio, right: fin, mid: medio },
-        { idx, 'arr[inicio+idx]': temp[idx] }
+        { inicio, medio, fin, idx, 'arr[inicio+idx]': writtenVal }
       );
     }
 
+    treeNodes[parentNodeId].activeGlobalIndices = [];
     for (let idx = 0; idx < k; idx++) {
       currentArray[inicio + idx].state = 'sorted';
     }

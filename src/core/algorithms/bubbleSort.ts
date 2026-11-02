@@ -302,9 +302,10 @@ export function generateBubbleSortTrace(initialData: number[], isOptimized: bool
     const limit = n - i - 1;
 
     for (let j = 0; j < limit; j++) {
+      // Posicionar punteros j y j + 1 en el encabezado del bucle interno
       currentArray = currentArray.map((item, idx) => {
         if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
-        if (idx === j || idx === j + 1) return { ...item, state: 'comparing', nonColorIndicator: idx === j ? 'j' : 'j+1' };
+        if (idx === j || idx === j + 1) return { ...item, state: 'selected', nonColorIndicator: idx === j ? 'j' : 'j+1' };
         return { ...item, state: 'default', nonColorIndicator: undefined };
       });
 
@@ -316,12 +317,19 @@ export function generateBubbleSortTrace(initialData: number[], isOptimized: bool
       pushStep(
         jLine,
         [{ lineNumber: jLine.pseudocode, type: 'active', lineByLanguage: jLine }],
-        `Evaluando adyacentes: posición j = ${j} frente a j + 1 = ${j + 1}.`,
+        `Posicionando índices adyacentes: j = ${j} y j + 1 = ${j + 1}.`,
         'iterate_inner',
         i,
         j,
         swapped
       );
+
+      // Activar estado visual de comparación en la línea del condicional
+      currentArray = currentArray.map((item, idx) => {
+        if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
+        if (idx === j || idx === j + 1) return { ...item, state: 'comparing', nonColorIndicator: idx === j ? 'j' : 'j+1' };
+        return { ...item, state: 'default', nonColorIndicator: undefined };
+      });
 
       comparisonsCount++;
       const valJ = currentArray[j].value;
@@ -356,9 +364,9 @@ export function generateBubbleSortTrace(initialData: number[], isOptimized: bool
         currentArray[j] = currentArray[j + 1];
         currentArray[j + 1] = temp;
         currentArray[j].state = 'swapped';
-        currentArray[j].nonColorIndicator = undefined;
+        currentArray[j].nonColorIndicator = 'j';
         currentArray[j + 1].state = 'swapped';
-        currentArray[j + 1].nonColorIndicator = undefined;
+        currentArray[j + 1].nonColorIndicator = 'j+1';
 
         const flagLine = isOptimized ? { pseudocode: 13, python: 11, cpp: 12, java: 12 } : null;
 
@@ -369,7 +377,7 @@ export function generateBubbleSortTrace(initialData: number[], isOptimized: bool
             { lineNumber: swapLine.pseudocode, type: 'executed', badgeText: 'ejecutado', lineByLanguage: swapLine },
             ...(flagLine ? [{ lineNumber: flagLine.pseudocode, type: 'next' as const, badgeText: 'siguiente', lineByLanguage: flagLine }] : []),
           ],
-          `Intercambiando arr[${j}] y arr[${j + 1}]: ${valJ} pasa a la derecha.`,
+          `Intercambiando arr[${j}] y arr[${j + 1}]: ${valJ} pasa a la posición ${j + 1}.`,
           'swap',
           i,
           j,
@@ -415,11 +423,10 @@ export function generateBubbleSortTrace(initialData: number[], isOptimized: bool
 
     const sortedIdx = n - i - 1;
     sortedIndices.add(sortedIdx);
-    currentArray[sortedIdx] = {
-      ...currentArray[sortedIdx],
-      state: 'sorted',
-      nonColorIndicator: undefined,
-    };
+    currentArray = currentArray.map((item, idx) => {
+      if (sortedIndices.has(idx)) return { ...item, state: 'sorted', nonColorIndicator: undefined };
+      return { ...item, state: 'default', nonColorIndicator: undefined };
+    });
 
     if (isOptimized) {
       // if not swapped
@@ -434,16 +441,6 @@ export function generateBubbleSortTrace(initialData: number[], isOptimized: bool
       );
 
       if (!swapped) {
-        pushStep(
-          { pseudocode: 15, python: 13, cpp: 15, java: 15 },
-          [{ lineNumber: 15, type: 'active', lineByLanguage: { pseudocode: 15, python: 13, cpp: 15, java: 15 } }],
-          `Optimización por bandera: al no haber intercambios en esta pasada, los ${sortedIdx} elementos restantes ya se encuentran en orden.`,
-          'finish',
-          i,
-          undefined,
-          false
-        );
-
         for (let k = sortedIdx - 1; k >= 0; k--) {
           sortedIndices.add(k);
           currentArray[k] = { ...currentArray[k], state: 'sorted', nonColorIndicator: undefined };
@@ -452,7 +449,7 @@ export function generateBubbleSortTrace(initialData: number[], isOptimized: bool
         pushStep(
           { pseudocode: 15, python: 13, cpp: 15, java: 15 },
           [{ lineNumber: 15, type: 'active', lineByLanguage: { pseudocode: 15, python: 13, cpp: 15, java: 15 } }],
-          `Confirmando orden final: todos los elementos del arreglo han sido verificados y marcados como ordenados.`,
+          `Optimización por bandera: al no haber intercambios en esta pasada, los elementos restantes [0..${sortedIdx}] ya están ordenados. Interrumpiendo bucle.`,
           'finish',
           i,
           undefined,
@@ -460,6 +457,15 @@ export function generateBubbleSortTrace(initialData: number[], isOptimized: bool
         );
         break;
       }
+    } else {
+      // En versión clásica, reflejar visualmente el elemento fijado al cerrar la pasada i
+      pushStep(
+        { pseudocode: 8, python: 6, cpp: 12, java: 12 },
+        [{ lineNumber: 8, type: 'active', lineByLanguage: { pseudocode: 8, python: 6, cpp: 12, java: 12 } }],
+        `Fin de la pasada i = ${i}. El mayor elemento restante (${currentArray[sortedIdx].value}) queda fijado en su posición final [${sortedIdx}].`,
+        'check',
+        i
+      );
     }
   }
 

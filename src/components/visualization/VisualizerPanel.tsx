@@ -26,6 +26,7 @@ interface VisualizerPanelProps {
   isPredictionModeActive?: boolean;
   onTogglePredictionMode?: () => void;
   onAdvanceStep?: () => void;
+  isAwaitingCompilation?: boolean;
 }
 
 export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
@@ -40,6 +41,7 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
   isPredictionModeActive = false,
   onTogglePredictionMode,
   onAdvanceStep,
+  isAwaitingCompilation = false,
 }) => {
   const isDivideAndConquer = !!currentStep?.divideAndConquer;
   const isSearching = algorithmFamily === 'searching';
@@ -96,9 +98,15 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
 
           {/* Indicador de paso actual */}
           <div className="flex items-center gap-1.5 bg-[#1c1d2c] px-2.5 py-1 rounded-full border border-[#2b2d42]">
-            <span className="w-2 h-2 rounded-full bg-amber-400" />
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isAwaitingCompilation ? 'bg-slate-500' : 'bg-amber-400'
+              }`}
+            />
             <span className="text-[11px] font-mono font-semibold text-slate-200 whitespace-nowrap">
-              Paso {stepIndex + 1} de {totalSteps}
+              {isAwaitingCompilation
+                ? 'Modo edición'
+                : `Paso ${stepIndex + 1} de ${totalSteps}`}
             </span>
           </div>
 
@@ -130,7 +138,21 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
 
       {/* Contenedor principal de visualización */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-        {currentStep ? (
+        {isAwaitingCompilation ? (
+          <div className="flex-1 bg-[#11121d] border border-[#23263b] rounded-xl flex flex-col items-center justify-center p-8 text-center">
+            <div className="w-11 h-11 rounded-xl bg-[#191c2e] border border-[#2b304d] flex items-center justify-center text-indigo-400 mb-3">
+              <Cpu className="w-5 h-5" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-200">
+              Esperando compilación y ejecución
+            </h3>
+            <p className="text-xs text-slate-400 max-w-md mt-1.5 leading-relaxed">
+              Escribe o modifica tu algoritmo en el editor de la izquierda y presiona{' '}
+              <span className="text-indigo-300 font-semibold">Compilar y Ejecutar</span> para
+              instrumentar el AST y habilitar la visualización paso a paso en memoria.
+            </p>
+          </div>
+        ) : currentStep ? (
           isCustomCode ? (
             <StudentCodeVisualizer currentStep={currentStep} />
           ) : isDivideAndConquer && currentStep.divideAndConquer ? (
