@@ -85,11 +85,10 @@ export const BINARY_SEARCH_METADATA: AlgorithmMetadata = {
 
 export function generateBinarySearchTrace(initialData: number[], target: number = 27): Step[] {
   const steps: Step[] = [];
-  // Binary search requiere arreglo ordenado
-  const sortedData = [...initialData].sort((a, b) => a - b);
-  const n = sortedData.length;
+  const data = [...initialData];
+  const n = data.length;
 
-  let currentArray: ArrayElement[] = sortedData.map((val, idx) => ({
+  let currentArray: ArrayElement[] = data.map((val, idx) => ({
     id: `item-${idx}-${val}`,
     value: val,
     originalIndex: idx,

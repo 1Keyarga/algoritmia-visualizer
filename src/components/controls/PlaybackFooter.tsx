@@ -97,13 +97,13 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
           {/* Botón Reproducir / Pausar */}
           <button
             onClick={onTogglePlay}
-            className="w-11 h-11 rounded-full bg-gradient-to-tr from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 hover:shadow-indigo-500/50 transition-all transform active:scale-95 cursor-pointer ring-2 ring-indigo-400/20"
+            className="w-10 h-10 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center transition-colors cursor-pointer"
             title={isPlaying ? 'Pausar (Espacio)' : 'Reproducir (Espacio)'}
           >
             {isPlaying ? (
-              <Pause className="w-5 h-5 fill-white" />
+              <Pause className="w-4 h-4 fill-white" />
             ) : (
-              <Play className="w-5 h-5 fill-white ml-0.5" />
+              <Play className="w-4 h-4 fill-white ml-0.5" />
             )}
           </button>
 

@@ -369,18 +369,15 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
                       let borderClass = 'border-[#282b42]';
                       let bgClass = 'bg-[#151726]';
                       let textClass = 'text-slate-200';
-                      let glowShadow = '';
 
                       if (isComparing) {
-                        borderClass = 'border-amber-400 ring-2 ring-amber-400/30';
+                        borderClass = 'border-amber-400 ring-1 ring-amber-400/30';
                         bgClass = 'bg-amber-950/30';
-                        textClass = 'text-amber-200 font-black';
-                        glowShadow = 'shadow-[0_0_15px_rgba(251,191,36,0.25)]';
+                        textClass = 'text-amber-200 font-bold';
                       } else if (isSwapped) {
-                        borderClass = 'border-sky-400 ring-2 ring-sky-400/30';
+                        borderClass = 'border-sky-400 ring-1 ring-sky-400/30';
                         bgClass = 'bg-sky-950/30';
-                        textClass = 'text-sky-200 font-black';
-                        glowShadow = 'shadow-[0_0_15px_rgba(56,189,248,0.25)]';
+                        textClass = 'text-sky-200 font-bold';
                       } else if (isSorted) {
                         borderClass = 'border-emerald-500/70';
                         bgClass = 'bg-emerald-950/20';
@@ -399,7 +396,7 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
                                     className="flex flex-col items-center transition-all duration-200"
                                   >
                                     <span
-                                      className={`text-[9px] font-mono font-black px-1.5 py-0.5 rounded-full border shadow-sm ${p.color}`}
+                                      className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded border ${p.color}`}
                                     >
                                       {p.name}
                                     </span>
@@ -412,7 +409,7 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
 
                           {/* Tarjeta de Celda de Memoria */}
                           <div
-                            className={`w-16 h-[88px] rounded-xl border flex flex-col justify-between p-2 relative overflow-hidden transition-all duration-300 ${borderClass} ${bgClass} ${glowShadow}`}
+                            className={`w-16 h-[86px] rounded-lg border flex flex-col justify-between p-2 relative overflow-hidden transition-colors duration-200 ${borderClass} ${bgClass}`}
                           >
                             {/* Dirección simulada y etiqueta de índice */}
                             <div className="flex items-center justify-between text-[9px] font-mono text-slate-400 border-b border-white/5 pb-1 z-10">
@@ -435,27 +432,21 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
                               style={{ height: `${fillHeightPct}%` }}
                             />
 
-                            {/* Estado inferior */}
-                            <div className="z-10 text-center">
-                              <span
-                                className={`text-[8px] font-mono px-1 py-0.2 rounded uppercase block truncate ${
-                                  isComparing
-                                    ? 'bg-amber-400 text-slate-950 font-bold'
-                                    : isSwapped
-                                    ? 'bg-sky-400 text-slate-950 font-bold'
-                                    : isSorted
-                                    ? 'bg-emerald-500/20 text-emerald-300 font-bold'
-                                    : 'text-slate-400'
-                                }`}
-                              >
-                                {isComparing
-                                  ? 'Comp'
-                                  : isSwapped
-                                  ? 'Mod'
-                                  : isSorted
-                                  ? 'Listo'
-                                  : namedArr.name}
-                              </span>
+                            {/* Estado inferior semántico (sin repetir el nombre del arreglo) */}
+                            <div className="z-10 text-center h-3.5 flex items-center justify-center">
+                              {(isComparing || isSwapped || isSorted) && (
+                                <span
+                                  className={`text-[8px] font-mono px-1.5 py-0.2 rounded uppercase block truncate ${
+                                    isComparing
+                                      ? 'bg-amber-400 text-slate-950 font-bold'
+                                      : isSwapped
+                                      ? 'bg-sky-400 text-slate-950 font-bold'
+                                      : 'bg-emerald-500/20 text-emerald-300 font-bold'
+                                  }`}
+                                >
+                                  {isComparing ? 'Comp' : isSwapped ? 'Escrito' : 'Ordenado'}
+                                </span>
+                              )}
                             </div>
                           </div>
 

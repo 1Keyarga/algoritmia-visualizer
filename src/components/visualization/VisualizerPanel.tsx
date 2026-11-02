@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import type { Step } from '../../types/trace';
 import { D3BarChart } from './D3BarChart';
-import { ArrayTableView } from './ArrayTableView';
 import { DivideAndConquerContainer } from './divide_and_conquer/DivideAndConquerContainer';
 import { SearchMapVisualizer } from './SearchMapVisualizer';
 import { StudentCodeVisualizer } from './StudentCodeVisualizer';
+import { StepPredictionBar } from './StepPredictionBar';
 import {
   BarChart3,
   GitFork,
@@ -12,47 +12,43 @@ import {
   Maximize2,
   Minimize2,
   Cpu,
-  Table2,
-  Flame,
 } from 'lucide-react';
 
 interface VisualizerPanelProps {
   currentStep: Step | null;
+  nextStep?: Step | null;
   stepIndex: number;
   totalSteps: number;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
   algorithmFamily?: string;
   algorithmId?: string;
+  isPredictionModeActive?: boolean;
+  onTogglePredictionMode?: () => void;
+  onAdvanceStep?: () => void;
 }
-
-type ViewMode = 'bars' | 'table';
 
 export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
   currentStep,
+  nextStep = null,
   stepIndex,
   totalSteps,
   isFullscreen,
   onToggleFullscreen,
   algorithmFamily,
   algorithmId,
+  isPredictionModeActive = false,
+  onTogglePredictionMode,
+  onAdvanceStep,
 }) => {
   const isDivideAndConquer = !!currentStep?.divideAndConquer;
   const isSearching = algorithmFamily === 'searching';
   const isCustomCode = algorithmFamily === 'custom' || algorithmId === 'custom-ast';
-  const isClassicSorting = !isDivideAndConquer && !isSearching && !isCustomCode;
   const searchType = algorithmId === 'binary-search' ? 'binary' : 'linear';
-
-  const [viewMode, setViewMode] = useState<ViewMode>('bars');
-  const [showHeatmap, setShowHeatmap] = useState(false);
-
-  useEffect(() => {
-    setViewMode('bars');
-  }, [algorithmId]);
 
   return (
     <div className="flex-1 bg-[#151622] p-3 flex flex-col min-h-0 select-none relative overflow-hidden">
-      {/* Encabezado de una sola línea fija (flex-nowrap evita saltos verticales al cambiar la longitud del texto) */}
+      {/* Encabezado limpio de una sola línea fija */}
       <div className="flex items-center justify-between gap-3 pb-2 mb-2 border-b border-[#232534] shrink-0 h-9">
         <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
           {isCustomCode ? (
@@ -86,50 +82,6 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
-          {/* Conmutador Barras | Tabla y Mapa de Calor SOLO en Ordenamiento Clásico */}
-          {isClassicSorting && (
-            <>
-              <div className="flex items-center bg-[#1a1c2b] border border-[#2b2e44] rounded-lg p-0.5 text-[11px] font-medium">
-                <button
-                  onClick={() => setViewMode('bars')}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors cursor-pointer ${
-                    viewMode === 'bars'
-                      ? 'bg-indigo-600 text-white font-semibold'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <BarChart3 className="w-3 h-3" />
-                  <span>Barras</span>
-                </button>
-
-                <button
-                  onClick={() => setViewMode('table')}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-md transition-colors cursor-pointer ${
-                    viewMode === 'table'
-                      ? 'bg-indigo-600 text-white font-semibold'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <Table2 className="w-3 h-3" />
-                  <span>Tabla</span>
-                </button>
-              </div>
-
-              <button
-                onClick={() => setShowHeatmap(!showHeatmap)}
-                className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-mono transition-colors cursor-pointer ${
-                  showHeatmap
-                    ? 'bg-amber-500/20 border-amber-500/50 text-amber-300 font-bold'
-                    : 'bg-[#1c1d2c] border-[#2b2d42] text-slate-400 hover:text-slate-200'
-                }`}
-                title="Activar/Desactivar Mapa de Calor de Accesos (RF-19)"
-              >
-                <Flame className={`w-3.5 h-3.5 ${showHeatmap ? 'text-amber-400' : 'text-slate-400'}`} />
-                <span className="hidden md:inline">Accesos</span>
-              </button>
-            </>
-          )}
-
           {/* Métricas de comparaciones y movimientos en Divide y Vencerás */}
           {isDivideAndConquer && currentStep && (
             <div className="hidden sm:flex items-center gap-1.5 text-[10px] font-mono">
@@ -165,6 +117,17 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
         </div>
       </div>
 
+      {/* Barra interactiva de predicción de pasos (solo cuando se activa desde una tarea guiada) */}
+      {isPredictionModeActive && onAdvanceStep && onTogglePredictionMode && (
+        <StepPredictionBar
+          currentStep={currentStep}
+          nextStep={nextStep}
+          stepIndex={stepIndex}
+          onAdvanceStep={onAdvanceStep}
+          onClose={onTogglePredictionMode}
+        />
+      )}
+
       {/* Contenedor principal de visualización */}
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
         {currentStep ? (
@@ -178,11 +141,9 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
               algorithmType={searchType}
               currentStep={currentStep}
             />
-          ) : viewMode === 'table' ? (
-            <ArrayTableView currentStep={currentStep} showHeatmap={showHeatmap} />
           ) : (
             <div className="flex-1 flex items-center justify-center min-h-0 overflow-hidden">
-              <D3BarChart array={currentStep.array} showHeatmap={showHeatmap} />
+              <D3BarChart array={currentStep.array} />
             </div>
           )
         ) : (
