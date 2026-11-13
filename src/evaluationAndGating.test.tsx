@@ -1,0 +1,318 @@
+// @vitest-environment jsdom
+import { act } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import App from './App';
+import { EvaluationModule } from './components/evaluation/EvaluationModule';
+import {
+  GUEST_TASK_PROGRESS_KEY,
+  TASK_PROGRESS_BY_PARTICIPANT_KEY,
+  generateParticipantCode,
+  type ParticipantSession,
+} from './core/evaluation/evaluationRepository';
+
+function findButtonByText(container: HTMLElement, text: string): HTMLButtonElement | undefined {
+  return Array.from(container.querySelectorAll('button')).find(btn =>
+    btn.textContent?.includes(text)
+  );
+}
+
+function setReactInputValue(input: HTMLInputElement, value: string) {
+  const nativeSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+  nativeSetter?.call(input, value);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+async function flushEffects(waitMs = 0) {
+  await act(async () => {
+    await Promise.resolve();
+    await new Promise(resolve => setTimeout(resolve, waitMs));
+  });
+}
+
+describe('Tareas accesibles sin cuenta, ocultamiento CSV y sincronización al conectarse', () => {
+  let container: HTMLDivElement;
+  let root: Root | null = null;
+
+  beforeAll(() => {
+    (globalThis as Record<string, unknown>).IS_REACT_ACT_ENVIRONMENT = true;
+
+    if (!globalThis.ResizeObserver) {
+      globalThis.ResizeObserver = class ResizeObserver {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      };
+    }
+
+    if (!Element.prototype.scrollIntoView) {
+      Element.prototype.scrollIntoView = vi.fn();
+    }
+
+    if (!window.matchMedia) {
+      window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      }));
+    }
+  });
+
+  beforeEach(() => {
+    localStorage.clear();
+    window.history.replaceState({}, '', '/');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        text: async () => JSON.stringify({ found: false }),
+      })
+    );
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(async () => {
+    if (root) {
+      await act(async () => {
+        root?.unmount();
+      });
+      root = null;
+    }
+    container.remove();
+    localStorage.clear();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('oculta la descarga CSV al estudiante y exige Pretest antes del Postest en EvaluationModule', async () => {
+    const onUpdateSession = vi.fn();
+    const onGoToGuidedTasks = vi.fn();
+
+    const baseSession: ParticipantSession = {
+      participantId: 'P-7068C7',
+      consentedAt: '2026-11-13T05:00:00.000Z',
+      startedAt: '2026-11-13T05:00:00.000Z',
+    };
+
+    root = createRoot(container);
+    await act(async () => {
+      root!.render(
+        <EvaluationModule
+          session={baseSession}
+          onUpdateSession={onUpdateSession}
+          taskOutcomes={{}}
+          completedTasksCount={0}
+          onGoToGuidedTasks={onGoToGuidedTasks}
+        />
+      );
+    });
+
+    const textBeforePretest = container.textContent ?? '';
+    expect(textBeforePretest).toContain('P-7068C7');
+    expect(textBeforePretest).toContain('Iniciar Pretest');
+    expect(textBeforePretest).toContain('Completa primero el Pretest');
+    expect(textBeforePretest).toContain('Explorar libremente');
+    expect(textBeforePretest).not.toContain('Descargar resultados');
+    expect(textBeforePretest).not.toContain('.csv');
+
+    const exploreBtn = findButtonByText(container, 'Explorar libremente');
+    expect(exploreBtn).toBeDefined();
+    await act(async () => {
+      exploreBtn!.click();
+    });
+    expect(onGoToGuidedTasks).toHaveBeenCalledTimes(1);
+
+    const completedSession: ParticipantSession = {
+      ...baseSession,
+      remotePretestCompletedAt: '2026-11-13T05:12:00.000Z',
+    };
+
+    await act(async () => {
+      root!.render(
+        <EvaluationModule
+          session={completedSession}
+          onUpdateSession={onUpdateSession}
+          taskOutcomes={{}}
+          completedTasksCount={0}
+          onGoToGuidedTasks={onGoToGuidedTasks}
+        />
+      );
+    });
+
+    const textAfterPretest = container.textContent ?? '';
+    expect(textAfterPretest).toContain('Pretest completado');
+    expect(textAfterPretest).toContain('Iniciar Postest');
+    expect(textAfterPretest).not.toContain('Descargar resultados');
+    expect(textAfterPretest).not.toContain('.csv');
+  });
+
+  it('permite usar Tareas sin cuenta y fusiona el avance local con Google Sheets al conectarse', async () => {
+    // 1. Acceso libre a Tareas sin iniciar sesión
+    root = createRoot(container);
+    await act(async () => {
+      root!.render(<App />);
+    });
+    await flushEffects();
+
+    expect(container.textContent).toContain('Trazarithm');
+    expect(container.textContent).toContain('0/21');
+
+    const openTasksGuest = findButtonByText(container, 'Abrir tareas');
+    expect(openTasksGuest).toBeDefined();
+    await act(async () => {
+      openTasksGuest!.click();
+    });
+    await flushEffects();
+
+    expect(container.textContent).toContain('Restantes: 3/3');
+    expect(container.textContent).not.toContain('Acceso a Tareas Guiadas');
+
+    await act(async () => {
+      root?.unmount();
+    });
+    root = null;
+
+    // 2. Progreso local sin cuenta se fusiona con registro previo en Sheets al iniciar sesión
+    localStorage.setItem(
+      GUEST_TASK_PROGRESS_KEY,
+      JSON.stringify({
+        completedTaskIds: ['T01'],
+        taskOutcomes: { T01: 'first_attempt' },
+        taskAttemptsById: { T01: 0 },
+      })
+    );
+
+    const participantId = await generateParticipantCode('20214567');
+    const postBodiesExisting: Record<string, unknown>[] = [];
+    const fetchExistingMock = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      if (init?.method === 'POST' && typeof init.body === 'string') {
+        postBodiesExisting.push(JSON.parse(init.body) as Record<string, unknown>);
+        return { text: async () => 'OK' };
+      }
+      return {
+        text: async () =>
+          JSON.stringify({
+            found: true,
+            participantId,
+            consentedAt: '2026-11-13T05:00:00.000Z',
+            pretestCompletedAt: '',
+            postestCompletedAt: '',
+            tasksDetail: 'T02:no_logrado',
+          }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchExistingMock);
+
+    root = createRoot(container);
+    await act(async () => {
+      root!.render(<App />);
+    });
+    await flushEffects();
+
+    expect(container.textContent).toContain('1/21');
+
+    const evalBtn = findButtonByText(container, 'Evaluación');
+    expect(evalBtn).toBeDefined();
+    await act(async () => {
+      evalBtn!.click();
+    });
+
+    const codeInput = container.querySelector('input[type="text"]') as HTMLInputElement;
+    const consentCheckbox = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const submitBtn = findButtonByText(container, 'Continuar');
+    expect(codeInput).not.toBeNull();
+    expect(consentCheckbox).not.toBeNull();
+    expect(submitBtn).toBeDefined();
+
+    await act(async () => {
+      setReactInputValue(codeInput, '20214567');
+      consentCheckbox.click();
+    });
+    await act(async () => {
+      submitBtn!.click();
+    });
+    await flushEffects(120);
+
+    expect(container.textContent).toContain(participantId);
+    expect(localStorage.getItem(GUEST_TASK_PROGRESS_KEY)).toBeNull();
+
+    const byParticipant = JSON.parse(
+      localStorage.getItem(TASK_PROGRESS_BY_PARTICIPANT_KEY) || '{}'
+    ) as Record<string, { taskOutcomes: Record<string, string> }>;
+    expect(byParticipant[participantId]?.taskOutcomes).toEqual({
+      T01: 'first_attempt',
+      T02: 'failed',
+    });
+
+    expect(postBodiesExisting.length).toBeGreaterThanOrEqual(1);
+    const syncedExisting = postBodiesExisting[postBodiesExisting.length - 1];
+    expect(syncedExisting.participantId).toBe(participantId);
+    expect(syncedExisting.tasksCompletedCount).toBe(1);
+    expect(syncedExisting.tasksFirstAttempt).toBe(1);
+    expect(syncedExisting.tasksFailed).toBe(1);
+    expect(syncedExisting.tasksDetail).toBe('T01:1er_intento | T02:no_logrado');
+
+    await act(async () => {
+      root?.unmount();
+    });
+    root = null;
+    localStorage.clear();
+
+    // 3. Estudiante nuevo (found: false) también sube de inmediato las tareas hechas localmente sin cuenta
+    localStorage.setItem(
+      GUEST_TASK_PROGRESS_KEY,
+      JSON.stringify({
+        completedTaskIds: ['T03'],
+        taskOutcomes: { T03: 'second_attempt' },
+        taskAttemptsById: { T03: 1 },
+      })
+    );
+
+    const newParticipantId = await generateParticipantCode('NEW2026');
+    const postBodiesNew: Record<string, unknown>[] = [];
+    const fetchNewMock = vi.fn().mockImplementation(async (_url: string, init?: RequestInit) => {
+      if (init?.method === 'POST' && typeof init.body === 'string') {
+        postBodiesNew.push(JSON.parse(init.body) as Record<string, unknown>);
+        return { text: async () => 'OK' };
+      }
+      return {
+        text: async () => JSON.stringify({ found: false }),
+      };
+    });
+    vi.stubGlobal('fetch', fetchNewMock);
+
+    root = createRoot(container);
+    await act(async () => {
+      root!.render(<App />);
+    });
+    await flushEffects();
+
+    await act(async () => {
+      findButtonByText(container, 'Evaluación')!.click();
+    });
+    await act(async () => {
+      setReactInputValue(
+        container.querySelector('input[type="text"]') as HTMLInputElement,
+        'NEW2026'
+      );
+      (container.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
+    });
+    await act(async () => {
+      findButtonByText(container, 'Continuar')!.click();
+    });
+    await flushEffects(120);
+
+    expect(localStorage.getItem(GUEST_TASK_PROGRESS_KEY)).toBeNull();
+    expect(postBodiesNew.length).toBeGreaterThanOrEqual(1);
+    const syncedNew = postBodiesNew[postBodiesNew.length - 1];
+    expect(syncedNew.participantId).toBe(newParticipantId);
+    expect(syncedNew.tasksCompletedCount).toBe(1);
+    expect(syncedNew.tasksSecondAttempt).toBe(1);
+    expect(syncedNew.tasksDetail).toBe('T03:2do_intento');
+  });
+});

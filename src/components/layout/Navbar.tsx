@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ALGORITHMS_CATALOG } from '../../core/algorithms/registry';
 import type { AlgorithmMetadata } from '../../types/algorithm';
-import type { AppModule } from './HomeHub';
+import { TrazarithmMark, type AppModule } from './HomeHub';
 import { ChevronDown } from 'lucide-react';
 import { DatasetModal } from './DatasetModal';
 
@@ -82,9 +82,10 @@ export const Navbar: React.FC<NavbarProps> = ({
         <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={() => onNavigateModule('home')}
-            className="text-sm font-bold tracking-tight text-white hover:text-indigo-300 transition-colors cursor-pointer"
+            className="flex items-center gap-2 text-sm font-bold tracking-tight text-white hover:text-indigo-300 transition-colors cursor-pointer"
           >
-            Visurithm
+            <TrazarithmMark className="w-5 h-5 shrink-0" />
+            <span>Trazarithm</span>
           </button>
 
           <div className="h-4 w-[1px] bg-[#24283d] shrink-0" />

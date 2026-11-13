@@ -6,7 +6,7 @@ export const BINARY_SEARCH_METADATA: AlgorithmMetadata = {
   name: 'Búsqueda Binaria (Binary Search)',
   family: 'searching',
   categoryName: 'Algoritmos de Búsqueda',
-  description: 'Contracción de territorio: divide el espacio de búsqueda en mitades descartando la mitad donde no puede estar el valor. Tiempo O(log n). Requiere arreglo ordenado.',
+  description: 'Divide el arreglo ordenado por la mitad en cada comparación hasta encontrar el valor buscado. Complejidad O(log n).',
   defaultDataset: [3, 9, 10, 19, 27, 38, 43, 56, 78, 82, 89, 98],
   complexity: {
     time: 'O(log n)',

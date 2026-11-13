@@ -47,6 +47,8 @@ export interface ParticipantSession {
   startedAt: string;
   pretest?: EvaluationAttemptResult;
   postest?: EvaluationAttemptResult;
+  remotePretestCompletedAt?: string;
+  remotePostestCompletedAt?: string;
   inProgressAnswers?: {
     testType: 'pretest' | 'postest';
     startedAtMs: number;
@@ -55,8 +57,164 @@ export interface ParticipantSession {
   sheetsSynced?: boolean;
 }
 
+export interface RemoteParticipantRecord {
+  found: boolean;
+  participantId?: string;
+  consentedAt?: string;
+  pretestCompletedAt?: string;
+  postestCompletedAt?: string;
+  tasksDetail?: string;
+}
+
+export interface TaskProgressState {
+  completedTaskIds: string[];
+  taskOutcomes: Record<string, TaskAttemptCategory>;
+  taskAttemptsById: Record<string, number>;
+}
+
+export const EMPTY_TASK_PROGRESS: TaskProgressState = {
+  completedTaskIds: [],
+  taskOutcomes: {},
+  taskAttemptsById: {},
+};
+
 export const EVALUATION_STORAGE_KEY = 'visurithm_evaluation_session_v2';
 export const EVALUATION_HISTORY_STORAGE_KEY = 'visurithm_evaluation_all_records_v2';
+export const TASK_PROGRESS_BY_PARTICIPANT_KEY = 'visurithm_task_progress_by_participant_v1';
+export const GUEST_TASK_PROGRESS_KEY = 'visurithm_guest_task_progress_v1';
+
+function normalizeTaskProgressState(raw: Partial<TaskProgressState> | null | undefined): TaskProgressState {
+  if (!raw || typeof raw !== 'object') {
+    return {
+      completedTaskIds: [],
+      taskOutcomes: {},
+      taskAttemptsById: {},
+    };
+  }
+  return {
+    completedTaskIds: Array.isArray(raw.completedTaskIds) ? [...raw.completedTaskIds] : [],
+    taskOutcomes: raw.taskOutcomes && typeof raw.taskOutcomes === 'object' ? { ...raw.taskOutcomes } : {},
+    taskAttemptsById:
+      raw.taskAttemptsById && typeof raw.taskAttemptsById === 'object' ? { ...raw.taskAttemptsById } : {},
+  };
+}
+
+export function readGuestTaskProgress(): TaskProgressState {
+  try {
+    const raw = localStorage.getItem(GUEST_TASK_PROGRESS_KEY);
+    if (!raw) return normalizeTaskProgressState(null);
+    return normalizeTaskProgressState(JSON.parse(raw) as Partial<TaskProgressState>);
+  } catch {
+    return normalizeTaskProgressState(null);
+  }
+}
+
+export function persistGuestTaskProgress(progress: TaskProgressState): void {
+  try {
+    localStorage.setItem(GUEST_TASK_PROGRESS_KEY, JSON.stringify(progress));
+  } catch {
+    // Ignorar errores de almacenamiento
+  }
+}
+
+export function clearGuestTaskProgress(): void {
+  try {
+    localStorage.removeItem(GUEST_TASK_PROGRESS_KEY);
+  } catch {
+    // Ignorar errores de almacenamiento
+  }
+}
+
+export function readParticipantTaskProgress(participantId: string): TaskProgressState {
+  if (!participantId) return normalizeTaskProgressState(null);
+  try {
+    const raw = localStorage.getItem(TASK_PROGRESS_BY_PARTICIPANT_KEY);
+    if (!raw) return normalizeTaskProgressState(null);
+    const map = JSON.parse(raw) as Record<string, Partial<TaskProgressState>>;
+    return normalizeTaskProgressState(map[participantId]);
+  } catch {
+    return normalizeTaskProgressState(null);
+  }
+}
+
+export function persistParticipantTaskProgress(
+  participantId: string,
+  progress: TaskProgressState
+): void {
+  if (!participantId) return;
+  try {
+    const raw = localStorage.getItem(TASK_PROGRESS_BY_PARTICIPANT_KEY);
+    const map = raw ? (JSON.parse(raw) as Record<string, TaskProgressState>) : {};
+    map[participantId] = progress;
+    localStorage.setItem(TASK_PROGRESS_BY_PARTICIPANT_KEY, JSON.stringify(map));
+  } catch {
+    // Ignorar errores de almacenamiento
+  }
+}
+
+export function makeTaskProgressSignature(progress: TaskProgressState): string {
+  const solved = progress.completedTaskIds.slice().sort().join(',');
+  const outcomes = Object.keys(progress.taskOutcomes)
+    .sort()
+    .map(k => `${k}=${progress.taskOutcomes[k]}`)
+    .join(',');
+  return `${solved}::${outcomes}`;
+}
+
+export function mergeTaskProgress(
+  base: TaskProgressState,
+  incoming: TaskProgressState
+): TaskProgressState {
+  const taskOutcomes: Record<string, TaskAttemptCategory> = { ...base.taskOutcomes };
+  for (const [taskId, category] of Object.entries(incoming.taskOutcomes)) {
+    if (!taskOutcomes[taskId]) {
+      taskOutcomes[taskId] = category;
+    }
+  }
+
+  const allAttemptIds = new Set([
+    ...Object.keys(base.taskAttemptsById),
+    ...Object.keys(incoming.taskAttemptsById),
+    ...Object.keys(taskOutcomes),
+  ]);
+  const taskAttemptsById: Record<string, number> = {};
+  for (const taskId of allAttemptIds) {
+    if (base.taskOutcomes[taskId]) {
+      if (base.taskAttemptsById[taskId] !== undefined) {
+        taskAttemptsById[taskId] = base.taskAttemptsById[taskId];
+      }
+    } else {
+      const baseAttempts = base.taskAttemptsById[taskId] ?? 0;
+      const incomingAttempts = incoming.taskAttemptsById[taskId] ?? 0;
+      const maxAttempts = Math.max(baseAttempts, incomingAttempts);
+      if (
+        maxAttempts > 0 ||
+        base.taskAttemptsById[taskId] !== undefined ||
+        incoming.taskAttemptsById[taskId] !== undefined
+      ) {
+        taskAttemptsById[taskId] = maxAttempts;
+      }
+    }
+  }
+
+  const solvedSet = new Set<string>();
+  for (const taskId of [...base.completedTaskIds, ...incoming.completedTaskIds]) {
+    if (taskOutcomes[taskId] !== 'failed') {
+      solvedSet.add(taskId);
+    }
+  }
+  for (const [taskId, category] of Object.entries(taskOutcomes)) {
+    if (category !== 'failed') {
+      solvedSet.add(taskId);
+    }
+  }
+
+  return {
+    completedTaskIds: Array.from(solvedSet).sort(),
+    taskOutcomes,
+    taskAttemptsById,
+  };
+}
 
 export function loadSavedParticipantSession(
   participantId: string
@@ -80,6 +238,57 @@ export function saveParticipantSessionRecord(session: ParticipantSession): void 
   } catch {
     // Ignorar errores de almacenamiento
   }
+}
+
+export function removeSavedParticipantSession(participantId: string): void {
+  try {
+    const raw = localStorage.getItem(EVALUATION_HISTORY_STORAGE_KEY);
+    if (!raw) return;
+    const map = JSON.parse(raw) as Record<string, ParticipantSession>;
+    delete map[participantId];
+    localStorage.setItem(EVALUATION_HISTORY_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // Ignorar errores de almacenamiento
+  }
+}
+
+export function parseTasksDetailFromSheets(tasksDetail: string): {
+  completedTaskIds: string[];
+  taskOutcomes: Record<string, TaskAttemptCategory>;
+  taskAttemptsById: Record<string, number>;
+} {
+  const completedTaskIds: string[] = [];
+  const taskOutcomes: Record<string, TaskAttemptCategory> = {};
+  const taskAttemptsById: Record<string, number> = {};
+
+  if (!tasksDetail || typeof tasksDetail !== 'string') {
+    return { completedTaskIds, taskOutcomes, taskAttemptsById };
+  }
+
+  for (const part of tasksDetail.split('|')) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const [taskId, status] = trimmed.split(':').map(s => s.trim());
+    if (!taskId || !status) continue;
+    if (status === '1er_intento') {
+      taskOutcomes[taskId] = 'first_attempt';
+      completedTaskIds.push(taskId);
+      taskAttemptsById[taskId] = 0;
+    } else if (status === '2do_intento') {
+      taskOutcomes[taskId] = 'second_attempt';
+      completedTaskIds.push(taskId);
+      taskAttemptsById[taskId] = 1;
+    } else if (status === '3er_intento') {
+      taskOutcomes[taskId] = 'multiple_attempts';
+      completedTaskIds.push(taskId);
+      taskAttemptsById[taskId] = 2;
+    } else if (status === 'no_logrado') {
+      taskOutcomes[taskId] = 'failed';
+      taskAttemptsById[taskId] = 3;
+    }
+  }
+
+  return { completedTaskIds, taskOutcomes, taskAttemptsById };
 }
 
 // URL fija de Google Apps Script para guardar automáticamente los resultados en la hoja de cálculo
@@ -627,7 +836,7 @@ export function buildEvaluationPayload(
   return {
     participantId: session.participantId,
     consentedAt: session.consentedAt,
-    pretestCompletedAt: pre?.completedAt || '',
+    pretestCompletedAt: pre?.completedAt || session.remotePretestCompletedAt || '',
     pretestDurationSec: pre?.durationSeconds ?? '',
     pretestTotalScore: pre?.totalScore ?? '',
     pretestPercentage: pre?.percentage ?? '',
@@ -635,7 +844,7 @@ export function buildEvaluationPayload(
     pretestC2: pre?.byCompetency.C2.earned ?? '',
     pretestC3: pre?.byCompetency.C3.earned ?? '',
     pretestC4: pre?.byCompetency.C4.earned ?? '',
-    postestCompletedAt: pos?.completedAt || '',
+    postestCompletedAt: pos?.completedAt || session.remotePostestCompletedAt || '',
     postestDurationSec: pos?.durationSeconds ?? '',
     postestTotalScore: pos?.totalScore ?? '',
     postestPercentage: pos?.percentage ?? '',
@@ -683,6 +892,35 @@ export function downloadEvaluationCsv(
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+export async function fetchParticipantFromSheets(
+  webhookUrl: string,
+  participantId: string
+): Promise<RemoteParticipantRecord | null> {
+  const cleanUrl = webhookUrl.trim();
+  if (!cleanUrl || !participantId) return null;
+  const separator = cleanUrl.includes('?') ? '&' : '?';
+  const queryUrl = `${cleanUrl}${separator}participantId=${encodeURIComponent(participantId)}&t=${Date.now()}`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 7000);
+  try {
+    const res = await fetch(queryUrl, {
+      method: 'GET',
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    const text = await res.text();
+    const parsed = JSON.parse(text) as RemoteParticipantRecord;
+    if (!parsed || typeof parsed !== 'object' || typeof parsed.found !== 'boolean') {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 export async function sendEvaluationToGoogleSheets(

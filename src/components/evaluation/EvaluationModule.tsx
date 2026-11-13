@@ -3,15 +3,24 @@ import {
   PRETEST_ITEMS,
   POSTEST_ITEMS,
   DEFAULT_SHEETS_WEBHOOK_URL,
+  EMPTY_TASK_PROGRESS,
   generateParticipantCode,
   gradeEvaluationAttempt,
-  downloadEvaluationCsv,
   sendEvaluationToGoogleSheets,
+  fetchParticipantFromSheets,
+  parseTasksDetailFromSheets,
   loadSavedParticipantSession,
+  removeSavedParticipantSession,
+  readGuestTaskProgress,
+  clearGuestTaskProgress,
+  readParticipantTaskProgress,
+  mergeTaskProgress,
+  makeTaskProgressSignature,
   type EvaluationItem,
   type ParticipantSession,
   type EvaluationAttemptResult,
   type PostestVisualizerScenario,
+  type TaskProgressState,
 } from '../../core/evaluation/evaluationRepository';
 import type { TaskAttemptCategory } from '../tasks/InteractiveTaskPanel';
 import type { AlgorithmMetadata, SupportedLanguage } from '../../types/algorithm';
@@ -22,6 +31,11 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 interface EvaluationModuleProps {
   session: ParticipantSession | null;
   onUpdateSession: (next: ParticipantSession | null) => void;
+  onApplyRemoteTaskProgress?: (
+    participantId: string,
+    progress: TaskProgressState,
+    markAsSynced?: boolean
+  ) => void;
   taskOutcomes: Record<string, TaskAttemptCategory>;
   completedTasksCount: number;
   onGoToGuidedTasks: () => void;
@@ -80,6 +94,7 @@ function isItemAnswered(
 export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
   session,
   onUpdateSession,
+  onApplyRemoteTaskProgress,
   taskOutcomes,
   completedTasksCount,
   onGoToGuidedTasks,
@@ -95,6 +110,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
   const [previewHash, setPreviewHash] = useState('');
   const [consentChecked, setConsentChecked] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [isCheckingRemote, setIsCheckingRemote] = useState(false);
 
   const [activeExam, setActiveExam] = useState<'pretest' | 'postest' | null>(
     () => session?.inProgressAnswers?.testType ?? null
@@ -144,6 +160,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
 
   const handleStartSession = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isCheckingRemote) return;
     if (rawStudentCode.trim().length < 3) {
       setLoginError('Ingresa un código válido (al menos 3 caracteres).');
       return;
@@ -152,25 +169,100 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
       setLoginError('Debes aceptar el consentimiento informado para continuar.');
       return;
     }
-    const participantId = await generateParticipantCode(rawStudentCode);
-    const savedSession = loadSavedParticipantSession(participantId);
-    const nowIso = new Date().toISOString();
-    const restoredOrNewSession: ParticipantSession = savedSession
-      ? savedSession
-      : {
-          participantId,
-          consentedAt: nowIso,
-          startedAt: nowIso,
-        };
-    setLoginError(null);
-    setRawStudentCode('');
-    onUpdateSession(restoredOrNewSession);
+
+    setIsCheckingRemote(true);
+    try {
+      const participantId = await generateParticipantCode(rawStudentCode);
+      const localSaved = loadSavedParticipantSession(participantId);
+      const guestTasks = readGuestTaskProgress();
+      const hasGuestProgress =
+        guestTasks.completedTaskIds.length > 0 ||
+        Object.keys(guestTasks.taskOutcomes).length > 0 ||
+        Object.keys(guestTasks.taskAttemptsById).length > 0;
+      const remote = await fetchParticipantFromSheets(
+        DEFAULT_SHEETS_WEBHOOK_URL,
+        participantId
+      );
+      const nowIso = new Date().toISOString();
+
+      let nextSession: ParticipantSession;
+      if (remote !== null) {
+        if (remote.found) {
+          const parsedTasks = parseTasksDetailFromSheets(remote.tasksDetail || '');
+          const mergedTasks = mergeTaskProgress(parsedTasks, guestTasks);
+          const didGuestAddTaskChanges =
+            makeTaskProgressSignature(mergedTasks) !== makeTaskProgressSignature(parsedTasks);
+          if (hasGuestProgress) {
+            clearGuestTaskProgress();
+          }
+          onApplyRemoteTaskProgress?.(participantId, mergedTasks, !didGuestAddTaskChanges);
+          const keepLocalPre =
+            !!remote.pretestCompletedAt &&
+            localSaved?.pretest?.completedAt === remote.pretestCompletedAt;
+          const keepLocalPos =
+            !!remote.postestCompletedAt &&
+            localSaved?.postest?.completedAt === remote.postestCompletedAt;
+          nextSession = {
+            participantId,
+            consentedAt: remote.consentedAt || localSaved?.consentedAt || nowIso,
+            startedAt: localSaved?.startedAt || nowIso,
+            pretest: keepLocalPre ? localSaved?.pretest : undefined,
+            postest: keepLocalPos ? localSaved?.postest : undefined,
+            remotePretestCompletedAt: remote.pretestCompletedAt || undefined,
+            remotePostestCompletedAt: remote.postestCompletedAt || undefined,
+            inProgressAnswers:
+              remote.pretestCompletedAt && remote.postestCompletedAt
+                ? undefined
+                : localSaved?.inProgressAnswers,
+          };
+        } else {
+          removeSavedParticipantSession(participantId);
+          const initialTasks = mergeTaskProgress(EMPTY_TASK_PROGRESS, guestTasks);
+          if (hasGuestProgress) {
+            clearGuestTaskProgress();
+          }
+          onApplyRemoteTaskProgress?.(participantId, initialTasks, true);
+          nextSession = {
+            participantId,
+            consentedAt: nowIso,
+            startedAt: nowIso,
+          };
+          void sendEvaluationToGoogleSheets(
+            DEFAULT_SHEETS_WEBHOOK_URL,
+            nextSession,
+            initialTasks.taskOutcomes,
+            initialTasks.completedTaskIds.length
+          );
+        }
+      } else {
+        // Respaldo local cuando no hay conexión o doGet aún no está desplegado
+        const savedParticipantTasks = readParticipantTaskProgress(participantId);
+        const offlineTasks = mergeTaskProgress(savedParticipantTasks, guestTasks);
+        if (hasGuestProgress) {
+          clearGuestTaskProgress();
+        }
+        onApplyRemoteTaskProgress?.(participantId, offlineTasks, false);
+        nextSession = localSaved
+          ? localSaved
+          : {
+              participantId,
+              consentedAt: nowIso,
+              startedAt: nowIso,
+            };
+      }
+
+      setLoginError(null);
+      setRawStudentCode('');
+      onUpdateSession(nextSession);
+    } finally {
+      setIsCheckingRemote(false);
+    }
   };
 
   const handleOpenExam = (type: 'pretest' | 'postest') => {
     if (!session) return;
-    if (type === 'pretest' && session.pretest) return;
-    if (type === 'postest' && session.postest) return;
+    if (type === 'pretest' && (session.pretest || session.remotePretestCompletedAt)) return;
+    if (type === 'postest' && (session.postest || session.remotePostestCompletedAt)) return;
     const items = type === 'pretest' ? PRETEST_ITEMS : POSTEST_ITEMS;
     const initialAns =
       session.inProgressAnswers?.testType === type
@@ -263,16 +355,16 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
       <div className="flex-1 min-h-0 overflow-y-auto bg-[#0f1019] p-6 flex items-center justify-center select-none">
         <div className="max-w-lg w-full bg-[#151724] border border-[#24283e] rounded-2xl p-6 space-y-5">
           <div className="space-y-1">
-            <h1 className="text-lg font-bold text-white">Evaluación de Pensamiento Algorítmico</h1>
+            <h1 className="text-lg font-bold text-white">Evaluación</h1>
             <p className="text-xs text-slate-400 leading-relaxed">
-              Ingresa tu código de estudiante para generar tu identificador anónimo de sesión. Primero realizarás el Pretest diagnóstico y luego el Postest interactuando en vivo con el visualizador sincronizado.
+              Ingresa tu código de estudiante para continuar. Primero responderás el Pretest y luego el Postest.
             </p>
           </div>
 
           <form onSubmit={handleStartSession} className="space-y-4">
             <div className="space-y-1.5">
               <label className="block text-xs font-medium text-slate-300">
-                Código o identificador de participante
+                Código de estudiante
               </label>
               <input
                 type="text"
@@ -286,7 +378,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               />
               {displayedPreviewHash && (
                 <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
-                  <span>Identificador anónimo que se registrará:</span>
+                  <span>Código anónimo asignado:</span>
                   <span className="font-mono font-semibold text-indigo-300 bg-[#1a1e33] px-2 py-0.5 rounded border border-[#2c3252]">
                     {displayedPreviewHash}
                   </span>
@@ -325,9 +417,16 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
 
             <button
               type="submit"
-              className="w-full h-10 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors cursor-pointer"
+              disabled={isCheckingRemote}
+              className={`w-full h-10 rounded-lg text-white text-xs font-semibold transition-colors ${
+                isCheckingRemote
+                  ? 'bg-indigo-700/70 cursor-wait'
+                  : 'bg-indigo-600 hover:bg-indigo-500 cursor-pointer'
+              }`}
             >
-              Continuar al panel de evaluación
+              {isCheckingRemote
+                ? 'Consultando registro...'
+                : 'Continuar'}
             </button>
           </form>
         </div>
@@ -485,7 +584,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               <div className="bg-[#111424] border border-indigo-500/30 rounded-lg px-3 py-2 space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[11px] font-bold text-indigo-300 truncate">
-                    Visualizador sincronizado · {item.algorithm}
+                    Visualizador: {item.algorithm}
                   </span>
                   <span className="text-[11px] font-mono text-slate-400 shrink-0">
                     Paso {totalSteps > 0 ? stepIndex + 1 : 0}/{totalSteps}
@@ -766,8 +865,8 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
   }
 
   // VISTA 3: PANEL PRINCIPAL DE LA EVALUACIÓN
-  const preDone = !!session.pretest;
-  const posDone = !!session.postest;
+  const preDone = !!(session.pretest || session.remotePretestCompletedAt);
+  const posDone = !!(session.postest || session.remotePostestCompletedAt);
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto bg-[#0f1019] p-6 select-none custom-scrollbar">
@@ -780,27 +879,14 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                 <span className="text-sm font-bold text-white font-mono">
                   {session.participantId}
                 </span>
-                <span className="text-[11px] text-slate-400">
-                  · Sesión activa con consentimiento registrado
+                <span className="text-[11px] text-emerald-300 bg-emerald-500/12 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                  Sesión activa
                 </span>
-              </div>
-              <div className="text-[11px] text-slate-500">
-                Las respuestas se registran automáticamente al finalizar cada prueba.
               </div>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() =>
-                downloadEvaluationCsv(session, taskOutcomes, completedTasksCount)
-              }
-              className="px-3 py-1.5 rounded-lg bg-[#1c1f32] hover:bg-[#252942] border border-[#2e3350] text-xs font-medium text-slate-200 transition-colors cursor-pointer"
-            >
-              Descargar resultados (.csv)
-            </button>
-
             <button
               type="button"
               onClick={() => onUpdateSession(null)}
@@ -825,7 +911,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                     }`}
                   />
                   <span className="text-xs font-bold text-slate-100">
-                    1. Evaluación inicial (Pretest — sin visualizador)
+                    1. Pretest (sin visualizador)
                   </span>
                 </div>
                 {preDone && (
@@ -836,12 +922,12 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               </div>
 
               <p className="text-xs text-slate-400 leading-relaxed">
-                9 preguntas diagnósticas de opción múltiple sobre el funcionamiento de los algoritmos antes de interactuar con el visualizador.
+                9 preguntas iniciales de opción múltiple antes de usar el visualizador.
               </p>
 
               {preDone && (
                 <div className="pt-2 border-t border-[#21253a] text-[11px] text-slate-400">
-                  Tus respuestas fueron registradas correctamente.
+                  Pretest registrado.
                 </div>
               )}
             </div>
@@ -879,7 +965,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                     }`}
                   />
                   <span className="text-xs font-bold text-slate-100">
-                    2. Evaluación final (Postest — con visualizador sincronizado)
+                    2. Postest (con visualizador)
                   </span>
                 </div>
                 {posDone && (
@@ -890,12 +976,12 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               </div>
 
               <p className="text-xs text-slate-400 leading-relaxed">
-                9 preguntas acompañadas del visualizador interactivo en pantalla dividida: cada pregunta carga automáticamente su algoritmo, datos y explicación paso a paso a la derecha.
+                9 preguntas con el visualizador a la derecha para probar cada caso mientras respondes.
               </p>
 
               {posDone && (
                 <div className="pt-2 border-t border-[#21253a] text-[11px] text-slate-400">
-                  Tus respuestas fueron registradas correctamente.
+                  Postest registrado.
                 </div>
               )}
             </div>
@@ -923,8 +1009,8 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                   : posDone
                   ? 'Postest completado'
                   : session.inProgressAnswers?.testType === 'postest'
-                  ? 'Continuar Postest con Visualizador'
-                  : 'Iniciar Postest con Visualizador'}
+                  ? 'Continuar Postest'
+                  : 'Iniciar Postest'}
               </button>
             </div>
           </div>
@@ -937,11 +1023,11 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                 Evaluación completada ({session.participantId})
               </h3>
               <p className="text-xs text-slate-400">
-                Todas tus respuestas del Pretest y Postest han sido registradas. Gracias por participar.
+                Pretest y Postest registrados.
               </p>
             </div>
             <span className="text-xs font-semibold text-emerald-400 shrink-0">
-              Sesión finalizada
+              Finalizado
             </span>
           </div>
         )}

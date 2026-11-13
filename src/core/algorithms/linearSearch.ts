@@ -6,7 +6,7 @@ export const LINEAR_SEARCH_METADATA: AlgorithmMetadata = {
   name: 'Búsqueda Lineal (Linear Search)',
   family: 'searching',
   categoryName: 'Algoritmos de Búsqueda',
-  description: 'Escaneo secuencial de territorio: recorre el arreglo elemento por elemento comparando con la clave buscada. Tiempo O(n) en el peor caso.',
+  description: 'Recorre el arreglo índice por índice desde el inicio hasta encontrar la clave buscada. Complejidad O(n).',
   defaultDataset: [12, 23, 67, 12, 56, 11, 45, 23, 78, 56, 78, 89, 98, 45],
   complexity: {
     time: 'O(n)',

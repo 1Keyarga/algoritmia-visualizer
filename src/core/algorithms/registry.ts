@@ -12,7 +12,7 @@ export const CUSTOM_AST_METADATA: AlgorithmMetadata = {
   name: 'Código del Estudiante',
   family: 'custom',
   categoryName: 'Editor de Código',
-  description: 'Escribe o edita tu propio algoritmo en C o JavaScript. El sistema analiza la sintaxis, traza el flujo de ejecución e instrumenta la memoria para visualizar paso a paso las comparaciones, intercambios y registros de variables.',
+  description: 'Escribe código en C, C++ o JavaScript para revisar qué línea se ejecuta, cómo cambian las variables y cada operación sobre el arreglo.',
   defaultDataset: [64, 34, 25, 12, 22, 11, 90],
   complexity: {
     time: 'Variable',

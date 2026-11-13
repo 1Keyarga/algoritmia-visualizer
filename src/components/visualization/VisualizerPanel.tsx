@@ -168,9 +168,8 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
               Listo para compilar
             </h3>
             <p className="text-xs text-slate-400 max-w-md mt-1.5 leading-relaxed">
-              Escribe tu código en el editor de la izquierda y presiona{' '}
-              <span className="text-indigo-300 font-semibold">Compilar y Ejecutar</span> para
-              iniciar la traza paso a paso.
+              Escribe tu código a la izquierda y presiona{' '}
+              <span className="text-indigo-300 font-semibold">Compilar y ejecutar</span> para ver cada paso.
             </p>
           </div>
         ) : comparisonProps ? (

@@ -97,7 +97,7 @@ function formatSyntaxErrorSpanish(
 
   let hint = '';
   if (/\b(?:std::)?(?:map|unordered_map|set|unordered_set|queue|stack|pair)\s*</.test(failingLine)) {
-    hint = ' (Visurithm soporta arreglos 1D, std::vector<T> y tipos básicos; estructuras asociativas/colas aún no están soportadas).';
+    hint = ' (Trazarithm soporta arreglos 1D, std::vector<T> y tipos básicos; estructuras asociativas o colas aún no están soportadas).';
   } else if (/^\s*(?:class|struct)\s+[a-zA-Z_]/.test(failingLine)) {
     hint = ' (usa funciones y arreglos/vector<T>; las definiciones class/struct aún no están soportadas).';
   } else if (/\[\s*[&=]?\s*\]\s*\([^)]*\)\s*(?:->|\{)/.test(failingLine) && detectedLanguage === 'c') {
@@ -1066,8 +1066,17 @@ ${swapHelperCode}
   }
 
   // Hooks interceptores universales
+  const MAX_CALL_STACK_DEPTH = 120;
   const hooks = {
     __pushFrame(fnName: string, getVarsFn: () => VariableSnapshot) {
+      if (runtimeCallStack.length >= MAX_CALL_STACK_DEPTH) {
+        const lastLine = steps.at(-1)?.activeLine ?? 1;
+        const err = new Error(
+          `Desbordamiento de pila (Stack Overflow): se superó el límite de ${MAX_CALL_STACK_DEPTH} llamadas recursivas anidadas en "${fnName}()" (última ejecución en línea ${lastLine}). Verifica el caso base para evitar recursión infinita.`
+        );
+        err.name = 'StackOverflowGuardError';
+        throw err;
+      }
       frameIdCounter++;
       runtimeCallStack.push({
         id: `frame-${fnName}-${frameIdCounter}`,
@@ -1467,6 +1476,14 @@ ${swapHelperCode}
       detectedLanguage,
     };
   } catch (runtimeErr: any) {
+    if (runtimeErr?.name === 'StackOverflowGuardError') {
+      return {
+        success: false,
+        error: runtimeErr.message,
+        line: steps.at(-1)?.activeLine ?? 1,
+        detectedLanguage,
+      };
+    }
     const msg = runtimeErr.message || 'Error durante la ejecución';
     return {
       success: false,

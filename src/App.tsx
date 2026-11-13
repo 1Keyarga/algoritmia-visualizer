@@ -30,29 +30,25 @@ import {
 } from './components/tasks/InteractiveTaskPanel';
 import { EvaluationModule } from './components/evaluation/EvaluationModule';
 import {
+  DEFAULT_SHEETS_WEBHOOK_URL,
   EVALUATION_STORAGE_KEY,
+  TASK_PROGRESS_BY_PARTICIPANT_KEY,
+  fetchParticipantFromSheets,
+  makeTaskProgressSignature,
+  parseTasksDetailFromSheets,
+  persistGuestTaskProgress,
+  persistParticipantTaskProgress,
+  readGuestTaskProgress,
+  readParticipantTaskProgress,
+  removeSavedParticipantSession,
   saveParticipantSessionRecord,
+  sendEvaluationToGoogleSheets,
   type ParticipantSession,
   type PostestVisualizerScenario,
+  type TaskProgressState,
 } from './core/evaluation/evaluationRepository';
 
-const COMPLETED_TASKS_STORAGE_KEY = 'algoritmia_completed_tasks_v1';
-const TASK_OUTCOMES_STORAGE_KEY = 'visurithm_task_outcomes_v1';
-const TASK_ATTEMPTS_STORAGE_KEY = 'visurithm_task_attempts_v1';
-const TASK_PROGRESS_BY_PARTICIPANT_KEY = 'visurithm_task_progress_by_participant_v1';
 const PREF_ALGO_STORAGE_KEY = 'visurithm_pref_algo';
-
-interface TaskProgressState {
-  completedTaskIds: string[];
-  taskOutcomes: Record<string, TaskAttemptCategory>;
-  taskAttemptsById: Record<string, number>;
-}
-
-const EMPTY_TASK_PROGRESS: TaskProgressState = {
-  completedTaskIds: [],
-  taskOutcomes: {},
-  taskAttemptsById: {},
-};
 
 function readJsonStorage<T>(key: string, fallback: T): T {
   try {
@@ -67,29 +63,10 @@ function persistTaskProgress(
   progress: TaskProgressState,
   participantId?: string | null
 ) {
-  try {
-    localStorage.setItem(
-      COMPLETED_TASKS_STORAGE_KEY,
-      JSON.stringify(progress.completedTaskIds)
-    );
-    localStorage.setItem(
-      TASK_OUTCOMES_STORAGE_KEY,
-      JSON.stringify(progress.taskOutcomes)
-    );
-    localStorage.setItem(
-      TASK_ATTEMPTS_STORAGE_KEY,
-      JSON.stringify(progress.taskAttemptsById)
-    );
-    if (participantId) {
-      const map = readJsonStorage<Record<string, TaskProgressState>>(
-        TASK_PROGRESS_BY_PARTICIPANT_KEY,
-        {}
-      );
-      map[participantId] = progress;
-      localStorage.setItem(TASK_PROGRESS_BY_PARTICIPANT_KEY, JSON.stringify(map));
-    }
-  } catch {
-    // Ignorar errores de almacenamiento
+  if (participantId) {
+    persistParticipantTaskProgress(participantId, progress);
+  } else {
+    persistGuestTaskProgress(progress);
   }
 }
 
@@ -241,33 +218,125 @@ export function App() {
       null
     );
     if (savedSession?.participantId) {
-      const byParticipant = readJsonStorage<Record<string, TaskProgressState>>(
-        TASK_PROGRESS_BY_PARTICIPANT_KEY,
-        {}
-      );
-      if (byParticipant[savedSession.participantId]) {
-        return {
-          completedTaskIds: byParticipant[savedSession.participantId].completedTaskIds || [],
-          taskOutcomes: byParticipant[savedSession.participantId].taskOutcomes || {},
-          taskAttemptsById: byParticipant[savedSession.participantId].taskAttemptsById || {},
-        };
-      }
+      return readParticipantTaskProgress(savedSession.participantId);
     }
-    return {
-      completedTaskIds: readJsonStorage<string[]>(COMPLETED_TASKS_STORAGE_KEY, []),
-      taskOutcomes: readJsonStorage<Record<string, TaskAttemptCategory>>(
-        TASK_OUTCOMES_STORAGE_KEY,
-        {}
-      ),
-      taskAttemptsById: readJsonStorage<Record<string, number>>(
-        TASK_ATTEMPTS_STORAGE_KEY,
-        {}
-      ),
-    };
+    return readGuestTaskProgress();
   });
 
-  const switchedOutParticipantRef = useRef<boolean>(false);
+  const initialParticipantIdRef = useRef<string | null>(
+    participantSession?.participantId ?? null
+  );
+  const makeTaskSnapshot = (id: string, progress: TaskProgressState) =>
+    `${id}::${makeTaskProgressSignature(progress)}`;
+  const lastSyncedTaskSnapshotRef = useRef<string>(
+    participantSession?.participantId
+      ? makeTaskSnapshot(participantSession.participantId, taskProgress)
+      : ''
+  );
   const { completedTaskIds, taskOutcomes, taskAttemptsById } = taskProgress;
+
+  const handleApplyRemoteTaskProgress = useCallback(
+    (participantId: string, progress: TaskProgressState, markAsSynced = true) => {
+      lastSyncedTaskSnapshotRef.current = markAsSynced
+        ? makeTaskSnapshot(participantId, progress)
+        : '';
+      setTaskProgress(progress);
+      persistTaskProgress(progress, participantId);
+      setUnlockedTaskIds([]);
+    },
+    []
+  );
+
+  // Al recargar con sesión activa, sincroniza contra Google Sheets si doGet está habilitado
+  useEffect(() => {
+    const activeId = initialParticipantIdRef.current;
+    if (!activeId) return;
+    let cancelled = false;
+
+    fetchParticipantFromSheets(DEFAULT_SHEETS_WEBHOOK_URL, activeId).then(remote => {
+      if (cancelled || remote === null) return;
+
+      if (!remote.found) {
+        // La fila fue eliminada en Google Sheets: limpiar estado local de ese participante
+        removeSavedParticipantSession(activeId);
+        try {
+          localStorage.removeItem(EVALUATION_STORAGE_KEY);
+          const map = readJsonStorage<Record<string, TaskProgressState>>(
+            TASK_PROGRESS_BY_PARTICIPANT_KEY,
+            {}
+          );
+          delete map[activeId];
+          localStorage.setItem(TASK_PROGRESS_BY_PARTICIPANT_KEY, JSON.stringify(map));
+        } catch {}
+        lastSyncedTaskSnapshotRef.current = '';
+        setParticipantSession(null);
+        setTaskProgress(readGuestTaskProgress());
+        setUnlockedTaskIds([]);
+        return;
+      }
+
+      const remoteTasks = parseTasksDetailFromSheets(remote.tasksDetail || '');
+      lastSyncedTaskSnapshotRef.current = makeTaskSnapshot(activeId, remoteTasks);
+      setTaskProgress(remoteTasks);
+      persistTaskProgress(remoteTasks, activeId);
+
+      setParticipantSession(prev => {
+        if (!prev || prev.participantId !== activeId) return prev;
+        const keepLocalPre =
+          !!remote.pretestCompletedAt &&
+          prev.pretest?.completedAt === remote.pretestCompletedAt;
+        const keepLocalPos =
+          !!remote.postestCompletedAt &&
+          prev.postest?.completedAt === remote.postestCompletedAt;
+        const updated: ParticipantSession = {
+          ...prev,
+          consentedAt: remote.consentedAt || prev.consentedAt,
+          pretest: keepLocalPre ? prev.pretest : undefined,
+          postest: keepLocalPos ? prev.postest : undefined,
+          remotePretestCompletedAt: remote.pretestCompletedAt || undefined,
+          remotePostestCompletedAt: remote.postestCompletedAt || undefined,
+          inProgressAnswers:
+            remote.pretestCompletedAt && remote.postestCompletedAt
+              ? undefined
+              : prev.inProgressAnswers,
+        };
+        try {
+          localStorage.setItem(EVALUATION_STORAGE_KEY, JSON.stringify(updated));
+          saveParticipantSessionRecord(updated);
+        } catch {}
+        return updated;
+      });
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Cuando cambian las tareas resueltas o agotadas estando logueado, sincroniza con Google Sheets
+  useEffect(() => {
+    const activeId = participantSession?.participantId;
+    if (!activeId) return;
+    const currentSnapshot = makeTaskSnapshot(activeId, taskProgress);
+    if (currentSnapshot === lastSyncedTaskSnapshotRef.current) return;
+    if (
+      taskProgress.completedTaskIds.length === 0 &&
+      Object.keys(taskProgress.taskOutcomes).length === 0
+    ) {
+      lastSyncedTaskSnapshotRef.current = currentSnapshot;
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      lastSyncedTaskSnapshotRef.current = currentSnapshot;
+      void sendEvaluationToGoogleSheets(
+        DEFAULT_SHEETS_WEBHOOK_URL,
+        participantSession,
+        taskProgress.taskOutcomes,
+        taskProgress.completedTaskIds.length
+      );
+    }, 50);
+    return () => window.clearTimeout(timer);
+  }, [participantSession, taskProgress]);
 
   const handleUpdateParticipantSession = useCallback(
     (next: ParticipantSession | null) => {
@@ -290,39 +359,18 @@ export function App() {
       if (prevId === nextId) return;
 
       if (!nextId) {
-        // Cerrar sesión del participante actual: respaldar su avance y limpiar la vista activa
+        // Cerrar sesión del participante actual: respaldar su avance y volver al espacio local/invitado
         if (prevId) {
           persistTaskProgress(taskProgress, prevId);
         }
-        switchedOutParticipantRef.current = true;
-        setTaskProgress(EMPTY_TASK_PROGRESS);
-        persistTaskProgress(EMPTY_TASK_PROGRESS, null);
+        setTaskProgress(readGuestTaskProgress());
         setUnlockedTaskIds([]);
         return;
       }
 
-      const byParticipant = readJsonStorage<Record<string, TaskProgressState>>(
-        TASK_PROGRESS_BY_PARTICIPANT_KEY,
-        {}
-      );
-      const savedForNext = byParticipant[nextId];
-
-      if (savedForNext) {
-        const restored: TaskProgressState = {
-          completedTaskIds: savedForNext.completedTaskIds || [],
-          taskOutcomes: savedForNext.taskOutcomes || {},
-          taskAttemptsById: savedForNext.taskAttemptsById || {},
-        };
-        setTaskProgress(restored);
-        persistTaskProgress(restored, nextId);
-      } else if (prevId === null && !switchedOutParticipantRef.current) {
-        // Avance previo realizado antes de registrarse se vincula al nuevo participante
-        persistTaskProgress(taskProgress, nextId);
-      } else {
-        setTaskProgress(EMPTY_TASK_PROGRESS);
-        persistTaskProgress(EMPTY_TASK_PROGRESS, nextId);
-      }
-      switchedOutParticipantRef.current = false;
+      const restored = readParticipantTaskProgress(nextId);
+      setTaskProgress(restored);
+      persistTaskProgress(restored, nextId);
       setUnlockedTaskIds([]);
     },
     [participantSession, taskProgress]
@@ -755,9 +803,12 @@ export function App() {
       ? activeTimeline[playback.currentStepIndex + 1]
       : null;
 
+  const showWorkspaceVisualizer =
+    activeModule !== 'evaluation' || isPostestVisualizerActive;
+
   return (
     <div className="flex flex-col h-full w-full min-h-0 bg-[#111217] text-slate-100 font-sans">
-      {/* Barra única del entorno de trabajo (Visurithm Workspace) */}
+      {/* Barra única del entorno de trabajo */}
       <Navbar
         activeModule={activeModule}
         onNavigateModule={handleNavigateModule}
@@ -791,6 +842,7 @@ export function App() {
           <EvaluationModule
             session={participantSession}
             onUpdateSession={handleUpdateParticipantSession}
+            onApplyRemoteTaskProgress={handleApplyRemoteTaskProgress}
             taskOutcomes={taskOutcomes}
             completedTasksCount={completedTaskIds.length}
             onGoToGuidedTasks={() => handleNavigateModule('algorithms')}
@@ -863,7 +915,7 @@ export function App() {
         )}
 
         {/* Columna derecha: Memoria (superior) + Visualización gráfica (inferior) */}
-        {(activeModule !== 'evaluation' || isPostestVisualizerActive) && (
+        {showWorkspaceVisualizer && (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#12131b]">
             {activeModule !== 'student_code' && !isComparisonActive && (
               <MemoryPanel
@@ -918,7 +970,7 @@ export function App() {
       </main>
 
       {/* Barra inferior de controles y reproducción */}
-      {(activeModule !== 'evaluation' || isPostestVisualizerActive) && (
+      {showWorkspaceVisualizer && (
         <PlaybackFooter
           currentStepIndex={playback.currentStepIndex}
           totalSteps={playback.totalSteps}
