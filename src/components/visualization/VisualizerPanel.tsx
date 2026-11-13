@@ -7,11 +7,16 @@ import { SearchMapVisualizer } from './SearchMapVisualizer';
 import { StudentCodeVisualizer } from './StudentCodeVisualizer';
 import { StepPredictionBar } from './StepPredictionBar';
 import { AlgorithmComparisonView } from './AlgorithmComparisonView';
+import type {
+  ComparisonSyncMode,
+  ComparisonTraceEntry,
+} from '../../core/utils/comparisonSync';
 import { Maximize2, Minimize2 } from 'lucide-react';
 
 interface VisualizerPanelProps {
   currentStep: Step | null;
   nextStep?: Step | null;
+  traceHistory?: Step[];
   stepIndex: number;
   totalSteps: number;
   isFullscreen: boolean;
@@ -27,14 +32,19 @@ interface VisualizerPanelProps {
     secondaryAlgorithm: AlgorithmMetadata;
     sameFamilyAlgorithms: AlgorithmMetadata[];
     onSelectSecondaryAlgorithm: (algoId: string) => void;
-    primarySteps: Step[];
-    secondarySteps: Step[];
+    primaryEntries: ComparisonTraceEntry[];
+    secondaryEntries: ComparisonTraceEntry[];
+    rawPrimarySteps: Step[];
+    rawSecondarySteps: Step[];
+    syncMode: ComparisonSyncMode;
+    onChangeSyncMode: (mode: ComparisonSyncMode) => void;
   } | null;
 }
 
 export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
   currentStep,
   nextStep = null,
+  traceHistory,
   stepIndex,
   totalSteps,
   isFullscreen,
@@ -81,6 +91,36 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {comparisonProps && (
+            <div
+              className="flex items-center bg-[#1c1e2e] border border-[#2b2e46] rounded-md p-0.5 text-[10px] font-mono"
+              title="Por hitos sincroniza comparaciones y movimientos reales sin penalizar por líneas auxiliares"
+            >
+              <button
+                type="button"
+                onClick={() => comparisonProps.onChangeSyncMode('milestones')}
+                className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                  comparisonProps.syncMode === 'milestones'
+                    ? 'bg-indigo-600 text-white font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Por hitos
+              </button>
+              <button
+                type="button"
+                onClick={() => comparisonProps.onChangeSyncMode('raw')}
+                className={`px-2 py-0.5 rounded transition-colors cursor-pointer ${
+                  comparisonProps.syncMode === 'raw'
+                    ? 'bg-indigo-600 text-white font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                Paso a paso
+              </button>
+            </div>
+          )}
+
           {isDivideAndConquer && currentStep && (
             <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-slate-400">
               <span>Comp: <strong className="text-slate-200">{currentStep.metrics.comparisons}</strong></span>
@@ -92,7 +132,9 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
           <span className="text-[11px] font-mono text-slate-400 whitespace-nowrap">
             {isAwaitingCompilation
               ? 'Modo edición'
-              : `Paso ${stepIndex + 1} / ${totalSteps}`}
+              : comparisonProps?.syncMode === 'milestones'
+                ? `Hito ${stepIndex + 1} / ${totalSteps}`
+                : `Paso ${stepIndex + 1} / ${totalSteps}`}
           </span>
 
           <button
@@ -137,8 +179,11 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
             secondaryAlgorithm={comparisonProps.secondaryAlgorithm}
             sameFamilyAlgorithms={comparisonProps.sameFamilyAlgorithms}
             onSelectSecondaryAlgorithm={comparisonProps.onSelectSecondaryAlgorithm}
-            primarySteps={comparisonProps.primarySteps}
-            secondarySteps={comparisonProps.secondarySteps}
+            primaryEntries={comparisonProps.primaryEntries}
+            secondaryEntries={comparisonProps.secondaryEntries}
+            rawPrimarySteps={comparisonProps.rawPrimarySteps}
+            rawSecondarySteps={comparisonProps.rawSecondarySteps}
+            syncMode={comparisonProps.syncMode}
             stepIndex={stepIndex}
           />
         ) : currentStep ? (
@@ -151,6 +196,7 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
               array={currentStep.array}
               algorithmType={searchType}
               currentStep={currentStep}
+              traceHistory={traceHistory}
             />
           ) : (
             <div className="flex-1 flex items-center justify-center min-h-0 overflow-hidden">

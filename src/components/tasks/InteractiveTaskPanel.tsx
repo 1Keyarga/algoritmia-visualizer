@@ -27,6 +27,8 @@ interface InteractiveTaskPanelProps {
   onMarkTaskCompleted: (taskId: string) => void;
   taskOutcomes?: Record<string, TaskAttemptCategory>;
   onRecordTaskOutcome?: (taskId: string, category: TaskAttemptCategory) => void;
+  taskAttemptsById?: Record<string, number>;
+  onRecordTaskAttempt?: (taskId: string, attemptsUsed: number) => void;
   isPredictionModeActive: boolean;
   onTogglePredictionMode: () => void;
   selectedTaskId: string;
@@ -47,25 +49,39 @@ interface InteractiveTaskPanelProps {
 function renderCleanPrompt(text: string): React.ReactNode {
   const cleaned = text.replace(/\bint\s+arr\[\]\s*=\s*/g, '');
   const tokenRegex =
-    /(\{[0-9,\s]+\}|\[[0-9,\s.]+\]|\([nijklowhigm\s=0-9+]+\)|\b(?:arr|left|right|result)\[[^\]]+\]|\b(?:mid|piso|techo|log2)\([^)]+\)|\b[nij]\s*=\s*[0-9]+(?:\s*\.\.\s*[n0-9\s\-+]+)?)/g;
+    /\{[0-9,\s]+\}|\[[0-9,\s.]+\]|\b(?:arr|left|right|result)\[[^\]]+\]|\b(?:mid\s*=\s*)?(?:piso|techo|log2|particionar)\((?:[^()]|\([^()]*\))*\)|\b(?:[nij]|mid|pi|inicio|fin|clave|target|pivote)\s*=\s*(?:[0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)(?:\s*\.\.\s*[n0-9\s\-+]+)?/g;
 
-  const parts = cleaned.split(tokenRegex);
-  return parts.map((part, idx) => {
-    if (!part) return null;
-    if (tokenRegex.test(part)) {
-      tokenRegex.lastIndex = 0;
-      return (
-        <code
-          key={idx}
-          className="whitespace-nowrap inline-block font-mono text-[11px] bg-[#121525] text-indigo-200 px-1.5 py-0.2 rounded border border-[#272c48] mx-0.5 leading-snug"
-        >
-          {part}
-        </code>
+  const nodes: React.ReactNode[] = [];
+  let lastIdx = 0;
+
+  for (const match of cleaned.matchAll(tokenRegex)) {
+    const startIdx = match.index ?? 0;
+    if (startIdx > lastIdx) {
+      nodes.push(
+        <React.Fragment key={`t-${lastIdx}`}>
+          {cleaned.slice(lastIdx, startIdx)}
+        </React.Fragment>
       );
     }
-    tokenRegex.lastIndex = 0;
-    return <React.Fragment key={idx}>{part}</React.Fragment>;
-  });
+    const token = match[0];
+    nodes.push(
+      <code
+        key={`c-${startIdx}`}
+        className="whitespace-nowrap inline-block font-mono text-[11px] bg-[#121525] text-indigo-200 px-1.5 py-0.2 rounded border border-[#272c48] mx-0.5 leading-snug"
+      >
+        {token}
+      </code>
+    );
+    lastIdx = startIdx + token.length;
+  }
+
+  if (lastIdx < cleaned.length) {
+    nodes.push(
+      <React.Fragment key={`t-${lastIdx}`}>{cleaned.slice(lastIdx)}</React.Fragment>
+    );
+  }
+
+  return nodes;
 }
 
 interface InteractiveTaskBodyProps extends InteractiveTaskPanelProps {
@@ -89,6 +105,8 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
   onMarkTaskCompleted,
   taskOutcomes = {},
   onRecordTaskOutcome,
+  taskAttemptsById = {},
+  onRecordTaskAttempt,
   onSelectTaskId,
   isTaskUnlocked,
   algorithm,
@@ -135,7 +153,9 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
   );
   const [selectedConceptOption, setSelectedConceptOption] = useState<number | null>(null);
 
-  const [attemptsUsed, setAttemptsUsed] = useState<number>(0);
+  const [attemptsUsed, setAttemptsUsed] = useState<number>(() =>
+    Math.min(3, Math.max(0, taskAttemptsById[currentTask.id] ?? 0))
+  );
   const [manualHintLevel, setManualHintLevel] = useState<number>(0);
 
   const [verificationState, setVerificationState] = useState<{
@@ -220,9 +240,10 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
   const registerFailedAttempt = (errorMessage: string) => {
     const nextAttempts = Math.min(3, attemptsUsed + 1);
     setAttemptsUsed(nextAttempts);
+    onRecordTaskAttempt?.(currentTask.id, nextAttempts);
     const exhausted = nextAttempts >= 3;
     if (exhausted) {
-      if (!completedTaskIds.includes(currentTask.id)) {
+      if (!completedTaskIds.includes(currentTask.id) && !taskOutcomes[currentTask.id]) {
         onRecordTaskOutcome?.(currentTask.id, 'failed');
       }
       onUnlockTaskExecution();
@@ -237,20 +258,27 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
   };
 
   const registerSuccess = (successMessage: string, customAstSteps?: Step[]) => {
-    const attemptNumber = attemptsUsed + 1;
-    const category: TaskAttemptCategory =
-      attemptNumber === 1
-        ? 'first_attempt'
-        : attemptNumber === 2
-        ? 'second_attempt'
-        : 'multiple_attempts';
-    onRecordTaskOutcome?.(currentTask.id, category);
-    onMarkTaskCompleted(currentTask.id);
+    const alreadyFailed =
+      attemptsUsed >= 3 || taskOutcomes[currentTask.id] === 'failed';
+    const hasRecordedOutcome = !!taskOutcomes[currentTask.id];
+    if (!alreadyFailed && !hasRecordedOutcome) {
+      const attemptNumber = attemptsUsed + 1;
+      const category: TaskAttemptCategory =
+        attemptNumber === 1
+          ? 'first_attempt'
+          : attemptNumber === 2
+          ? 'second_attempt'
+          : 'multiple_attempts';
+      onRecordTaskOutcome?.(currentTask.id, category);
+      onMarkTaskCompleted(currentTask.id);
+    }
     onUnlockTaskExecution(customAstSteps);
     setVerificationState({
       checked: true,
       isCorrect: true,
-      message: `${successMessage} La ejecución completa ha sido desbloqueada.`,
+      message: alreadyFailed
+        ? `${successMessage} Traza completa habilitada (se conserva el registro previo de intentos agotados).`
+        : `${successMessage} La ejecución completa ha sido desbloqueada.`,
     });
   };
 
@@ -692,17 +720,23 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                {currentOutcome && currentOutcome !== 'failed' && (
-                  <span className="text-[10px] text-emerald-400 font-medium">
+                {currentOutcome && (
+                  <span
+                    className={`text-[10px] font-medium ${
+                      currentOutcome === 'failed' ? 'text-rose-400' : 'text-emerald-400'
+                    }`}
+                  >
                     {currentOutcome === 'first_attempt'
                       ? '1.er intento'
                       : currentOutcome === 'second_attempt'
                       ? '2.° intento'
-                      : '3.er intento'}
+                      : currentOutcome === 'multiple_attempts'
+                      ? '3.er intento'
+                      : 'No logrado'}
                   </span>
                 )}
                 <span className="text-[11px] font-mono text-slate-400">
-                  Intentos: {Math.max(0, 3 - attemptsUsed)}/3
+                  Restantes: {Math.max(0, 3 - attemptsUsed)}/3
                 </span>
               </div>
             </div>

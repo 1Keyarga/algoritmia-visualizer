@@ -315,7 +315,7 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
         left,
         right,
         mid,
-        false
+        undefined
       );
 
       if (midValue < target) {
@@ -331,18 +331,24 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
           left,
           right,
           mid,
-          false
+          undefined
         );
 
-        // Marcar mitad izquierda como descartada
+        left = mid + 1;
+
+        // Marcar mitad izquierda como descartada y actualizar límite inicio
         currentArray = currentArray.map((item, idx) => {
-          if (idx <= mid) {
+          if (idx < left || idx > right) {
             return { ...item, state: 'discarded', nonColorIndicator: undefined };
           }
-          return item;
+          if (idx === left) {
+            return { ...item, state: 'selected', nonColorIndicator: 'ini' };
+          }
+          if (idx === right) {
+            return { ...item, state: 'selected', nonColorIndicator: 'fin' };
+          }
+          return { ...item, state: 'default', nonColorIndicator: undefined };
         });
-
-        left = mid + 1;
 
         pushStep(
           { pseudocode: 9, python: 9, cpp: 10, java: 10 },
@@ -351,8 +357,8 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
           'assign',
           left,
           right,
-          mid,
-          false
+          undefined,
+          undefined
         );
       } else {
         // arr[mid] > key - buscar en mitad izquierda
@@ -367,18 +373,24 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
           left,
           right,
           mid,
-          false
+          undefined
         );
 
-        // Marcar mitad derecha como descartada
+        right = mid - 1;
+
+        // Marcar mitad derecha como descartada y actualizar límite fin
         currentArray = currentArray.map((item, idx) => {
-          if (idx >= mid) {
+          if (idx < left || idx > right) {
             return { ...item, state: 'discarded', nonColorIndicator: undefined };
           }
-          return item;
+          if (idx === left) {
+            return { ...item, state: 'selected', nonColorIndicator: 'ini' };
+          }
+          if (idx === right) {
+            return { ...item, state: 'selected', nonColorIndicator: 'fin' };
+          }
+          return { ...item, state: 'default', nonColorIndicator: undefined };
         });
-
-        right = mid - 1;
 
         pushStep(
           { pseudocode: 11, python: 11, cpp: 12, java: 12 },
@@ -387,8 +399,8 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
           'assign',
           left,
           right,
-          mid,
-          false
+          undefined,
+          undefined
         );
       }
     }
@@ -402,11 +414,11 @@ export function generateBinarySearchTrace(initialData: number[], target: number 
       { pseudocode: 4, python: 4, cpp: 4, java: 4 },
       [{ lineNumber: 4, type: 'active', lineByLanguage: { pseudocode: 4, python: 4, cpp: 4, java: 4 } }],
       `Condición inicio (${left}) ≤ fin (${right}): FALSA. Rango de búsqueda vacío.`,
-      'finish',
+      'iterate_inner',
       left,
       right,
       undefined,
-      false
+      undefined
     );
 
     pushStep(

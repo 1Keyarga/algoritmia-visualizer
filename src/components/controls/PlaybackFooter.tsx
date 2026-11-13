@@ -25,6 +25,7 @@ interface PlaybackFooterProps {
   onReset: () => void;
   disabled?: boolean;
   maxAllowedStepIndex?: number;
+  stepUnitLabel?: 'Paso' | 'Hito';
 }
 
 export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
@@ -42,6 +43,7 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
   onReset,
   disabled = false,
   maxAllowedStepIndex,
+  stepUnitLabel = 'Paso',
 }) => {
   const speeds: PlaybackSpeed[] = [0.5, 1, 2, 4];
   const effectiveMax =
@@ -81,7 +83,9 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
         <div className="flex items-center gap-2.5 min-w-[140px]">
           <div className="bg-[#1c1d2c] px-3 py-1 rounded-lg border border-[#2b2d42]">
             <span className="text-xs font-mono text-slate-300 font-semibold">
-              {disabled ? 'Sin ejecución' : `Paso ${currentStepIndex + 1} / ${totalSteps}`}
+              {disabled
+                ? 'Sin ejecución'
+                : `${stepUnitLabel} ${currentStepIndex + 1} / ${totalSteps}`}
             </span>
           </div>
 

@@ -58,6 +58,30 @@ export interface ParticipantSession {
 export const EVALUATION_STORAGE_KEY = 'visurithm_evaluation_session_v2';
 export const EVALUATION_HISTORY_STORAGE_KEY = 'visurithm_evaluation_all_records_v2';
 
+export function loadSavedParticipantSession(
+  participantId: string
+): ParticipantSession | null {
+  try {
+    const raw = localStorage.getItem(EVALUATION_HISTORY_STORAGE_KEY);
+    if (!raw) return null;
+    const map = JSON.parse(raw) as Record<string, ParticipantSession>;
+    return map[participantId] || null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveParticipantSessionRecord(session: ParticipantSession): void {
+  try {
+    const raw = localStorage.getItem(EVALUATION_HISTORY_STORAGE_KEY);
+    const map = raw ? (JSON.parse(raw) as Record<string, ParticipantSession>) : {};
+    map[session.participantId] = session;
+    localStorage.setItem(EVALUATION_HISTORY_STORAGE_KEY, JSON.stringify(map));
+  } catch {
+    // Ignorar errores de almacenamiento
+  }
+}
+
 // URL fija de Google Apps Script para guardar automáticamente los resultados en la hoja de cálculo
 export const DEFAULT_SHEETS_WEBHOOK_URL =
   'https://script.google.com/macros/s/AKfycbzOAWjvaAK0XDkMudWR-ewy5398lafxb57M2BAX30LDSKGRQl8BW2vdfsU_qV0hJLZiGw/exec';
@@ -567,11 +591,38 @@ export function summarizeTaskOutcomes(outcomes: Record<string, TaskAttemptCatego
 
 export function buildEvaluationPayload(
   session: ParticipantSession,
-  _taskOutcomes?: Record<string, TaskAttemptCategory>,
-  _completedTasksCount?: number
+  taskOutcomes: Record<string, TaskAttemptCategory> = {},
+  completedTasksCount = 0
 ) {
   const pre = session.pretest;
   const pos = session.postest;
+  const taskSummary = summarizeTaskOutcomes(taskOutcomes);
+  const solvedCount = Math.max(
+    completedTasksCount,
+    taskSummary.firstAttempt + taskSummary.secondAttempt + taskSummary.multipleAttempts
+  );
+  const outcomeLabel: Record<TaskAttemptCategory, string> = {
+    first_attempt: '1er_intento',
+    second_attempt: '2do_intento',
+    multiple_attempts: '3er_intento',
+    failed: 'no_logrado',
+  };
+  const formatCompetencies = (res?: EvaluationAttemptResult) => {
+    if (!res) return '';
+    const { C1, C2, C3, C4 } = res.byCompetency;
+    return `Logica:${C1.earned}/${C1.max} | Diseno:${C2.earned}/${C2.max} | Iteracion:${C3.earned}/${C3.max} | Abstraccion:${C4.earned}/${C4.max}`;
+  };
+  const formatItems = (res?: EvaluationAttemptResult) => {
+    if (!res) return '';
+    return Object.keys(res.itemScores)
+      .sort()
+      .map(id => `${id}:${res.itemScores[id]}`)
+      .join(' | ');
+  };
+  const tasksDetail = Object.keys(taskOutcomes)
+    .sort()
+    .map(taskId => `${taskId}:${outcomeLabel[taskOutcomes[taskId]]}`)
+    .join(' | ');
 
   return {
     participantId: session.participantId,
@@ -596,6 +647,17 @@ export function buildEvaluationPayload(
       pre && pos ? Number((pos.totalScore - pre.totalScore).toFixed(2)) : '',
     gainPercentagePoints:
       pre && pos ? pos.percentage - pre.percentage : '',
+    pretestCompetenciesDetail: formatCompetencies(pre),
+    postestCompetenciesDetail: formatCompetencies(pos),
+    pretestItemScores: formatItems(pre),
+    postestItemScores: formatItems(pos),
+    tasksCompletedCount: solvedCount,
+    tasksFirstAttempt: taskSummary.firstAttempt,
+    tasksSecondAttempt: taskSummary.secondAttempt,
+    tasksMultipleAttempts: taskSummary.multipleAttempts,
+    tasksFailed: taskSummary.failed,
+    tasksAttemptedTotal: taskSummary.totalAttempted,
+    tasksDetail,
   };
 }
 

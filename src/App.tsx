@@ -11,6 +11,10 @@ import { generateQuickSortTrace } from './core/algorithms/quickSort';
 import { generateLinearSearchTrace } from './core/algorithms/linearSearch';
 import { generateBinarySearchTrace } from './core/algorithms/binarySearch';
 import { generateRandomDataset } from './core/utils/generator';
+import {
+  buildComparisonEntries,
+  type ComparisonSyncMode,
+} from './core/utils/comparisonSync';
 import { usePlayback } from './hooks/usePlayback';
 import { useKeyboard } from './hooks/useKeyboard';
 import { HomeHub, type AppModule } from './components/layout/HomeHub';
@@ -27,13 +31,67 @@ import {
 import { EvaluationModule } from './components/evaluation/EvaluationModule';
 import {
   EVALUATION_STORAGE_KEY,
+  saveParticipantSessionRecord,
   type ParticipantSession,
   type PostestVisualizerScenario,
 } from './core/evaluation/evaluationRepository';
 
 const COMPLETED_TASKS_STORAGE_KEY = 'algoritmia_completed_tasks_v1';
 const TASK_OUTCOMES_STORAGE_KEY = 'visurithm_task_outcomes_v1';
+const TASK_ATTEMPTS_STORAGE_KEY = 'visurithm_task_attempts_v1';
+const TASK_PROGRESS_BY_PARTICIPANT_KEY = 'visurithm_task_progress_by_participant_v1';
 const PREF_ALGO_STORAGE_KEY = 'visurithm_pref_algo';
+
+interface TaskProgressState {
+  completedTaskIds: string[];
+  taskOutcomes: Record<string, TaskAttemptCategory>;
+  taskAttemptsById: Record<string, number>;
+}
+
+const EMPTY_TASK_PROGRESS: TaskProgressState = {
+  completedTaskIds: [],
+  taskOutcomes: {},
+  taskAttemptsById: {},
+};
+
+function readJsonStorage<T>(key: string, fallback: T): T {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? (JSON.parse(saved) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function persistTaskProgress(
+  progress: TaskProgressState,
+  participantId?: string | null
+) {
+  try {
+    localStorage.setItem(
+      COMPLETED_TASKS_STORAGE_KEY,
+      JSON.stringify(progress.completedTaskIds)
+    );
+    localStorage.setItem(
+      TASK_OUTCOMES_STORAGE_KEY,
+      JSON.stringify(progress.taskOutcomes)
+    );
+    localStorage.setItem(
+      TASK_ATTEMPTS_STORAGE_KEY,
+      JSON.stringify(progress.taskAttemptsById)
+    );
+    if (participantId) {
+      const map = readJsonStorage<Record<string, TaskProgressState>>(
+        TASK_PROGRESS_BY_PARTICIPANT_KEY,
+        {}
+      );
+      map[participantId] = progress;
+      localStorage.setItem(TASK_PROGRESS_BY_PARTICIPANT_KEY, JSON.stringify(map));
+    }
+  } catch {
+    // Ignorar errores de almacenamiento
+  }
+}
 
 function generateAlgorithmTrace(
   algoId: string,
@@ -148,6 +206,7 @@ export function App() {
 
   const [isComparing, setIsComparing] = useState<boolean>(false);
   const [secondaryAlgorithmId, setSecondaryAlgorithmId] = useState<string>('selection-sort');
+  const [comparisonSyncMode, setComparisonSyncMode] = useState<ComparisonSyncMode>('milestones');
   const [isPostestVisualizerActive, setIsPostestVisualizerActive] = useState<boolean>(false);
   const [postestCompareAlgorithmId, setPostestCompareAlgorithmId] = useState<string | null>(null);
 
@@ -172,68 +231,144 @@ export function App() {
   const pendingStepJumpRef = useRef<number | null>(null);
   const pendingAutoPlayRef = useRef<boolean>(false);
 
-  const [completedTaskIds, setCompletedTaskIds] = useState<string[]>(() => {
-    try {
-      const saved = localStorage.getItem(COMPLETED_TASKS_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [participantSession, setParticipantSession] = useState<ParticipantSession | null>(() =>
+    readJsonStorage<ParticipantSession | null>(EVALUATION_STORAGE_KEY, null)
+  );
 
-  const [taskOutcomes, setTaskOutcomes] = useState<Record<string, TaskAttemptCategory>>(() => {
-    try {
-      const saved = localStorage.getItem(TASK_OUTCOMES_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
-  });
-
-  const [participantSession, setParticipantSession] = useState<ParticipantSession | null>(() => {
-    try {
-      const saved = localStorage.getItem(EVALUATION_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
-
-  const handleUpdateParticipantSession = useCallback((next: ParticipantSession | null) => {
-    setParticipantSession(next);
-    try {
-      if (next) {
-        localStorage.setItem(EVALUATION_STORAGE_KEY, JSON.stringify(next));
-      } else {
-        localStorage.removeItem(EVALUATION_STORAGE_KEY);
+  const [taskProgress, setTaskProgress] = useState<TaskProgressState>(() => {
+    const savedSession = readJsonStorage<ParticipantSession | null>(
+      EVALUATION_STORAGE_KEY,
+      null
+    );
+    if (savedSession?.participantId) {
+      const byParticipant = readJsonStorage<Record<string, TaskProgressState>>(
+        TASK_PROGRESS_BY_PARTICIPANT_KEY,
+        {}
+      );
+      if (byParticipant[savedSession.participantId]) {
+        return {
+          completedTaskIds: byParticipant[savedSession.participantId].completedTaskIds || [],
+          taskOutcomes: byParticipant[savedSession.participantId].taskOutcomes || {},
+          taskAttemptsById: byParticipant[savedSession.participantId].taskAttemptsById || {},
+        };
       }
-    } catch {}
-  }, []);
+    }
+    return {
+      completedTaskIds: readJsonStorage<string[]>(COMPLETED_TASKS_STORAGE_KEY, []),
+      taskOutcomes: readJsonStorage<Record<string, TaskAttemptCategory>>(
+        TASK_OUTCOMES_STORAGE_KEY,
+        {}
+      ),
+      taskAttemptsById: readJsonStorage<Record<string, number>>(
+        TASK_ATTEMPTS_STORAGE_KEY,
+        {}
+      ),
+    };
+  });
 
-  const handleMarkTaskCompleted = useCallback((taskId: string) => {
-    setCompletedTaskIds(prev => {
-      if (prev.includes(taskId)) return prev;
-      const next = [...prev, taskId];
+  const switchedOutParticipantRef = useRef<boolean>(false);
+  const { completedTaskIds, taskOutcomes, taskAttemptsById } = taskProgress;
+
+  const handleUpdateParticipantSession = useCallback(
+    (next: ParticipantSession | null) => {
+      const prevId = participantSession?.participantId ?? null;
+      const nextId = next?.participantId ?? null;
+
+      setParticipantSession(next);
       try {
-        localStorage.setItem(COMPLETED_TASKS_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // Ignorar errores de almacenamiento
-      }
-      return next;
-    });
-  }, []);
+        if (next) {
+          localStorage.setItem(EVALUATION_STORAGE_KEY, JSON.stringify(next));
+          saveParticipantSessionRecord(next);
+        } else {
+          if (participantSession) {
+            saveParticipantSessionRecord(participantSession);
+          }
+          localStorage.removeItem(EVALUATION_STORAGE_KEY);
+        }
+      } catch {}
 
-  const handleRecordTaskOutcome = useCallback(
-    (taskId: string, category: TaskAttemptCategory) => {
-      setTaskOutcomes(prev => {
-        const next = { ...prev, [taskId]: category };
-        try {
-          localStorage.setItem(TASK_OUTCOMES_STORAGE_KEY, JSON.stringify(next));
-        } catch {}
+      if (prevId === nextId) return;
+
+      if (!nextId) {
+        // Cerrar sesión del participante actual: respaldar su avance y limpiar la vista activa
+        if (prevId) {
+          persistTaskProgress(taskProgress, prevId);
+        }
+        switchedOutParticipantRef.current = true;
+        setTaskProgress(EMPTY_TASK_PROGRESS);
+        persistTaskProgress(EMPTY_TASK_PROGRESS, null);
+        setUnlockedTaskIds([]);
+        return;
+      }
+
+      const byParticipant = readJsonStorage<Record<string, TaskProgressState>>(
+        TASK_PROGRESS_BY_PARTICIPANT_KEY,
+        {}
+      );
+      const savedForNext = byParticipant[nextId];
+
+      if (savedForNext) {
+        const restored: TaskProgressState = {
+          completedTaskIds: savedForNext.completedTaskIds || [],
+          taskOutcomes: savedForNext.taskOutcomes || {},
+          taskAttemptsById: savedForNext.taskAttemptsById || {},
+        };
+        setTaskProgress(restored);
+        persistTaskProgress(restored, nextId);
+      } else if (prevId === null && !switchedOutParticipantRef.current) {
+        // Avance previo realizado antes de registrarse se vincula al nuevo participante
+        persistTaskProgress(taskProgress, nextId);
+      } else {
+        setTaskProgress(EMPTY_TASK_PROGRESS);
+        persistTaskProgress(EMPTY_TASK_PROGRESS, nextId);
+      }
+      switchedOutParticipantRef.current = false;
+      setUnlockedTaskIds([]);
+    },
+    [participantSession, taskProgress]
+  );
+
+  const handleMarkTaskCompleted = useCallback(
+    (taskId: string) => {
+      setTaskProgress(prev => {
+        if (prev.completedTaskIds.includes(taskId)) return prev;
+        const next: TaskProgressState = {
+          ...prev,
+          completedTaskIds: [...prev.completedTaskIds, taskId],
+        };
+        persistTaskProgress(next, participantSession?.participantId);
         return next;
       });
     },
-    []
+    [participantSession?.participantId]
+  );
+
+  const handleRecordTaskOutcome = useCallback(
+    (taskId: string, category: TaskAttemptCategory) => {
+      setTaskProgress(prev => {
+        const next: TaskProgressState = {
+          ...prev,
+          taskOutcomes: { ...prev.taskOutcomes, [taskId]: category },
+        };
+        persistTaskProgress(next, participantSession?.participantId);
+        return next;
+      });
+    },
+    [participantSession?.participantId]
+  );
+
+  const handleRecordTaskAttempt = useCallback(
+    (taskId: string, attempts: number) => {
+      setTaskProgress(prev => {
+        const next: TaskProgressState = {
+          ...prev,
+          taskAttemptsById: { ...prev.taskAttemptsById, [taskId]: attempts },
+        };
+        persistTaskProgress(next, participantSession?.participantId);
+        return next;
+      });
+    },
+    [participantSession?.participantId]
   );
 
   // Guardar preferencia de último algoritmo seleccionado
@@ -313,10 +448,16 @@ export function App() {
     }
     if (activeModule === 'guided_tasks') {
       if (currentGuidedTask.id === 'T05') {
-        return ALGORITHMS_CATALOG.find(a => a.id === 'selection-sort') || secondaryAlgorithm;
+        const partnerId =
+          selectedAlgorithm.id === 'selection-sort'
+            ? 'bubble-sort-classic'
+            : 'selection-sort';
+        return ALGORITHMS_CATALOG.find(a => a.id === partnerId) || secondaryAlgorithm;
       }
       if (currentGuidedTask.id === 'T11') {
-        return ALGORITHMS_CATALOG.find(a => a.id === 'binary-search') || secondaryAlgorithm;
+        const partnerId =
+          selectedAlgorithm.id === 'binary-search' ? 'linear-search' : 'binary-search';
+        return ALGORITHMS_CATALOG.find(a => a.id === partnerId) || secondaryAlgorithm;
       }
     }
     return secondaryAlgorithm;
@@ -325,6 +466,7 @@ export function App() {
     postestCompareAlgorithmId,
     activeModule,
     currentGuidedTask.id,
+    selectedAlgorithm.id,
     secondaryAlgorithm,
   ]);
 
@@ -337,21 +479,46 @@ export function App() {
     return generateAlgorithmTrace(effectiveSecondaryAlgorithm.id, secData, searchTarget);
   }, [isComparisonActive, effectiveSecondaryAlgorithm.id, dataset, searchTarget]);
 
+  const primaryComparisonEntries = useMemo(
+    () => (isComparisonActive ? buildComparisonEntries(steps, comparisonSyncMode) : []),
+    [isComparisonActive, steps, comparisonSyncMode]
+  );
+
+  const secondaryComparisonEntries = useMemo(
+    () => (isComparisonActive ? buildComparisonEntries(secondarySteps, comparisonSyncMode) : []),
+    [isComparisonActive, secondarySteps, comparisonSyncMode]
+  );
+
+  const primaryComparisonSteps = useMemo(
+    () => primaryComparisonEntries.map(e => e.step),
+    [primaryComparisonEntries]
+  );
+
   const playbackTimelineSteps = useMemo(() => {
-    if (!isComparisonActive || secondarySteps.length <= steps.length) {
+    if (!isComparisonActive) {
       return steps;
     }
-    const padded = [...steps];
-    const lastPrimary = steps[steps.length - 1];
-    while (padded.length < secondarySteps.length && lastPrimary) {
+    if (secondaryComparisonEntries.length <= primaryComparisonSteps.length) {
+      return primaryComparisonSteps;
+    }
+    const padded = [...primaryComparisonSteps];
+    const lastPrimary = primaryComparisonSteps[primaryComparisonSteps.length - 1];
+    while (padded.length < secondaryComparisonEntries.length && lastPrimary) {
       padded.push(lastPrimary);
     }
     return padded;
-  }, [isComparisonActive, steps, secondarySteps]);
+  }, [
+    isComparisonActive,
+    steps,
+    primaryComparisonSteps,
+    secondaryComparisonEntries.length,
+  ]);
 
   const isCurrentTaskUnlocked =
     unlockedTaskIds.includes(currentGuidedTask.id) ||
-    completedTaskIds.includes(currentGuidedTask.id);
+    completedTaskIds.includes(currentGuidedTask.id) ||
+    taskOutcomes[currentGuidedTask.id] === 'failed' ||
+    (taskAttemptsById[currentGuidedTask.id] ?? 0) >= 3;
 
   const maxAllowedStepIndex =
     activeModule === 'guided_tasks' && !isCurrentTaskUnlocked
@@ -366,6 +533,11 @@ export function App() {
   const playbackReset = playback.reset;
   const playbackGoToStep = playback.goToStep;
   const playbackPlay = playback.play;
+
+  const singleTraceHistory = useMemo(
+    () => (isComparisonActive ? undefined : steps.slice(0, playback.currentStepIndex + 1)),
+    [isComparisonActive, steps, playback.currentStepIndex]
+  );
 
   useEffect(() => {
     if (pendingStepJumpRef.current !== null && steps.length > 0) {
@@ -576,9 +748,11 @@ export function App() {
     );
   }
 
+  const activeTimeline = isComparisonActive ? primaryComparisonSteps : steps;
+
   const nextStep =
-    playback.currentStepIndex + 1 < steps.length
-      ? steps[playback.currentStepIndex + 1]
+    playback.currentStepIndex + 1 < activeTimeline.length
+      ? activeTimeline[playback.currentStepIndex + 1]
       : null;
 
   return (
@@ -661,6 +835,8 @@ export function App() {
             onMarkTaskCompleted={handleMarkTaskCompleted}
             taskOutcomes={taskOutcomes}
             onRecordTaskOutcome={handleRecordTaskOutcome}
+            taskAttemptsById={taskAttemptsById}
+            onRecordTaskAttempt={handleRecordTaskAttempt}
             isPredictionModeActive={isPredictionModeActive}
             onTogglePredictionMode={() => setIsPredictionModeActive(prev => !prev)}
             selectedTaskId={selectedTaskId}
@@ -689,18 +865,20 @@ export function App() {
         {/* Columna derecha: Memoria (superior) + Visualización gráfica (inferior) */}
         {(activeModule !== 'evaluation' || isPostestVisualizerActive) && (
           <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#12131b]">
-            {activeModule !== 'student_code' && (
+            {activeModule !== 'student_code' && !isComparisonActive && (
               <MemoryPanel
                 currentStep={playback.currentStep}
                 stepIndex={playback.currentStepIndex}
                 isOpen={isMemoryOpen}
                 onToggleOpen={() => setIsMemoryOpen(!isMemoryOpen)}
+                hideArrayGrid={selectedAlgorithm.family === 'searching'}
               />
             )}
 
             <VisualizerPanel
               currentStep={playback.currentStep}
               nextStep={nextStep}
+              traceHistory={singleTraceHistory}
               stepIndex={playback.currentStepIndex}
               totalSteps={playback.totalSteps}
               isFullscreen={isVisualizerFullscreen}
@@ -719,14 +897,18 @@ export function App() {
                 isComparisonActive
                   ? {
                       primaryAlgorithm: selectedAlgorithm,
-                      primarySteps: steps,
+                      primaryEntries: primaryComparisonEntries,
                       secondaryAlgorithm: effectiveSecondaryAlgorithm,
-                      secondarySteps,
+                      secondaryEntries: secondaryComparisonEntries,
+                      rawPrimarySteps: steps,
+                      rawSecondarySteps: secondarySteps,
                       sameFamilyAlgorithms:
                         isGuidedTaskComparison || isPostestComparison
                           ? [effectiveSecondaryAlgorithm]
                           : sameFamilyAlgorithms,
                       onSelectSecondaryAlgorithm: algoId => setSecondaryAlgorithmId(algoId),
+                      syncMode: comparisonSyncMode,
+                      onChangeSyncMode: setComparisonSyncMode,
                     }
                   : null
               }
@@ -752,6 +934,9 @@ export function App() {
           onReset={playback.reset}
           disabled={activeModule === 'student_code' && !isASTExecuting}
           maxAllowedStepIndex={maxAllowedStepIndex}
+          stepUnitLabel={
+            isComparisonActive && comparisonSyncMode === 'milestones' ? 'Hito' : 'Paso'
+          }
         />
       )}
     </div>

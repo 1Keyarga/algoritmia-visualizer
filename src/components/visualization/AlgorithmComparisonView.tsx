@@ -4,14 +4,22 @@ import type { Step } from '../../types/trace';
 import { D3BarChart } from './D3BarChart';
 import { SearchMapVisualizer } from './SearchMapVisualizer';
 import { DivideAndConquerContainer } from './divide_and_conquer/DivideAndConquerContainer';
+import {
+  computeComparisonSummary,
+  type ComparisonSyncMode,
+  type ComparisonTraceEntry,
+} from '../../core/utils/comparisonSync';
 
 interface AlgorithmComparisonViewProps {
   primaryAlgorithm: AlgorithmMetadata;
   secondaryAlgorithm: AlgorithmMetadata;
   sameFamilyAlgorithms: AlgorithmMetadata[];
   onSelectSecondaryAlgorithm: (algoId: string) => void;
-  primarySteps: Step[];
-  secondarySteps: Step[];
+  primaryEntries: ComparisonTraceEntry[];
+  secondaryEntries: ComparisonTraceEntry[];
+  rawPrimarySteps: Step[];
+  rawSecondarySteps: Step[];
+  syncMode: ComparisonSyncMode;
   stepIndex: number;
 }
 
@@ -20,32 +28,54 @@ export const AlgorithmComparisonView: React.FC<AlgorithmComparisonViewProps> = (
   secondaryAlgorithm,
   sameFamilyAlgorithms,
   onSelectSecondaryAlgorithm,
-  primarySteps,
-  secondarySteps,
+  primaryEntries,
+  secondaryEntries,
+  rawPrimarySteps,
+  rawSecondarySteps,
+  syncMode,
   stepIndex,
 }) => {
-  const primaryIdx = Math.min(stepIndex, Math.max(0, primarySteps.length - 1));
-  const secondaryIdx = Math.min(stepIndex, Math.max(0, secondarySteps.length - 1));
+  const primaryIdx = Math.min(stepIndex, Math.max(0, primaryEntries.length - 1));
+  const secondaryIdx = Math.min(stepIndex, Math.max(0, secondaryEntries.length - 1));
 
-  const primaryStep = primarySteps[primaryIdx] || null;
-  const secondaryStep = secondarySteps[secondaryIdx] || null;
+  const primaryEntry = primaryEntries[primaryIdx] || null;
+  const secondaryEntry = secondaryEntries[secondaryIdx] || null;
 
-  const isPrimaryFinished = primarySteps.length > 0 && stepIndex >= primarySteps.length - 1;
-  const isSecondaryFinished = secondarySteps.length > 0 && stepIndex >= secondarySteps.length - 1;
+  const primaryStep = primaryEntry?.step || null;
+  const secondaryStep = secondaryEntry?.step || null;
+
+  const isPrimaryFinished =
+    primaryEntries.length > 0 && stepIndex >= primaryEntries.length - 1;
+  const isSecondaryFinished =
+    secondaryEntries.length > 0 && stepIndex >= secondaryEntries.length - 1;
+  const bothFinished = isPrimaryFinished && isSecondaryFinished;
+
+  const summary = bothFinished
+    ? computeComparisonSummary(primaryEntries, secondaryEntries)
+    : null;
+
+  const stepUnit = syncMode === 'milestones' ? 'hitos' : 'pasos';
 
   const renderAlgorithmPane = (
     algo: AlgorithmMetadata,
-    step: Step | null,
+    entry: ComparisonTraceEntry | null,
+    rawSteps: Step[],
     currentIdx: number,
     totalCount: number,
     isFinished: boolean,
     isSecondary: boolean
   ) => {
+    const step = entry?.step || null;
     const isSearching = algo.family === 'searching';
     const searchType = algo.id === 'binary-search' ? 'binary' : 'linear';
+    const historySlice = entry ? rawSteps.slice(0, entry.rawIndex + 1) : [];
 
     return (
-      <div className="flex-1 flex flex-col min-h-0 min-w-0 bg-[#11131e] border border-[#23263a] rounded-xl overflow-hidden">
+      <div
+        className={`flex-1 flex flex-col min-h-0 min-w-0 bg-[#11131e] border rounded-xl overflow-hidden transition-colors ${
+          isFinished ? 'border-emerald-500/40' : 'border-[#23263a]'
+        }`}
+      >
         {/* Cabecera del panel individual */}
         <div className="px-3 py-2 bg-[#161826] border-b border-[#23263a] flex flex-wrap items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2 min-w-0">
@@ -54,8 +84,8 @@ export const AlgorithmComparisonView: React.FC<AlgorithmComparisonViewProps> = (
                 isFinished
                   ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.85)]'
                   : isSecondary
-                  ? 'bg-amber-400'
-                  : 'bg-indigo-400'
+                    ? 'bg-amber-400'
+                    : 'bg-indigo-400'
               }`}
             />
             {isSecondary && sameFamilyAlgorithms.length > 1 ? (
@@ -86,14 +116,25 @@ export const AlgorithmComparisonView: React.FC<AlgorithmComparisonViewProps> = (
               <span>
                 Comp: <strong className="text-amber-300">{step.metrics.comparisons}</strong>
               </span>
+              {!isSearching && (
+                <>
+                  <span>·</span>
+                  <span>
+                    Mov: <strong className="text-indigo-300">{step.metrics.swaps}</strong>
+                  </span>
+                </>
+              )}
               <span>·</span>
-              <span>
-                {isSearching ? 'Descartes' : 'Swaps'}:{' '}
-                <strong className="text-indigo-300">{step.metrics.swaps}</strong>
-              </span>
-              <span>·</span>
-              <span className={isFinished ? 'text-emerald-300 font-semibold' : 'text-slate-300'}>
-                {currentIdx + 1}/{totalCount}
+              <span
+                className={
+                  isFinished
+                    ? 'px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-semibold text-[10px]'
+                    : 'text-slate-300'
+                }
+              >
+                {isFinished
+                  ? `Listo (${totalCount} ${stepUnit})`
+                  : `${currentIdx + 1}/${totalCount}`}
               </span>
             </div>
           )}
@@ -109,6 +150,7 @@ export const AlgorithmComparisonView: React.FC<AlgorithmComparisonViewProps> = (
                 array={step.array}
                 algorithmType={searchType}
                 currentStep={step}
+                traceHistory={historySlice}
                 compact
               />
             ) : (
@@ -123,7 +165,7 @@ export const AlgorithmComparisonView: React.FC<AlgorithmComparisonViewProps> = (
           )}
         </div>
 
-        {/* Pie con la acción actual de este algoritmo (sin cortar a mitad de frase) */}
+        {/* Pie con la acción actual de este algoritmo */}
         {step && (
           <div className="px-3 py-2 bg-[#141623] border-t border-[#202336] flex items-start justify-between gap-3 shrink-0">
             <span className="text-[11px] text-slate-300 leading-snug">
@@ -139,22 +181,61 @@ export const AlgorithmComparisonView: React.FC<AlgorithmComparisonViewProps> = (
   };
 
   return (
-    <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-3 overflow-hidden">
-      {renderAlgorithmPane(
-        primaryAlgorithm,
-        primaryStep,
-        primaryIdx,
-        primarySteps.length,
-        isPrimaryFinished,
-        false
-      )}
-      {renderAlgorithmPane(
-        secondaryAlgorithm,
-        secondaryStep,
-        secondaryIdx,
-        secondarySteps.length,
-        isSecondaryFinished,
-        true
+    <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-3 overflow-hidden">
+        {renderAlgorithmPane(
+          primaryAlgorithm,
+          primaryEntry,
+          rawPrimarySteps,
+          primaryIdx,
+          primaryEntries.length,
+          isPrimaryFinished,
+          false
+        )}
+        {renderAlgorithmPane(
+          secondaryAlgorithm,
+          secondaryEntry,
+          rawSecondarySteps,
+          secondaryIdx,
+          secondaryEntries.length,
+          isSecondaryFinished,
+          true
+        )}
+      </div>
+
+      {/* Resumen comparativo cuantitativo al concluir ambos */}
+      {summary && primaryStep && secondaryStep && (
+        <div className="px-3.5 py-2 bg-[#141724] border border-[#262a40] rounded-lg flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-300 shrink-0">
+          <span className="text-slate-400 font-sans font-semibold">
+            Balance final
+          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span>
+              Comparaciones:{' '}
+              <strong className="text-indigo-300">{summary.primaryComparisons}</strong>
+              {' vs '}
+              <strong className="text-amber-300">{summary.secondaryComparisons}</strong>
+            </span>
+            {primaryAlgorithm.family !== 'searching' && (
+              <>
+                <span className="text-slate-600">·</span>
+                <span>
+                  Movimientos:{' '}
+                  <strong className="text-indigo-300">{summary.primaryWrites}</strong>
+                  {' vs '}
+                  <strong className="text-amber-300">{summary.secondaryWrites}</strong>
+                </span>
+              </>
+            )}
+            <span className="text-slate-600">·</span>
+            <span>
+              {stepUnit === 'hitos' ? 'Hitos' : 'Pasos'}:{' '}
+              <strong className="text-indigo-300">{summary.primaryMilestones}</strong>
+              {' vs '}
+              <strong className="text-amber-300">{summary.secondaryMilestones}</strong>
+            </span>
+          </div>
+        </div>
       )}
     </div>
   );

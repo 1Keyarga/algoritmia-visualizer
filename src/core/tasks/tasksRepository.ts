@@ -130,7 +130,7 @@ export const GUIDED_TASKS_REPOSITORY: GuidedTask[] = [
     family: 'Ordenamiento',
     algorithm: 'Bubble Sort',
     targetAlgorithmId: 'bubble-sort',
-    presetDataset: [5, 2, 8, 1, 9, 3],
+    presetDataset: [1, 2, 4, 3, 5, 6],
     bloom: 'Aplicar',
     competence: 'Diseñar algoritmos',
     indicator: 'Crea una secuencia ordenada de instrucciones',
@@ -177,7 +177,7 @@ void bubbleSort(int arr[], int n) {
 }
 
 int main() {
-    int arr[] = {5, 2, 8, 1, 9, 3};
+    int arr[] = {1, 2, 4, 3, 5, 6};
     int n = 6;
     bubbleSort(arr, n);
     return 0;
@@ -322,15 +322,15 @@ int main() {
     difficulty: 'Avanzado',
     title: 'Comparar Bubble Sort y Selection Sort: comparaciones, intercambios y escritura en memoria',
     prompt:
-      'Analiza Bubble Sort Clásico y Selection Sort sobre el mismo arreglo int arr[] = {6, 3, 8, 1, 5} (n = 5). Calcula e ingresa el total exacto de comparaciones e intercambios efectivos que realiza cada algoritmo.',
+      'Compara el peor caso de Bubble Sort Clásico y Selection Sort para un arreglo de tamaño n = 5 (toma como referencia n = 5, p. ej. un arreglo invertido). Calcula e ingresa las cotas teóricas de comparaciones e intercambios en el peor caso para cada algoritmo.',
     codeSnippet:
-      '// Comparación cuantitativa sobre el mismo conjunto de datos\nint arr[] = {6, 3, 8, 1, 5};\nint n = 5;',
+      '// Análisis comparativo en el peor caso para tamaño n = 5\nint arr[] = {6, 3, 8, 1, 5}; // referencia de n = 5 elementos\nint n = 5;',
     expectedCriteria:
-      '(a) Bubble Sort: 10 comparaciones, 6 intercambios. Selection Sort: 10 comparaciones, 2 intercambios. (b) Ambos evalúan n(n-1)/2 = 10 comparaciones, pero Selection Sort acota las escrituras en memoria a como máximo n - 1 intercambios.',
+      '(a) Peor caso para n = 5: Bubble Sort realiza 10 comparaciones y hasta 10 intercambios (n(n-1)/2); Selection Sort realiza 10 comparaciones y como máximo 4 intercambios (n - 1). (b) Ambos evalúan n(n-1)/2 = 10 comparaciones, pero Selection Sort acota las escrituras en memoria a O(n) intercambios.',
     breakpointStepIndex: 2,
     hints: [
-      'Tanto en Bubble Sort Clásico como en Selection Sort, el número total de comparaciones para n = 5 está dado por la suma 4 + 3 + 2 + 1 = n(n - 1) / 2.',
-      'En Selection Sort sobre {6, 3, 8, 1, 5}: en i=0 intercambia 6 con 1 -> {1, 3, 8, 6, 5}; en i=1 el mínimo es 3 (ya está en i=1, 0 swaps); en i=2 intercambia 8 con 5 -> {1, 3, 5, 6, 8}; en i=3 el mínimo es 6 (ya está en i=3). Total = 2 intercambios.',
+      'Tanto en Bubble Sort Clásico como en Selection Sort, el número de comparaciones en el peor caso para n = 5 está dado por la suma 4 + 3 + 2 + 1 = n(n - 1) / 2.',
+      'En el peor caso (arreglo en orden inverso), Bubble Sort puede intercambiar en cada comparación (n(n - 1) / 2 intercambios), mientras que Selection Sort efectúa como máximo 1 intercambio por pasada externa (n - 1 en total).',
     ],
     conceptualQuestion: {
       question: '¿En qué escenario de ingeniería resulta preferible Selection Sort frente a Bubble Sort pese a que ambos son O(n²) en tiempo?',
@@ -342,10 +342,10 @@ int main() {
       correctIndex: 2,
     },
     numericFieldsCheck: [
-      { label: 'Total de comparaciones en Bubble Sort Clásico (n = 5):', expectedValue: 10 },
-      { label: 'Total de intercambios en Bubble Sort sobre {6, 3, 8, 1, 5}:', expectedValue: 6 },
-      { label: 'Total de comparaciones en Selection Sort (n = 5):', expectedValue: 10 },
-      { label: 'Total de intercambios en Selection Sort sobre {6, 3, 8, 1, 5}:', expectedValue: 2 },
+      { label: 'Comparaciones en el peor caso en Bubble Sort (n = 5):', expectedValue: 10 },
+      { label: 'Máximo de intercambios en el peor caso en Bubble Sort (n = 5):', expectedValue: 10 },
+      { label: 'Comparaciones en el peor caso en Selection Sort (n = 5):', expectedValue: 10 },
+      { label: 'Máximo de intercambios posibles en Selection Sort (n = 5):', expectedValue: 4 },
     ],
     requiresJustification: true,
   },
@@ -544,7 +544,7 @@ int main() {
     family: 'Búsqueda',
     algorithm: 'Búsqueda binaria',
     targetAlgorithmId: 'binary-search',
-    presetDataset: [2, 5, 8, 12, 16, 23, 38, 45, 56, 72],
+    presetDataset: [2, 5, 16, 23, 23, 23, 38, 45, 56, 72],
     presetSearchTarget: 23,
     bloom: 'Aplicar',
     competence: 'Diseñar algoritmos',
@@ -587,7 +587,7 @@ int lowerBound(int arr[], int n, int target) {
 }
 
 int main() {
-    int arr[] = {2, 5, 8, 12, 16, 23, 38, 45, 56, 72};
+    int arr[] = {2, 5, 16, 23, 23, 23, 38, 45, 56, 72};
     int pos = lowerBound(arr, 10, 23);
     return pos;
 }`,
@@ -599,9 +599,9 @@ int main() {
       'Solo podemos descartar mid (low = mid + 1) cuando arr[mid] < target.',
     ],
     conceptualQuestion: {
-      question: 'Si el arreglo contiene duplicados {2, 5, 23, 23, 23, 45} y buscamos target = 23, ¿qué diferencia a lowerBound de la búsqueda binaria clásica?',
+      question: 'Sobre el arreglo con duplicados {2, 5, 16, 23, 23, 23, 38, 45, 56, 72} y buscando target = 23, ¿qué diferencia a lowerBound de la búsqueda binaria clásica?',
       options: [
-        'La búsqueda binaria clásica puede detenerse en cualquiera de los tres índices con valor 23, mientras que lowerBound converge garantizadamente al primer índice (índice 2).',
+        'La búsqueda binaria clásica se detiene al hallar cualquier 23 (por ejemplo en índice 4), mientras que lowerBound converge garantizadamente a la primera aparición (índice 3).',
         'lowerBound retorna -1 cuando existen elementos duplicados.',
         'lowerBound tiene complejidad O(n) mientras que la búsqueda binaria clásica es O(log n).',
       ],
@@ -1131,11 +1131,42 @@ int main() {
     requiresJustification: true,
     cExecutableTemplate: `#include <stdio.h>
 
+void merge(int arr[], int left, int mid, int right) {
+    int i = left;
+    int j = mid + 1;
+    int k = 0;
+    int temp[4] = {0};
+    while (i <= mid && j <= right) {
+        if (arr[i] <= arr[j]) {
+            temp[k] = arr[i];
+            i++;
+        } else {
+            temp[k] = arr[j];
+            j++;
+        }
+        k++;
+    }
+    while (i <= mid) {
+        temp[k] = arr[i];
+        i++;
+        k++;
+    }
+    while (j <= right) {
+        temp[k] = arr[j];
+        j++;
+        k++;
+    }
+    for (int p = 0; p < k; p++) {
+        arr[left + p] = temp[p];
+    }
+}
+
 void mergeSort(int arr[], int left, int right) {
     if (__BLANK_1__) return;
     int mid = left + (right - left) / 2;
     mergeSort(arr, left, mid);
     mergeSort(arr, mid + 1, right);
+    merge(arr, left, mid, right);
 }
 
 int main() {

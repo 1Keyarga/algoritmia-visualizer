@@ -7,6 +7,7 @@ import {
   gradeEvaluationAttempt,
   downloadEvaluationCsv,
   sendEvaluationToGoogleSheets,
+  loadSavedParticipantSession,
   type EvaluationItem,
   type ParticipantSession,
   type EvaluationAttemptResult,
@@ -152,19 +153,24 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
       return;
     }
     const participantId = await generateParticipantCode(rawStudentCode);
+    const savedSession = loadSavedParticipantSession(participantId);
     const nowIso = new Date().toISOString();
-    const newSession: ParticipantSession = {
-      participantId,
-      consentedAt: nowIso,
-      startedAt: nowIso,
-    };
+    const restoredOrNewSession: ParticipantSession = savedSession
+      ? savedSession
+      : {
+          participantId,
+          consentedAt: nowIso,
+          startedAt: nowIso,
+        };
     setLoginError(null);
     setRawStudentCode('');
-    onUpdateSession(newSession);
+    onUpdateSession(restoredOrNewSession);
   };
 
   const handleOpenExam = (type: 'pretest' | 'postest') => {
     if (!session) return;
+    if (type === 'pretest' && session.pretest) return;
+    if (type === 'postest' && session.postest) return;
     const items = type === 'pretest' ? PRETEST_ITEMS : POSTEST_ITEMS;
     const initialAns =
       session.inProgressAnswers?.testType === type
@@ -779,7 +785,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                 </span>
               </div>
               <div className="text-[11px] text-slate-500">
-                Los resultados se sincronizan automáticamente al finalizar cada prueba.
+                Las respuestas se registran automáticamente al finalizar cada prueba.
               </div>
             </div>
           </div>
@@ -822,9 +828,9 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                     1. Evaluación inicial (Pretest — sin visualizador)
                   </span>
                 </div>
-                {preDone && session.pretest && (
-                  <span className="text-xs font-mono font-bold text-emerald-400">
-                    {session.pretest.totalScore} / 9 ({session.pretest.percentage}%)
+                {preDone && (
+                  <span className="text-[11px] font-semibold text-emerald-400">
+                    Completado
                   </span>
                 )}
               </div>
@@ -833,12 +839,9 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                 9 preguntas diagnósticas de opción múltiple sobre el funcionamiento de los algoritmos antes de interactuar con el visualizador.
               </p>
 
-              {preDone && session.pretest && (
-                <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-[#21253a] text-[11px] font-mono text-slate-300">
-                  <div>Lógica: {session.pretest.byCompetency.C1.earned}/2</div>
-                  <div>Diseño: {session.pretest.byCompetency.C2.earned}/3</div>
-                  <div>Iteración: {session.pretest.byCompetency.C3.earned}/2</div>
-                  <div>Abstracción: {session.pretest.byCompetency.C4.earned}/2</div>
+              {preDone && (
+                <div className="pt-2 border-t border-[#21253a] text-[11px] text-slate-400">
+                  Tus respuestas fueron registradas correctamente.
                 </div>
               )}
             </div>
@@ -846,14 +849,15 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
             <button
               type="button"
               onClick={() => handleOpenExam('pretest')}
-              className={`w-full py-2.5 px-3 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+              disabled={preDone}
+              className={`w-full py-2.5 px-3 rounded-lg text-xs font-semibold transition-colors ${
                 preDone
-                  ? 'bg-[#1c1f32] hover:bg-[#252942] border border-[#2e3350] text-slate-300'
-                  : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                  ? 'bg-[#171926] border border-[#23263a] text-slate-500 cursor-not-allowed'
+                  : 'bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer'
               }`}
             >
               {preDone
-                ? 'Revisar o repetir Pretest'
+                ? 'Pretest completado'
                 : session.inProgressAnswers?.testType === 'pretest'
                 ? 'Continuar Pretest'
                 : 'Iniciar Pretest'}
@@ -878,9 +882,9 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                     2. Evaluación final (Postest — con visualizador sincronizado)
                   </span>
                 </div>
-                {posDone && session.postest && (
-                  <span className="text-xs font-mono font-bold text-emerald-400">
-                    {session.postest.totalScore} / 9 ({session.postest.percentage}%)
+                {posDone && (
+                  <span className="text-[11px] font-semibold text-emerald-400">
+                    Completado
                   </span>
                 )}
               </div>
@@ -889,12 +893,9 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                 9 preguntas acompañadas del visualizador interactivo en pantalla dividida: cada pregunta carga automáticamente su algoritmo, datos y explicación paso a paso a la derecha.
               </p>
 
-              {posDone && session.postest && (
-                <div className="grid grid-cols-2 gap-1.5 pt-2 border-t border-[#21253a] text-[11px] font-mono text-slate-300">
-                  <div>Lógica: {session.postest.byCompetency.C1.earned}/2</div>
-                  <div>Diseño: {session.postest.byCompetency.C2.earned}/3</div>
-                  <div>Iteración: {session.postest.byCompetency.C3.earned}/2</div>
-                  <div>Abstracción: {session.postest.byCompetency.C4.earned}/2</div>
+              {posDone && (
+                <div className="pt-2 border-t border-[#21253a] text-[11px] text-slate-400">
+                  Tus respuestas fueron registradas correctamente.
                 </div>
               )}
             </div>
@@ -910,19 +911,17 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               <button
                 type="button"
                 onClick={() => handleOpenExam('postest')}
-                disabled={!preDone}
+                disabled={!preDone || posDone}
                 className={`flex-1 py-2.5 px-3 rounded-lg text-xs font-semibold transition-colors ${
-                  !preDone
-                    ? 'bg-[#171926] border border-[#23263a] text-slate-600 cursor-not-allowed'
-                    : posDone
-                    ? 'bg-[#1c1f32] hover:bg-[#252942] border border-[#2e3350] text-slate-300 cursor-pointer'
+                  !preDone || posDone
+                    ? 'bg-[#171926] border border-[#23263a] text-slate-500 cursor-not-allowed'
                     : 'bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer'
                 }`}
               >
                 {!preDone
                   ? 'Completa primero el Pretest'
                   : posDone
-                  ? 'Revisar o repetir Postest'
+                  ? 'Postest completado'
                   : session.inProgressAnswers?.testType === 'postest'
                   ? 'Continuar Postest con Visualizador'
                   : 'Iniciar Postest con Visualizador'}
@@ -931,64 +930,19 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
           </div>
         </div>
 
-        {session.pretest && session.postest && (
-          <div className="bg-[#151724] border border-[#24283e] rounded-xl p-5 space-y-3">
-            <div className="flex items-center justify-between">
+        {preDone && posDone && (
+          <div className="bg-[#151724] border border-emerald-500/30 rounded-xl p-5 flex items-center justify-between gap-4">
+            <div className="space-y-1">
               <h3 className="text-xs font-bold text-slate-100">
-                Resumen comparativo de la sesión ({session.participantId})
+                Evaluación completada ({session.participantId})
               </h3>
-              <span className="text-xs font-mono font-bold text-emerald-400">
-                Variación: {session.postest.totalScore - session.pretest.totalScore >= 0 ? '+' : ''}
-                {Number((session.postest.totalScore - session.pretest.totalScore).toFixed(2))} pts (
-                {session.postest.percentage - session.pretest.percentage >= 0 ? '+' : ''}
-                {session.postest.percentage - session.pretest.percentage}%)
-              </span>
+              <p className="text-xs text-slate-400">
+                Todas tus respuestas del Pretest y Postest han sido registradas. Gracias por participar.
+              </p>
             </div>
-
-            <div className="overflow-x-auto border border-[#24283e] rounded-lg">
-              <table className="w-full text-left border-collapse text-xs font-mono">
-                <thead>
-                  <tr className="bg-[#10121d] text-slate-400 border-b border-[#24283e]">
-                    <th className="py-2 px-3 font-sans">Dimensión evaluada</th>
-                    <th className="py-2 px-3 text-center">Pretest</th>
-                    <th className="py-2 px-3 text-center">Postest</th>
-                    <th className="py-2 px-3 text-center">Diferencia</th>
-                  </tr>
-                </thead>
-                <tbody className="text-slate-200">
-                  {(
-                    [
-                      { key: 'C1', label: 'Pensar lógicamente (máx. 2)' },
-                      { key: 'C2', label: 'Diseñar algoritmos (máx. 3)' },
-                      { key: 'C3', label: 'Pensar iterativamente (máx. 2)' },
-                      { key: 'C4', label: 'Abstracción (máx. 2)' },
-                    ] as const
-                  ).map(row => {
-                    const preVal = session.pretest!.byCompetency[row.key].earned;
-                    const posVal = session.postest!.byCompetency[row.key].earned;
-                    const diff = Number((posVal - preVal).toFixed(2));
-                    return (
-                      <tr key={row.key} className="border-b border-[#1f2235] last:border-b-0">
-                        <td className="py-2 px-3 font-sans text-slate-300">{row.label}</td>
-                        <td className="py-2 px-3 text-center">{preVal}</td>
-                        <td className="py-2 px-3 text-center">{posVal}</td>
-                        <td
-                          className={`py-2 px-3 text-center font-bold ${
-                            diff > 0
-                              ? 'text-emerald-400'
-                              : diff < 0
-                              ? 'text-rose-400'
-                              : 'text-slate-400'
-                          }`}
-                        >
-                          {diff >= 0 ? `+${diff}` : diff}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <span className="text-xs font-semibold text-emerald-400 shrink-0">
+              Sesión finalizada
+            </span>
           </div>
         )}
       </div>

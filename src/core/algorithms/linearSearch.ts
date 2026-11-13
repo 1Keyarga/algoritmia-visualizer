@@ -199,14 +199,14 @@ export function generateLinearSearchTrace(initialData: number[], target: number 
       );
       break;
     } else {
-      // if condition false
+      // if condition false (la búsqueda continúa; resultado aún no determinado)
       pushStep(
         { pseudocode: 3, python: 3, cpp: 3, java: 3 },
         [{ lineNumber: 3, type: 'active', lineByLanguage: { pseudocode: 3, python: 3, cpp: 3, java: 3 } }],
         `Comparando arr[${i}] (${val}) = clave (${target}): No coincide. Se descarta posición ${i}.`,
         'compare',
         i,
-        false
+        undefined
       );
     }
   }

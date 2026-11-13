@@ -10,6 +10,7 @@ interface MemoryPanelProps {
   stepIndex?: number;
   isOpen: boolean;
   onToggleOpen: () => void;
+  hideArrayGrid?: boolean;
 }
 
 export const MemoryPanel: React.FC<MemoryPanelProps> = ({
@@ -17,6 +18,7 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
   stepIndex = 0,
   isOpen,
   onToggleOpen,
+  hideArrayGrid = false,
 }) => {
   if (!currentStep) return null;
 
@@ -58,22 +60,59 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
         </button>
       </div>
 
-      {/* Content: Frames + Objetos */}
-      <div className="flex gap-4 items-start min-h-0">
-        <StackFrames frames={currentStep.frames} />
+      {/* Content: Frames + Objetos (o vista compacta cuando el lienzo inferior ya grafica el arreglo) */}
+      {hideArrayGrid ? (
+        (() => {
+          const activeFrame =
+            currentStep.frames.find(f => f.isActive) || currentStep.frames[0];
+          const entries = activeFrame ? Object.entries(activeFrame.variables) : [];
+          return (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                {activeFrame && (
+                  <span className="text-xs font-mono font-bold text-amber-400 mr-1.5">
+                    {activeFrame.name}
+                  </span>
+                )}
+                {entries.map(([key, val]) => (
+                  <div
+                    key={key}
+                    className="flex items-center gap-1.5 bg-[#141520] border border-[#25283a] rounded-md px-2 py-0.5 text-[11px] font-mono"
+                  >
+                    <span className="text-slate-400">{key}:</span>
+                    <span className="font-bold text-slate-100">
+                      {val === null || val === undefined ? '—' : String(val)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="shrink-0">
+                <MetricsOverview
+                  metrics={currentStep.metrics}
+                  complexity={currentStep.complexity}
+                  stepIndex={stepIndex}
+                />
+              </div>
+            </div>
+          );
+        })()
+      ) : (
+        <div className="flex gap-4 items-start min-h-0">
+          <StackFrames frames={currentStep.frames} />
 
-        <div className="flex-1 flex flex-col justify-between min-w-0">
-          <ArrayGrid
-            array={currentStep.array}
-            activeIndices={currentStep.activeIndices}
-          />
-          <MetricsOverview
-            metrics={currentStep.metrics}
-            complexity={currentStep.complexity}
-            stepIndex={stepIndex}
-          />
+          <div className="flex-1 flex flex-col justify-between min-w-0">
+            <ArrayGrid
+              array={currentStep.array}
+              activeIndices={currentStep.activeIndices}
+            />
+            <MetricsOverview
+              metrics={currentStep.metrics}
+              complexity={currentStep.complexity}
+              stepIndex={stepIndex}
+            />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
