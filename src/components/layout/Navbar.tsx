@@ -2,14 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ALGORITHMS_CATALOG } from '../../core/algorithms/registry';
 import type { AlgorithmMetadata } from '../../types/algorithm';
 import type { AppModule } from './HomeHub';
-import {
-  ChevronDown,
-  Shuffle,
-  Sliders,
-  Layers,
-  Code2,
-  BookOpen,
-} from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import { DatasetModal } from './DatasetModal';
 
 interface NavbarProps {
@@ -25,6 +18,10 @@ interface NavbarProps {
   searchTarget?: number;
   onChangeSearchTarget?: (target: number) => void;
   completedTasksCount?: number;
+  isComparing?: boolean;
+  onToggleComparison?: () => void;
+  onShareLink?: () => void;
+  activeParticipantId?: string | null;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -39,10 +36,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   currentDataset,
   searchTarget,
   onChangeSearchTarget,
-  completedTasksCount = 0,
+  completedTasksCount: _completedTasksCount = 0,
+  isComparing = false,
+  onToggleComparison,
+  onShareLink,
+  activeParticipantId = null,
 }) => {
   const [isAlgoMenuOpen, setIsAlgoMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
 
@@ -57,8 +59,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   }, [isAlgoMenuOpen]);
 
   const families = [
-    { key: 'sorting', label: 'Algoritmos de Ordenamiento' },
-    { key: 'searching', label: 'Algoritmos de Búsqueda' },
+    { key: 'sorting', label: 'Ordenamiento' },
+    { key: 'searching', label: 'Búsqueda' },
     { key: 'divide_and_conquer', label: 'Divide y Vencerás' },
   ];
 
@@ -75,78 +77,82 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   return (
     <>
-      <header className="h-13 bg-[#11131e] border-b border-[#1f2233] px-3.5 lg:px-5 flex items-center justify-between gap-3 shrink-0 select-none z-30">
-        {/* Zona izquierda: Marca Visurithm (vuelve a la portada) + Selector de los 3 módulos del producto */}
-        <div className="flex items-center gap-2.5 lg:gap-3 shrink-0">
+      <header className="h-12 bg-[#11131e] border-b border-[#1f2233] px-4 flex items-center justify-between gap-3 shrink-0 select-none z-30">
+        {/* Navegación principal */}
+        <div className="flex items-center gap-3 shrink-0">
           <button
             onClick={() => onNavigateModule('home')}
-            className="flex items-center gap-2 text-left group cursor-pointer shrink-0 pr-1"
-            title="Volver a la portada de Visurithm"
+            className="text-sm font-bold tracking-tight text-white hover:text-indigo-300 transition-colors cursor-pointer"
           >
-            <div className="w-7 h-7 rounded-md bg-indigo-600 group-hover:bg-indigo-500 flex items-center justify-center text-white font-bold text-xs tracking-tight transition-colors">
-              <span>V</span>
-            </div>
-            <span className="text-sm font-bold tracking-tight text-white">
-              Visurithm
-            </span>
+            Visurithm
           </button>
 
           <div className="h-4 w-[1px] bg-[#24283d] shrink-0" />
 
-          {/* Selector de funcionalidades del producto */}
           <nav className="flex items-center bg-[#161826] border border-[#24283e] p-0.5 rounded-lg">
             <button
               onClick={() => onNavigateModule('algorithms')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                 activeModule === 'algorithms'
                   ? 'bg-[#232741] text-white font-semibold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Layers className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Catálogo</span>
+              Catálogo
             </button>
 
             <button
               onClick={() => onNavigateModule('student_code')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                 activeModule === 'student_code'
                   ? 'bg-[#232741] text-white font-semibold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <Code2 className="w-3.5 h-3.5 text-amber-400" />
-              <span>Código del Estudiante</span>
+              Código
             </button>
 
             <button
               onClick={() => onNavigateModule('guided_tasks')}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+              className={`px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
                 activeModule === 'guided_tasks'
                   ? 'bg-[#232741] text-white font-semibold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Tareas</span>
-              <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#162326] text-emerald-400 border border-emerald-800/60">
-                {completedTasksCount}/21
-              </span>
+              Tareas
+            </button>
+
+            <button
+              onClick={() => onNavigateModule('evaluation')}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                activeModule === 'evaluation'
+                  ? 'bg-[#232741] text-white font-semibold'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  activeParticipantId
+                    ? 'bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.85)]'
+                    : 'bg-slate-500'
+                }`}
+              />
+              <span>{activeParticipantId ? activeParticipantId : 'Evaluación'}</span>
             </button>
           </nav>
         </div>
 
-        {/* Zona derecha: Herramientas del algoritmo activo (cuando está en Catálogo) */}
+        {/* Controles del algoritmo activo (solo en Catálogo) */}
         {activeModule === 'algorithms' && (
           <div className="flex items-center gap-2 overflow-x-auto">
-            {/* Selector de algoritmo */}
             <div className="relative shrink-0 z-50">
               <button
                 ref={buttonRef}
                 onClick={() => setIsAlgoMenuOpen(!isAlgoMenuOpen)}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer border bg-[#191b2a] hover:bg-[#222538] border-[#2e3452] text-slate-100"
               >
-                <span className="truncate max-w-[140px] sm:max-w-[185px]">
+                <span className="truncate max-w-[160px] sm:max-w-[200px]">
                   {selectedAlgorithm.name}
                 </span>
                 <ChevronDown
@@ -163,14 +169,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                     onClick={() => setIsAlgoMenuOpen(false)}
                   />
                   <div
-                    className="fixed w-72 bg-[#181a28] border border-[#2c3048] rounded-lg shadow-2xl py-1.5 z-[50] max-h-[75vh] overflow-y-auto custom-scrollbar"
+                    className="fixed w-64 bg-[#181a28] border border-[#2c3048] rounded-lg shadow-2xl py-1.5 z-[50] max-h-[75vh] overflow-y-auto custom-scrollbar"
                     style={{ top: `${dropdownPosition.top}px`, left: `${dropdownPosition.left}px` }}
                   >
                     {families.map(fam => {
                       const algos = ALGORITHMS_CATALOG.filter(a => a.family === fam.key);
                       return (
                         <div key={fam.key} className="px-1.5 py-1">
-                          <div className="px-2.5 py-1 text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+                          <div className="px-2.5 py-1 text-[10px] font-bold tracking-wider text-slate-500 uppercase">
                             {fam.label}
                           </div>
                           {algos.map(algo => {
@@ -192,7 +198,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                                 }`}
                               >
                                 <span className="truncate">{algo.name}</span>
-                                <span className="text-[10px] bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 px-1.5 py-0.5 rounded font-mono shrink-0">
+                                <span className="text-[10px] text-slate-400 font-mono shrink-0">
                                   {badgeComplexity}
                                 </span>
                               </button>
@@ -232,11 +238,21 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
 
-            {/* Control deslizante de tamaño del arreglo */}
+            {onToggleComparison && (
+              <button
+                onClick={onToggleComparison}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors cursor-pointer shrink-0 ${
+                  isComparing
+                    ? 'bg-indigo-600/25 border-indigo-500/60 text-indigo-200 font-semibold'
+                    : 'bg-[#191b2a] hover:bg-[#222538] border-[#2b2f46] text-slate-300 hover:text-white'
+                }`}
+              >
+                Comparar
+              </button>
+            )}
+
             <div className="flex items-center gap-2 bg-[#161826] border border-[#26293e] px-2.5 py-1 rounded-md shrink-0 hidden xl:flex">
-              <span className="text-[11px] text-slate-400 font-medium">
-                Tamaño
-              </span>
+              <span className="text-[11px] text-slate-400">N</span>
               <input
                 type="range"
                 min={5}
@@ -245,46 +261,53 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onChange={e => onChangeDatasetSize(Number(e.target.value))}
                 className="w-14 h-1 bg-[#2a2d42] rounded-lg appearance-none cursor-pointer accent-indigo-500"
               />
-              <span className="text-[11px] font-mono font-bold text-slate-200 w-4 text-center">
+              <span className="text-[11px] font-mono text-slate-200 w-4 text-center">
                 {datasetSize}
               </span>
             </div>
 
-            {/* Input para valor a buscar */}
             {selectedAlgorithm.family === 'searching' && (
               <div className="flex items-center gap-1.5 bg-[#161826] border border-[#26293e] px-2.5 py-1 rounded-md shrink-0">
-                <span className="text-[11px] text-slate-400 font-medium hidden lg:inline">
-                  Objetivo:
-                </span>
+                <span className="text-[11px] text-slate-400 hidden lg:inline">Buscar:</span>
                 <input
                   type="number"
                   value={searchTarget || ''}
                   onChange={e => onChangeSearchTarget?.(Number(e.target.value))}
-                  className="w-14 h-5 bg-[#222538] border border-[#353954] rounded px-1.5 text-[11px] font-mono font-bold text-amber-300 focus:outline-none focus:border-indigo-500"
-                  placeholder="valor"
+                  className="w-12 h-5 bg-[#222538] border border-[#353954] rounded px-1.5 text-[11px] font-mono text-amber-300 focus:outline-none focus:border-indigo-500"
                 />
               </div>
             )}
 
-            {/* Generar nuevo arreglo aleatorio */}
             <button
               onClick={onGenerateRandom}
-              className="flex items-center gap-1.5 bg-[#191b2a] hover:bg-[#222538] border border-[#2b2f46] text-slate-200 hover:text-white px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0"
-              title="Generar nuevo arreglo aleatorio"
+              className="bg-[#191b2a] hover:bg-[#222538] border border-[#2b2f46] text-slate-300 hover:text-white px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0"
             >
-              <Shuffle className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-              <span className="hidden md:inline">Aleatorio</span>
+              Aleatorio
             </button>
 
-            {/* Personalizar valores */}
             <button
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-1.5 bg-[#191b2a] hover:bg-[#222538] border border-[#2b2f46] text-slate-300 hover:text-white px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0"
-              title="Ingresar valores personalizados"
+              className="bg-[#191b2a] hover:bg-[#222538] border border-[#2b2f46] text-slate-300 hover:text-white px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0"
             >
-              <Sliders className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-              <span className="hidden md:inline">Editar datos</span>
+              Datos
             </button>
+
+            {onShareLink && (
+              <button
+                onClick={() => {
+                  onShareLink();
+                  setLinkCopied(true);
+                  window.setTimeout(() => setLinkCopied(false), 2000);
+                }}
+                className={`px-2.5 py-1 rounded-md text-xs font-medium border transition-colors cursor-pointer shrink-0 ${
+                  linkCopied
+                    ? 'bg-emerald-950/60 border-emerald-700/60 text-emerald-300'
+                    : 'bg-[#191b2a] hover:bg-[#222538] border-[#2b2f46] text-slate-300 hover:text-white'
+                }`}
+              >
+                {linkCopied ? 'Copiado' : 'Compartir'}
+              </button>
+            )}
           </div>
         )}
       </header>
@@ -294,6 +317,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         onClose={() => setIsModalOpen(false)}
         onApplyDataset={onApplyCustomDataset}
         currentDataset={currentDataset}
+        isBinarySearch={selectedAlgorithm.id === 'binary-search'}
       />
     </>
   );

@@ -1,12 +1,13 @@
 import React from 'react';
 import type { ArrayElement, Step } from '../../types/trace';
-import { ArrowDown, CheckCircle2, XCircle } from 'lucide-react';
+import { ArrowDown } from 'lucide-react';
 
 interface SearchMapVisualizerProps {
   array: ArrayElement[];
   algorithmType: 'linear' | 'binary';
   currentStep: Step | null;
   targetKey?: number;
+  compact?: boolean;
 }
 
 export const SearchMapVisualizer: React.FC<SearchMapVisualizerProps> = ({
@@ -14,6 +15,7 @@ export const SearchMapVisualizer: React.FC<SearchMapVisualizerProps> = ({
   algorithmType,
   currentStep,
   targetKey = 45,
+  compact = false,
 }) => {
   const n = array.length;
 
@@ -37,6 +39,10 @@ export const SearchMapVisualizer: React.FC<SearchMapVisualizerProps> = ({
       return { cellState: 'found', statusLabel: 'Encontrado' };
     }
 
+    if (isNotFound || item.state === 'discarded') {
+      return { cellState: 'discarded', statusLabel: 'Descartado' };
+    }
+
     if (algorithmType === 'binary') {
       const leftBound = inicio !== undefined ? inicio : 0;
       const rightBound = fin !== undefined ? fin : n - 1;
@@ -51,13 +57,15 @@ export const SearchMapVisualizer: React.FC<SearchMapVisualizerProps> = ({
 
       return { cellState: 'active_range', statusLabel: 'En rango' };
     } else {
-      const currentProbe = currI !== undefined ? currI : 0;
+      if (currI === undefined) {
+        return { cellState: 'active_range', statusLabel: 'Pendiente' };
+      }
 
-      if (idx === currentProbe) {
+      if (idx === currI) {
         return { cellState: 'evaluating', statusLabel: 'Evaluando' };
       }
 
-      if (idx < currentProbe) {
+      if (idx < currI) {
         return { cellState: 'discarded', statusLabel: 'Descartado' };
       }
 
@@ -90,20 +98,24 @@ export const SearchMapVisualizer: React.FC<SearchMapVisualizerProps> = ({
           {/* Estado actual */}
           <div className="flex items-center gap-1.5 text-xs">
             {isFound ? (
-              <span className="flex items-center gap-1 font-semibold text-emerald-400">
-                <CheckCircle2 className="w-3.5 h-3.5" />
+              <span className="flex items-center gap-1.5 font-semibold text-emerald-400">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.85)]" />
                 Encontrado en índice {resultado}
               </span>
             ) : isNotFound ? (
-              <span className="flex items-center gap-1 font-semibold text-rose-400">
-                <XCircle className="w-3.5 h-3.5" />
+              <span className="flex items-center gap-1.5 font-semibold text-rose-400">
+                <span className="w-2 h-2 rounded-full bg-rose-400" />
                 No encontrado (retorna -1)
               </span>
             ) : (
               <span className="text-slate-300 font-medium">
                 {algorithmType === 'binary'
-                  ? `Rango activo: [${inicio ?? 0}..${fin ?? n - 1}]`
-                  : `Inspección secuencial: índice ${currI ?? 0}`}
+                  ? inicio !== undefined && fin !== undefined
+                    ? `Rango activo: [${inicio}..${fin}]`
+                    : 'Inicializando límites de búsqueda'
+                  : currI !== undefined
+                  ? `Inspección secuencial: índice ${currI}`
+                  : 'Inicializando recorrido secuencial'}
               </span>
             )}
           </div>
@@ -141,8 +153,12 @@ export const SearchMapVisualizer: React.FC<SearchMapVisualizerProps> = ({
       </div>
 
       {/* 2. Representación del arreglo y punteros */}
-      <div className="flex-1 min-h-0 flex items-center justify-center overflow-x-auto overflow-y-hidden px-2">
-        <div className="flex items-end justify-center gap-2.5 min-w-max">
+      <div className="flex-1 min-h-0 flex items-center justify-center overflow-x-auto overflow-y-hidden px-1">
+        <div
+          className={`flex items-end justify-center min-w-max ${
+            compact ? 'gap-1.5' : 'gap-2.5'
+          }`}
+        >
           {array.map((item, idx) => {
             const { cellState, statusLabel } = cellInfos[idx];
 
@@ -212,13 +228,19 @@ export const SearchMapVisualizer: React.FC<SearchMapVisualizerProps> = ({
 
                 {/* Celda del arreglo */}
                 <div
-                  className={`w-14 sm:w-16 h-18 rounded-lg border flex flex-col justify-between p-2 relative overflow-hidden transition-all duration-200 ${borderStyle} ${bgStyle}`}
+                  className={`${
+                    compact ? 'w-10 h-15 p-1.5' : 'w-14 sm:w-16 h-18 p-2'
+                  } rounded-lg border flex flex-col justify-between relative overflow-hidden transition-all duration-200 ${borderStyle} ${bgStyle}`}
                 >
                   <div className="text-[9px] font-mono text-slate-400 text-center">
                     [{idx}]
                   </div>
 
-                  <div className="text-center font-mono text-lg font-bold leading-none">
+                  <div
+                    className={`text-center font-mono font-bold leading-none ${
+                      compact ? 'text-sm' : 'text-lg'
+                    }`}
+                  >
                     {item.value}
                   </div>
 

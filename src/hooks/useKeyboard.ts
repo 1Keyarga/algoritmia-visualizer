@@ -7,6 +7,7 @@ interface KeyboardOptions {
   onReset: () => void;
   onGoToStart: () => void;
   onGoToEnd: () => void;
+  enabled?: boolean;
 }
 
 export function useKeyboard({
@@ -16,9 +17,17 @@ export function useKeyboard({
   onReset,
   onGoToStart,
   onGoToEnd,
+  enabled = true,
 }: KeyboardOptions) {
   useEffect(() => {
+    if (!enabled) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignorar combinaciones del navegador/SO (Ctrl+R, Cmd+R, etc.)
+      if (e.ctrlKey || e.metaKey || e.altKey) {
+        return;
+      }
+
       // Ignorar si el usuario está escribiendo en un input o textarea
       const target = e.target as HTMLElement;
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName)) {
@@ -48,5 +57,5 @@ export function useKeyboard({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onTogglePlay, onNextStep, onPrevStep, onReset, onGoToStart, onGoToEnd]);
+  }, [enabled, onTogglePlay, onNextStep, onPrevStep, onReset, onGoToStart, onGoToEnd]);
 }

@@ -16,7 +16,7 @@ export function parseCustomDataset(input: string): number[] | null {
   for (const part of parts) {
     if (!part) continue;
     const num = Number(part);
-    if (isNaN(num) || num < 1 || num > 999) {
+    if (isNaN(num) || !Number.isInteger(num) || num < 1 || num > 999) {
       return null;
     }
     numbers.push(num);

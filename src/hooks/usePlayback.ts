@@ -57,7 +57,11 @@ function playbackReducer(state: PlaybackState, action: PlaybackAction): Playback
   }
 }
 
-export function usePlayback(steps: Step[]) {
+export function usePlayback(
+  steps: Step[],
+  maxAllowedStepIndex?: number,
+  initialStepIndex?: number
+) {
   const getInitialSpeed = (): PlaybackSpeed => {
     try {
       const saved = localStorage.getItem('algoritmia_preferred_speed');
@@ -68,21 +72,43 @@ export function usePlayback(steps: Step[]) {
     return 1;
   };
 
+  const clampedInitial =
+    initialStepIndex !== undefined
+      ? Math.max(0, Math.min(initialStepIndex, Math.max(0, steps.length - 1)))
+      : 0;
+
   const [state, dispatch] = useReducer(playbackReducer, {
-    currentStepIndex: 0,
+    currentStepIndex: clampedInitial,
     totalSteps: steps.length,
     isPlaying: false,
     speed: getInitialSpeed(),
   });
 
   const timerRef = useRef<number | null>(null);
+  const prevStepsRef = useRef<Step[]>(steps);
+  const effectiveMaxIndex =
+    maxAllowedStepIndex !== undefined
+      ? Math.max(0, Math.min(maxAllowedStepIndex, steps.length - 1))
+      : Math.max(0, steps.length - 1);
 
   useEffect(() => {
+    if (prevStepsRef.current === steps) return;
+    prevStepsRef.current = steps;
     dispatch({ type: 'RESET', payload: steps.length });
   }, [steps]);
 
   useEffect(() => {
+    if (state.currentStepIndex > effectiveMaxIndex) {
+      dispatch({ type: 'GO_TO_STEP', payload: effectiveMaxIndex });
+    }
+  }, [effectiveMaxIndex, state.currentStepIndex]);
+
+  useEffect(() => {
     if (state.isPlaying) {
+      if (state.currentStepIndex >= effectiveMaxIndex) {
+        dispatch({ type: 'PAUSE' });
+        return;
+      }
       const delay = SPEED_DELAYS[state.speed];
       timerRef.current = window.setInterval(() => {
         dispatch({ type: 'NEXT_STEP' });
@@ -100,7 +126,7 @@ export function usePlayback(steps: Step[]) {
         timerRef.current = null;
       }
     };
-  }, [state.isPlaying, state.speed]);
+  }, [state.isPlaying, state.speed, state.currentStepIndex, effectiveMaxIndex]);
 
   const currentStep = steps[state.currentStepIndex] || steps[0] || null;
 
@@ -109,16 +135,36 @@ export function usePlayback(steps: Step[]) {
     currentStep,
     currentStepIndex: state.currentStepIndex,
     totalSteps: state.totalSteps,
+    effectiveMaxIndex,
     isPlaying: state.isPlaying,
     speed: state.speed,
     play: useCallback(() => dispatch({ type: 'PLAY' }), []),
     pause: useCallback(() => dispatch({ type: 'PAUSE' }), []),
-    togglePlay: useCallback(() => dispatch({ type: 'TOGGLE_PLAY' }), []),
-    nextStep: useCallback(() => dispatch({ type: 'NEXT_STEP' }), []),
+    togglePlay: useCallback(() => {
+      if (!state.isPlaying && state.currentStepIndex >= effectiveMaxIndex) {
+        dispatch({ type: 'GO_TO_STEP', payload: 0 });
+        dispatch({ type: 'PLAY' });
+      } else {
+        dispatch({ type: 'TOGGLE_PLAY' });
+      }
+    }, [state.isPlaying, state.currentStepIndex, effectiveMaxIndex]),
+    nextStep: useCallback(() => {
+      if (state.currentStepIndex < effectiveMaxIndex) {
+        dispatch({ type: 'NEXT_STEP' });
+      }
+    }, [state.currentStepIndex, effectiveMaxIndex]),
     prevStep: useCallback(() => dispatch({ type: 'PREV_STEP' }), []),
-    goToStep: useCallback((idx: number) => dispatch({ type: 'GO_TO_STEP', payload: idx }), []),
+    goToStep: useCallback(
+      (idx: number) => {
+        const clamped = Math.min(idx, effectiveMaxIndex);
+        dispatch({ type: 'GO_TO_STEP', payload: clamped });
+      },
+      [effectiveMaxIndex]
+    ),
     goToStart: useCallback(() => dispatch({ type: 'GO_TO_START' }), []),
-    goToEnd: useCallback(() => dispatch({ type: 'GO_TO_END' }), []),
+    goToEnd: useCallback(() => {
+      dispatch({ type: 'GO_TO_STEP', payload: effectiveMaxIndex });
+    }, [effectiveMaxIndex]),
     setSpeed: useCallback((spd: PlaybackSpeed) => dispatch({ type: 'SET_SPEED', payload: spd }), []),
     reset: useCallback(() => dispatch({ type: 'RESET' }), []),
   };

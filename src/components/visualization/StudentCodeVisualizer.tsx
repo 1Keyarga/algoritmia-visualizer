@@ -360,6 +360,7 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
                       const isComparing = item.state === 'comparing';
                       const isSwapped = item.state === 'swapped';
                       const isSorted = item.state === 'sorted';
+                      const isFound = isSorted && item.nonColorIndicator === '✓';
 
                       const fillHeightPct = Math.min(
                         100,
@@ -378,6 +379,10 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
                         borderClass = 'border-sky-400 ring-1 ring-sky-400/30';
                         bgClass = 'bg-sky-950/30';
                         textClass = 'text-sky-200 font-bold';
+                      } else if (isFound) {
+                        borderClass = 'border-emerald-400 ring-1 ring-emerald-400/40';
+                        bgClass = 'bg-emerald-950/35';
+                        textClass = 'text-emerald-300 font-bold';
                       } else if (isSorted) {
                         borderClass = 'border-emerald-500/70';
                         bgClass = 'bg-emerald-950/20';
@@ -441,10 +446,18 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
                                       ? 'bg-amber-400 text-slate-950 font-bold'
                                       : isSwapped
                                       ? 'bg-sky-400 text-slate-950 font-bold'
+                                      : isFound
+                                      ? 'bg-emerald-400 text-slate-950 font-bold'
                                       : 'bg-emerald-500/20 text-emerald-300 font-bold'
                                   }`}
                                 >
-                                  {isComparing ? 'Comp' : isSwapped ? 'Escrito' : 'Ordenado'}
+                                  {isComparing
+                                    ? 'Comp'
+                                    : isSwapped
+                                    ? 'Escrito'
+                                    : isFound
+                                    ? 'Hallado'
+                                    : 'Ordenado'}
                                 </span>
                               )}
                             </div>
@@ -515,7 +528,8 @@ export const StudentCodeVisualizer: React.FC<StudentCodeVisualizerProps> = ({ cu
             ].includes(key);
             const isTemp = key === 'temp' || key === 'pivote';
             const isReturn = key === 'retorno';
-            const isArrayRef = typeof val === 'string' && val.startsWith('Ref ');
+            const isArrayRef =
+              typeof val === 'string' && (val.startsWith('→') || val.startsWith('Ref '));
             const declaredType =
               variableTypes[key] ||
               (isArrayRef

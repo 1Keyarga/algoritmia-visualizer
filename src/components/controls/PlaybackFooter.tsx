@@ -24,6 +24,7 @@ interface PlaybackFooterProps {
   onSetSpeed: (speed: PlaybackSpeed) => void;
   onReset: () => void;
   disabled?: boolean;
+  maxAllowedStepIndex?: number;
 }
 
 export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
@@ -40,8 +41,17 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
   onSetSpeed,
   onReset,
   disabled = false,
+  maxAllowedStepIndex,
 }) => {
   const speeds: PlaybackSpeed[] = [0.5, 1, 2, 4];
+  const effectiveMax =
+    maxAllowedStepIndex !== undefined
+      ? Math.min(maxAllowedStepIndex, Math.max(0, totalSteps - 1))
+      : Math.max(0, totalSteps - 1);
+  const isCheckpointLocked =
+    !disabled && maxAllowedStepIndex !== undefined && maxAllowedStepIndex < totalSteps - 1;
+  const isAtCheckpointLimit = isCheckpointLocked && currentStepIndex >= effectiveMax;
+
   const percent =
     !disabled && totalSteps > 1 ? Math.round(((currentStepIndex + 1) / totalSteps) * 100) : 0;
 
@@ -56,7 +66,7 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
             max={disabled ? 0 : Math.max(0, totalSteps - 1)}
             value={disabled ? 0 : currentStepIndex}
             disabled={disabled || totalSteps <= 1}
-            onChange={(e) => onGoToStep(Number(e.target.value))}
+            onChange={(e) => onGoToStep(Math.min(Number(e.target.value), effectiveMax))}
             className="w-full h-1.5 bg-[#25283a] rounded-lg appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed accent-indigo-500 hover:h-2 transition-all"
           />
         </div>
@@ -67,13 +77,22 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
 
       {/* Barra de controles de reproducción */}
       <div className="h-14 px-6 flex items-center justify-between">
-        {/* Contador de pasos */}
-        <div className="flex items-center gap-2 min-w-[140px]">
+        {/* Contador de pasos y estado de punto de control */}
+        <div className="flex items-center gap-2.5 min-w-[140px]">
           <div className="bg-[#1c1d2c] px-3 py-1 rounded-lg border border-[#2b2d42]">
             <span className="text-xs font-mono text-slate-300 font-semibold">
               {disabled ? 'Sin ejecución' : `Paso ${currentStepIndex + 1} / ${totalSteps}`}
             </span>
           </div>
+
+          {isCheckpointLocked && (
+            <div
+              className="hidden sm:flex items-center px-2.5 py-1 rounded-lg bg-amber-950/40 border border-amber-600/40 text-amber-300 text-[11px] font-medium"
+              title="Resuelve la actividad en el panel izquierdo para desbloquear la ejecución completa del algoritmo"
+            >
+              <span>Punto de control en paso {effectiveMax + 1}</span>
+            </div>
+          )}
         </div>
 
         {/* Controles multimedia */}
@@ -115,7 +134,7 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
           {/* Paso siguiente */}
           <button
             onClick={onNextStep}
-            disabled={disabled || currentStepIndex >= totalSteps - 1}
+            disabled={disabled || currentStepIndex >= effectiveMax || isAtCheckpointLimit}
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed"
             title="Paso siguiente (Flecha Derecha)"
           >
@@ -125,9 +144,9 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
           {/* Ir al final */}
           <button
             onClick={onGoToEnd}
-            disabled={disabled || currentStepIndex >= totalSteps - 1}
+            disabled={disabled || currentStepIndex >= effectiveMax || isAtCheckpointLimit}
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed"
-            title="Ir al final (End)"
+            title="Ir al final permitido (End)"
           >
             <SkipForward className="w-4 h-4" />
           </button>

@@ -487,6 +487,19 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
     const temp: Array<number | null> = new Array(len).fill(null);
     treeNodes[parentNodeId].tempBuffer = [...temp];
 
+    // Línea 9: funcion combinar(arr, inicio, medio, fin)
+    pushStep(
+      { pseudocode: 9, python: 9, cpp: 8, java: 8 },
+      [{ lineNumber: 9, type: 'active', lineByLanguage: { pseudocode: 9, python: 9, cpp: 8, java: 8 } }],
+      `Entrando a función combinar(arr, ${inicio}, ${medio}, ${fin}) para fusionar los subarreglos [${inicio}..${medio}] y [${medio + 1}..${fin}].`,
+      'iterate_outer',
+      parentNodeId,
+      'combine',
+      `Iniciando combinar(${inicio}, ${medio}, ${fin})`,
+      { left: inicio, right: fin, mid: medio },
+      { inicio, medio, fin }
+    );
+
     // Línea 10: temp = crear_arreglo(fin - inicio + 1)
     pushStep(
       { pseudocode: 10, python: 10, cpp: 9, java: 9 },
@@ -535,6 +548,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
         pushStep(
           { pseudocode: 13, python: 13, cpp: 12, java: 12 },
           [
+            { lineNumber: 12, type: 'evaluating', lineByLanguage: { pseudocode: 12, python: 12, cpp: 11, java: 11 } },
             { lineNumber: 13, type: 'active', lineByLanguage: { pseudocode: 13, python: 13, cpp: 12, java: 12 } },
             { lineNumber: 14, type: 'next', lineByLanguage: { pseudocode: 14, python: 14, cpp: 12, java: 12 } },
           ],
@@ -569,14 +583,16 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
 
         i++;
       } else {
-        // Línea 16 & 17 & 18: sino: temp[k] = arr[j]; j = j + 1
+        // Línea 13 -> 16 (sino):
         pushStep(
           { pseudocode: 13, python: 13, cpp: 13, java: 13 },
           [
-            { lineNumber: 13, type: 'active', lineByLanguage: { pseudocode: 13, python: 13, cpp: 13, java: 13 } },
+            { lineNumber: 12, type: 'evaluating', lineByLanguage: { pseudocode: 12, python: 12, cpp: 11, java: 11 } },
+            { lineNumber: 13, type: 'active', lineByLanguage: { pseudocode: 13, python: 13, cpp: 12, java: 12 } },
+            { lineNumber: 16, type: 'evaluating', lineByLanguage: { pseudocode: 16, python: 16, cpp: 13, java: 13 } },
             { lineNumber: 17, type: 'next', lineByLanguage: { pseudocode: 17, python: 17, cpp: 13, java: 13 } },
           ],
-          `Comparando arr[${i}] (${valI}) > arr[${j}] (${valJ}): Condición FALSA. Seleccionando menor arr[${j}].`,
+          `Comparando arr[${i}] (${valI}) <= arr[${j}] (${valJ}): Condición FALSA (${valI} > ${valJ}). Pasando a rama sino.`,
           'compare',
           parentNodeId,
           'combine',
@@ -592,6 +608,7 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
         pushStep(
           { pseudocode: 17, python: 17, cpp: 13, java: 13 },
           [
+            { lineNumber: 16, type: 'evaluating', lineByLanguage: { pseudocode: 16, python: 16, cpp: 13, java: 13 } },
             { lineNumber: 17, type: 'executed', badgeText: 'temp[k] ← arr[j]', lineByLanguage: { pseudocode: 17, python: 17, cpp: 13, java: 13 } },
             { lineNumber: 18, type: 'active', lineByLanguage: { pseudocode: 18, python: 18, cpp: 13, java: 13 } },
           ],
@@ -632,7 +649,10 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
 
       pushStep(
         { pseudocode: 21, python: 21, cpp: 16, java: 16 },
-        [{ lineNumber: 21, type: 'active', lineByLanguage: { pseudocode: 21, python: 21, cpp: 16, java: 16 } }],
+        [
+          { lineNumber: 20, type: 'evaluating', lineByLanguage: { pseudocode: 20, python: 20, cpp: 16, java: 16 } },
+          { lineNumber: 21, type: 'active', lineByLanguage: { pseudocode: 21, python: 21, cpp: 16, java: 16 } },
+        ],
         `Copiando elemento restante izquierdo: temp[${k}] = arr[${i}] (${valI}).`,
         'assign',
         parentNodeId,
@@ -655,7 +675,10 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
 
       pushStep(
         { pseudocode: 23, python: 23, cpp: 17, java: 17 },
-        [{ lineNumber: 23, type: 'active', lineByLanguage: { pseudocode: 23, python: 23, cpp: 17, java: 17 } }],
+        [
+          { lineNumber: 22, type: 'evaluating', lineByLanguage: { pseudocode: 22, python: 22, cpp: 17, java: 17 } },
+          { lineNumber: 23, type: 'active', lineByLanguage: { pseudocode: 23, python: 23, cpp: 17, java: 17 } },
+        ],
         `Copiando elemento restante derecho: temp[${k}] = arr[${j}] (${valJ}).`,
         'assign',
         parentNodeId,

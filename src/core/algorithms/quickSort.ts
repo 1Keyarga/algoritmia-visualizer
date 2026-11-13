@@ -16,7 +16,7 @@ export const QUICK_SORT_METADATA: AlgorithmMetadata = {
   family: 'divide_and_conquer',
   categoryName: 'Divide y Vencerás',
   description:
-    'Selecciona un elemento pivote, particiona el subarreglo ubicando los menores a la izquierda y los mayores a la derecha (esquema de Lomuto), y ordena recursivamente ambas particiones in-situ.',
+    'Selecciona el último elemento como pivote, particiona el subarreglo ubicando los menores a la izquierda y los mayores a la derecha, y ordena recursivamente ambas particiones in-situ.',
   defaultDataset: [38, 27, 43, 3, 9, 82, 10, 19],
   complexity: {
     time: 'O(n log n)',
@@ -267,7 +267,7 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
   pushStep(
     { pseudocode: 1, python: 1, cpp: 1, java: 1 },
     [{ lineNumber: 1, type: 'active', lineByLanguage: { pseudocode: 1, python: 1, cpp: 1, java: 1 } }],
-    `Iniciando Quick Sort (Esquema de Lomuto) con ${n} elementos en el rango [0..${n - 1}].`,
+    `Iniciando Quick Sort con ${n} elementos en el rango [0..${n - 1}].`,
     'init',
     rootId,
     'divide',
@@ -289,6 +289,18 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
       vars: { pivote: pivotVal, i },
     });
 
+    // Línea 8: funcion particionar(arr, bajo, alto)
+    pushStep(
+      { pseudocode: 8, python: 8, cpp: 7, java: 7 },
+      [{ lineNumber: 8, type: 'active', lineByLanguage: { pseudocode: 8, python: 8, cpp: 7, java: 7 } }],
+      `Entrando a función particionar(arr, ${bajo}, ${alto}).`,
+      'iterate_outer',
+      nodeId,
+      'divide',
+      `Iniciando particionar(${bajo}, ${alto})`,
+      { left: bajo, right: alto }
+    );
+
     // Resaltar pivote en arr[alto]
     currentArray = currentArray.map((item, idx) => {
       if (idx === alto) return { ...item, state: 'selected', nonColorIndicator: 'pivote' };
@@ -296,17 +308,28 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
       return { ...item, state: 'default', nonColorIndicator: undefined };
     });
 
+    // Línea 9: pivote = arr[alto]
     pushStep(
       { pseudocode: 9, python: 9, cpp: 8, java: 8 },
-      [
-        { lineNumber: 9, type: 'active', lineByLanguage: { pseudocode: 9, python: 9, cpp: 8, java: 8 } },
-        { lineNumber: 10, type: 'next', lineByLanguage: { pseudocode: 10, python: 10, cpp: 9, java: 9 } },
-      ],
-      `Seleccionando pivote = arr[${alto}] (${pivotVal}) e inicializando puntero de menores i = ${i}.`,
+      [{ lineNumber: 9, type: 'active', lineByLanguage: { pseudocode: 9, python: 9, cpp: 8, java: 8 } }],
+      `Seleccionando el último elemento del rango como pivote: pivote = arr[${alto}] (${pivotVal}).`,
       'assign',
       nodeId,
       'divide',
-      `Pivote seleccionado: arr[${alto}] = ${pivotVal} | i = ${i}`,
+      `Pivote seleccionado: arr[${alto}] = ${pivotVal}`,
+      { left: bajo, right: alto, pivot: alto },
+      { pivote: pivotVal }
+    );
+
+    // Línea 10: i = bajo - 1
+    pushStep(
+      { pseudocode: 10, python: 10, cpp: 9, java: 9 },
+      [{ lineNumber: 10, type: 'active', lineByLanguage: { pseudocode: 10, python: 10, cpp: 9, java: 9 } }],
+      `Inicializando frontera de elementos menores o iguales al pivote: i = ${bajo} - 1 = ${i}.`,
+      'assign',
+      nodeId,
+      'divide',
+      `Frontera inicial: i = ${i}`,
       { left: bajo, right: alto, pivot: alto, i: i >= 0 ? i : undefined },
       { pivote: pivotVal, i }
     );
@@ -342,6 +365,20 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
 
       if (isLessOrEqual) {
         i++;
+
+        // Línea 13: i = i + 1
+        pushStep(
+          { pseudocode: 13, python: 13, cpp: 12, java: 12 },
+          [{ lineNumber: 13, type: 'active', lineByLanguage: { pseudocode: 13, python: 13, cpp: 12, java: 12 } }],
+          `Incrementando puntero de partición izquierda: i = ${i}.`,
+          'assign',
+          nodeId,
+          'divide',
+          `Avanzando frontera de menores: i = ${i}`,
+          { left: bajo, right: alto, pivot: alto, i, j },
+          { pivote: pivotVal, i, j }
+        );
+
         if (i !== j) {
           swapsCount++;
           const temp = currentArray[i];
@@ -356,7 +393,7 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
               { lineNumber: 13, type: 'executed', lineByLanguage: { pseudocode: 13, python: 13, cpp: 12, java: 12 } },
               { lineNumber: 14, type: 'active', badgeText: 'swap', lineByLanguage: { pseudocode: 14, python: 14, cpp: 13, java: 13 } },
             ],
-            `Incrementando i = ${i} e intercambiando arr[${i}] (${currentArray[i].value}) y arr[${j}] (${currentArray[j].value}).`,
+            `Intercambiando arr[${i}] (${currentArray[i].value}) y arr[${j}] (${currentArray[j].value}) para consolidar menores a la izquierda.`,
             'swap',
             nodeId,
             'divide',
@@ -367,13 +404,13 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
         } else {
           currentArray[i] = { ...currentArray[i], state: 'swapped', nonColorIndicator: 'i,j' };
           pushStep(
-            { pseudocode: 13, python: 13, cpp: 12, java: 12 },
-            [{ lineNumber: 13, type: 'active', lineByLanguage: { pseudocode: 13, python: 13, cpp: 12, java: 12 } }],
-            `Incrementando frontera de menores i = ${i} (i coincide con j=${j}, el elemento ${valJ} permanece en su lugar).`,
-            'assign',
+            { pseudocode: 14, python: 14, cpp: 13, java: 13 },
+            [{ lineNumber: 14, type: 'active', lineByLanguage: { pseudocode: 14, python: 14, cpp: 13, java: 13 } }],
+            `intercambiar(arr, ${i}, ${j}): como i coincide con j (${i}), el elemento ${valJ} permanece en su posición.`,
+            'swap',
             nodeId,
             'divide',
-            `Frontera de menores avanza: i = ${i}`,
+            `Sin cambio físico (i = j = ${i})`,
             { left: bajo, right: alto, pivot: alto, i, j },
             { pivote: pivotVal, i, j }
           );
@@ -402,15 +439,24 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
 
     pushStep(
       { pseudocode: 15, python: 15, cpp: 16, java: 16 },
-      [
-        { lineNumber: 15, type: 'active', badgeText: 'pivote fijo', lineByLanguage: { pseudocode: 15, python: 15, cpp: 16, java: 16 } },
-        { lineNumber: 16, type: 'next', lineByLanguage: { pseudocode: 16, python: 16, cpp: 17, java: 17 } },
-      ],
-      `Ubicando el pivote ${pivotVal} en su posición final ordenada pi = ${pi}. Retornando índice ${pi}.`,
+      [{ lineNumber: 15, type: 'active', badgeText: 'pivote fijo', lineByLanguage: { pseudocode: 15, python: 15, cpp: 16, java: 16 } }],
+      `Intercambiando arr[${pi}] con arr[${alto}]: el pivote ${pivotVal} queda ubicado en su posición definitiva pi = ${pi}.`,
       'swap',
       nodeId,
       'combine',
       `Pivote ${pivotVal} fijado en índice definitivo pi = ${pi}`,
+      { left: bajo, right: alto, pivot: pi, i: pi },
+      { pivote: pivotVal, pi }
+    );
+
+    pushStep(
+      { pseudocode: 16, python: 16, cpp: 17, java: 17 },
+      [{ lineNumber: 16, type: 'active', lineByLanguage: { pseudocode: 16, python: 16, cpp: 17, java: 17 } }],
+      `Retornando índice de partición pi = ${pi} a quick_sort(${bajo}, ${alto}).`,
+      'check',
+      nodeId,
+      'combine',
+      `Retornando pi = ${pi}`,
       { left: bajo, right: alto, pivot: pi, i: pi },
       { pivote: pivotVal, pi }
     );
@@ -502,6 +548,21 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
         { pi }
       );
       recursiveQuickSort(bajo, pi - 1, nodeId, depth + 1, true);
+    } else {
+      pushStep(
+        { pseudocode: 5, python: 5, cpp: 4, java: 4 },
+        [
+          { lineNumber: 5, type: 'active', lineByLanguage: { pseudocode: 5, python: 5, cpp: 4, java: 4 } },
+          { lineNumber: 2, type: 'evaluating', lineByLanguage: { pseudocode: 2, python: 2, cpp: 2, java: 2 } },
+        ],
+        `Llamada izquierda quick_sort(arr, ${bajo}, ${pi - 1}): subarreglo vacío (${bajo} > ${pi - 1}), retorna por caso base.`,
+        'check',
+        nodeId,
+        'conquer',
+        `Sub-partición izquierda [${bajo}..${pi - 1}] vacía (caso base)`,
+        { left: bajo, right: alto, pivot: pi },
+        { pi }
+      );
     }
 
     // Recursión derecha
@@ -518,6 +579,21 @@ export function generateQuickSortTrace(initialData: number[]): Step[] {
         { pi }
       );
       recursiveQuickSort(pi + 1, alto, nodeId, depth + 1, false);
+    } else {
+      pushStep(
+        { pseudocode: 6, python: 6, cpp: 5, java: 5 },
+        [
+          { lineNumber: 6, type: 'active', lineByLanguage: { pseudocode: 6, python: 6, cpp: 5, java: 5 } },
+          { lineNumber: 2, type: 'evaluating', lineByLanguage: { pseudocode: 2, python: 2, cpp: 2, java: 2 } },
+        ],
+        `Llamada derecha quick_sort(arr, ${pi + 1}, ${alto}): subarreglo vacío (${pi + 1} > ${alto}), retorna por caso base.`,
+        'check',
+        nodeId,
+        'conquer',
+        `Sub-partición derecha [${pi + 1}..${alto}] vacía (caso base)`,
+        { left: bajo, right: alto, pivot: pi },
+        { pi }
+      );
     }
 
     treeNodes[nodeId].state = depth === 0 ? 'completed' : 'solved';

@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect, useCallback } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { ALGORITHMS_CATALOG, CUSTOM_AST_METADATA } from './core/algorithms/registry';
+import { GUIDED_TASKS_REPOSITORY } from './core/tasks/tasksRepository';
 import type { AlgorithmMetadata, SupportedLanguage } from './types/algorithm';
 import type { Step } from './types/trace';
 import { generateBubbleSortTrace } from './core/algorithms/bubbleSort';
@@ -19,31 +20,158 @@ import { StudentCodeEditor } from './components/pseudocode/StudentCodeEditor';
 import { MemoryPanel } from './components/memory/MemoryPanel';
 import { VisualizerPanel } from './components/visualization/VisualizerPanel';
 import { PlaybackFooter } from './components/controls/PlaybackFooter';
-import { InteractiveTaskPanel } from './components/tasks/InteractiveTaskPanel';
+import {
+  InteractiveTaskPanel,
+  type TaskAttemptCategory,
+} from './components/tasks/InteractiveTaskPanel';
+import { EvaluationModule } from './components/evaluation/EvaluationModule';
+import {
+  EVALUATION_STORAGE_KEY,
+  type ParticipantSession,
+  type PostestVisualizerScenario,
+} from './core/evaluation/evaluationRepository';
 
 const COMPLETED_TASKS_STORAGE_KEY = 'algoritmia_completed_tasks_v1';
+const TASK_OUTCOMES_STORAGE_KEY = 'visurithm_task_outcomes_v1';
+const PREF_ALGO_STORAGE_KEY = 'visurithm_pref_algo';
+
+function generateAlgorithmTrace(
+  algoId: string,
+  data: number[],
+  searchTarget: number
+): Step[] {
+  let rawSteps: Step[];
+  if (algoId === 'merge-sort') {
+    rawSteps = generateMergeSortTrace(data);
+  } else if (algoId === 'quick-sort') {
+    rawSteps = generateQuickSortTrace(data);
+  } else if (algoId === 'insertion-sort') {
+    rawSteps = generateInsertionSortTrace(data);
+  } else if (algoId === 'selection-sort') {
+    rawSteps = generateSelectionSortTrace(data);
+  } else if (algoId === 'linear-search') {
+    rawSteps = generateLinearSearchTrace(data, searchTarget);
+  } else if (algoId === 'binary-search') {
+    rawSteps = generateBinarySearchTrace(data, searchTarget);
+  } else if (algoId === 'bubble-sort-classic') {
+    rawSteps = generateBubbleSortTrace(data, false);
+  } else {
+    rawSteps = generateBubbleSortTrace(data, true);
+  }
+
+  const accessByIndex: number[] = [];
+  return rawSteps.map(step => {
+    const enrichedArray = step.array.map((el, idx) => {
+      if (el.state === 'comparing' || el.state === 'swapped' || el.state === 'selected') {
+        accessByIndex[idx] = (accessByIndex[idx] || 0) + 1;
+      }
+      return {
+        ...el,
+        accessCount: accessByIndex[idx] || 0,
+      };
+    });
+    return {
+      ...step,
+      array: enrichedArray,
+    };
+  });
+}
+
+interface InitialAppState {
+  activeModule: AppModule;
+  algorithm: AlgorithmMetadata;
+  dataset: number[];
+  searchTarget: number;
+  initialStepJump: number | null;
+}
+
+function readInitialAppState(): InitialAppState {
+  const defaultDataset = [38, 27, 43, 3, 9, 82, 10, 19];
+  let savedAlgo = ALGORITHMS_CATALOG[0];
+  try {
+    const savedId = localStorage.getItem(PREF_ALGO_STORAGE_KEY);
+    const found = ALGORITHMS_CATALOG.find(a => a.id === savedId);
+    if (found) savedAlgo = found;
+  } catch {}
+
+  const params = new URLSearchParams(window.location.search);
+  const algoParam = params.get('algo');
+  const dataParam = params.get('data');
+  const stepParam = params.get('step');
+  const targetParam = params.get('target');
+
+  let activeModule: AppModule = 'home';
+  let algorithm = savedAlgo;
+  if (algoParam) {
+    const foundAlgo = ALGORITHMS_CATALOG.find(a => a.id === algoParam);
+    if (foundAlgo) {
+      algorithm = foundAlgo;
+      activeModule = 'algorithms';
+    }
+  }
+
+  let dataset = defaultDataset;
+  if (dataParam) {
+    const parsed = dataParam
+      .split(',')
+      .map(v => Number(v.trim()))
+      .filter(n => !Number.isNaN(n) && Number.isInteger(n) && n >= 1 && n <= 999);
+    if (parsed.length >= 2 && parsed.length <= 30) {
+      dataset = parsed;
+    }
+  }
+  if (algorithm.id === 'binary-search') {
+    dataset = [...dataset].sort((a, b) => a - b);
+  }
+
+  const searchTarget =
+    targetParam && !Number.isNaN(Number(targetParam)) ? Number(targetParam) : 45;
+  const initialStepJump =
+    stepParam && !Number.isNaN(Number(stepParam)) ? Math.max(0, Number(stepParam)) : null;
+
+  return {
+    activeModule,
+    algorithm,
+    dataset,
+    searchTarget,
+    initialStepJump,
+  };
+}
 
 export function App() {
-  const [activeModule, setActiveModule] = useState<AppModule>('home');
+  const [initialState] = useState<InitialAppState>(() => readInitialAppState());
 
+  const [activeModule, setActiveModule] = useState<AppModule>(initialState.activeModule);
   const [selectedAlgorithm, setSelectedAlgorithm] = useState<AlgorithmMetadata>(
-    ALGORITHMS_CATALOG[0]
+    initialState.algorithm
   );
+
+  const [isComparing, setIsComparing] = useState<boolean>(false);
+  const [secondaryAlgorithmId, setSecondaryAlgorithmId] = useState<string>('selection-sort');
+  const [isPostestVisualizerActive, setIsPostestVisualizerActive] = useState<boolean>(false);
+  const [postestCompareAlgorithmId, setPostestCompareAlgorithmId] = useState<string | null>(null);
 
   const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('pseudocode');
 
   const [isPseudocodeOpen, setIsPseudocodeOpen] = useState(true);
-  const [isMemoryOpen, setIsMemoryOpen] = useState(true);
+  const [isMemoryOpen, setIsMemoryOpen] = useState(
+    () => initialState.algorithm.family !== 'divide_and_conquer'
+  );
   const [isVisualizerFullscreen, setIsVisualizerFullscreen] = useState(false);
 
-  const [dataset, setDataset] = useState<number[]>([38, 27, 43, 3, 9, 82, 10, 19]);
+  const [dataset, setDataset] = useState<number[]>(initialState.dataset);
 
-  const [searchTarget, setSearchTarget] = useState<number>(45);
+  const [searchTarget, setSearchTarget] = useState<number>(initialState.searchTarget);
   const [customSteps, setCustomSteps] = useState<Step[] | null>(null);
   const [isASTExecuting, setIsASTExecuting] = useState(false);
   const [customCategory, setCustomCategory] = useState<'sorting' | 'searching'>('sorting');
 
   const [isPredictionModeActive, setIsPredictionModeActive] = useState(false);
+  const [selectedTaskId, setSelectedTaskId] = useState<string>('T01');
+  const [unlockedTaskIds, setUnlockedTaskIds] = useState<string[]>([]);
+  const pendingStepJumpRef = useRef<number | null>(null);
+  const pendingAutoPlayRef = useRef<boolean>(false);
+
   const [completedTaskIds, setCompletedTaskIds] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem(COMPLETED_TASKS_STORAGE_KEY);
@@ -52,6 +180,35 @@ export function App() {
       return [];
     }
   });
+
+  const [taskOutcomes, setTaskOutcomes] = useState<Record<string, TaskAttemptCategory>>(() => {
+    try {
+      const saved = localStorage.getItem(TASK_OUTCOMES_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [participantSession, setParticipantSession] = useState<ParticipantSession | null>(() => {
+    try {
+      const saved = localStorage.getItem(EVALUATION_STORAGE_KEY);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const handleUpdateParticipantSession = useCallback((next: ParticipantSession | null) => {
+    setParticipantSession(next);
+    try {
+      if (next) {
+        localStorage.setItem(EVALUATION_STORAGE_KEY, JSON.stringify(next));
+      } else {
+        localStorage.removeItem(EVALUATION_STORAGE_KEY);
+      }
+    } catch {}
+  }, []);
 
   const handleMarkTaskCompleted = useCallback((taskId: string) => {
     setCompletedTaskIds(prev => {
@@ -66,58 +223,170 @@ export function App() {
     });
   }, []);
 
-  const isOptimized = selectedAlgorithm.id === 'bubble-sort';
+  const handleRecordTaskOutcome = useCallback(
+    (taskId: string, category: TaskAttemptCategory) => {
+      setTaskOutcomes(prev => {
+        const next = { ...prev, [taskId]: category };
+        try {
+          localStorage.setItem(TASK_OUTCOMES_STORAGE_KEY, JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    },
+    []
+  );
+
+  // Guardar preferencia de último algoritmo seleccionado
+  useEffect(() => {
+    if (selectedAlgorithm.id !== 'custom-ast') {
+      try {
+        localStorage.setItem(PREF_ALGO_STORAGE_KEY, selectedAlgorithm.id);
+      } catch {}
+    }
+  }, [selectedAlgorithm.id]);
+
   const isDivideAndConquer = selectedAlgorithm.family === 'divide_and_conquer';
   const isCustomAST = activeModule === 'student_code' || selectedAlgorithm.id === 'custom-ast';
 
-  // Colapsar panel de memoria solo en divide y vencerás para dar prioridad al árbol
-  useEffect(() => {
-    if (isDivideAndConquer) {
-      setIsMemoryOpen(false);
-    } else {
-      setIsMemoryOpen(true);
-    }
-  }, [isDivideAndConquer]);
+  const sameFamilyAlgorithms = useMemo(() => {
+    return ALGORITHMS_CATALOG.filter(
+      a => a.family === selectedAlgorithm.family && a.id !== selectedAlgorithm.id
+    );
+  }, [selectedAlgorithm]);
+
+  const secondaryAlgorithm = useMemo(() => {
+    return (
+      sameFamilyAlgorithms.find(a => a.id === secondaryAlgorithmId) ||
+      sameFamilyAlgorithms[0] ||
+      ALGORITHMS_CATALOG[0]
+    );
+  }, [sameFamilyAlgorithms, secondaryAlgorithmId]);
 
   const steps = useMemo(() => {
-    let rawSteps: Step[];
-    if (isCustomAST) {
-      rawSteps = customSteps || generateBubbleSortTrace(dataset, isOptimized);
-    } else if (selectedAlgorithm.id === 'merge-sort') {
-      rawSteps = generateMergeSortTrace(dataset);
-    } else if (selectedAlgorithm.id === 'quick-sort') {
-      rawSteps = generateQuickSortTrace(dataset);
-    } else if (selectedAlgorithm.id === 'insertion-sort') {
-      rawSteps = generateInsertionSortTrace(dataset);
-    } else if (selectedAlgorithm.id === 'selection-sort') {
-      rawSteps = generateSelectionSortTrace(dataset);
-    } else if (selectedAlgorithm.id === 'linear-search') {
-      rawSteps = generateLinearSearchTrace(dataset, searchTarget);
-    } else if (selectedAlgorithm.id === 'binary-search') {
-      rawSteps = generateBinarySearchTrace(dataset, searchTarget);
-    } else {
-      rawSteps = generateBubbleSortTrace(dataset, isOptimized);
-    }
-
-    const accessByIndex: number[] = [];
-    return rawSteps.map(step => {
-      const enrichedArray = step.array.map((el, idx) => {
-        if (el.state === 'comparing' || el.state === 'swapped' || el.state === 'selected') {
-          accessByIndex[idx] = (accessByIndex[idx] || 0) + 1;
-        }
+    if (isCustomAST && customSteps) {
+      const accessByIndex: number[] = [];
+      return customSteps.map(step => {
+        const enrichedArray = step.array.map((el, idx) => {
+          if (el.state === 'comparing' || el.state === 'swapped' || el.state === 'selected') {
+            accessByIndex[idx] = (accessByIndex[idx] || 0) + 1;
+          }
+          return {
+            ...el,
+            accessCount: accessByIndex[idx] || 0,
+          };
+        });
         return {
-          ...el,
-          accessCount: accessByIndex[idx] || 0,
+          ...step,
+          array: enrichedArray,
         };
       });
-      return {
-        ...step,
-        array: enrichedArray,
-      };
-    });
-  }, [dataset, selectedAlgorithm, isOptimized, searchTarget, customSteps, isCustomAST]);
+    }
+    const effectiveId = isCustomAST ? 'bubble-sort' : selectedAlgorithm.id;
+    return generateAlgorithmTrace(effectiveId, dataset, searchTarget);
+  }, [dataset, selectedAlgorithm.id, searchTarget, customSteps, isCustomAST]);
 
-  const playback = usePlayback(steps);
+  const currentGuidedTask = useMemo(
+    () => GUIDED_TASKS_REPOSITORY.find(t => t.id === selectedTaskId) || GUIDED_TASKS_REPOSITORY[0],
+    [selectedTaskId]
+  );
+
+  // Activar comparación en paralelo en tareas comparativas, en preguntas comparativas del Postest o desde barra superior
+  const isGuidedTaskComparison =
+    activeModule === 'guided_tasks' &&
+    (currentGuidedTask.id === 'T05' || currentGuidedTask.id === 'T11');
+
+  const isPostestComparison =
+    activeModule === 'evaluation' &&
+    isPostestVisualizerActive &&
+    !!postestCompareAlgorithmId;
+
+  const isComparisonActive =
+    (activeModule === 'algorithms' && isComparing && sameFamilyAlgorithms.length > 0) ||
+    isGuidedTaskComparison ||
+    isPostestComparison;
+
+  const effectiveSecondaryAlgorithm = useMemo(() => {
+    if (isPostestComparison && postestCompareAlgorithmId) {
+      return (
+        ALGORITHMS_CATALOG.find(a => a.id === postestCompareAlgorithmId) || secondaryAlgorithm
+      );
+    }
+    if (activeModule === 'guided_tasks') {
+      if (currentGuidedTask.id === 'T05') {
+        return ALGORITHMS_CATALOG.find(a => a.id === 'selection-sort') || secondaryAlgorithm;
+      }
+      if (currentGuidedTask.id === 'T11') {
+        return ALGORITHMS_CATALOG.find(a => a.id === 'binary-search') || secondaryAlgorithm;
+      }
+    }
+    return secondaryAlgorithm;
+  }, [
+    isPostestComparison,
+    postestCompareAlgorithmId,
+    activeModule,
+    currentGuidedTask.id,
+    secondaryAlgorithm,
+  ]);
+
+  const secondarySteps = useMemo(() => {
+    if (!isComparisonActive) return [];
+    const secData =
+      effectiveSecondaryAlgorithm.id === 'binary-search'
+        ? [...dataset].sort((a, b) => a - b)
+        : dataset;
+    return generateAlgorithmTrace(effectiveSecondaryAlgorithm.id, secData, searchTarget);
+  }, [isComparisonActive, effectiveSecondaryAlgorithm.id, dataset, searchTarget]);
+
+  const playbackTimelineSteps = useMemo(() => {
+    if (!isComparisonActive || secondarySteps.length <= steps.length) {
+      return steps;
+    }
+    const padded = [...steps];
+    const lastPrimary = steps[steps.length - 1];
+    while (padded.length < secondarySteps.length && lastPrimary) {
+      padded.push(lastPrimary);
+    }
+    return padded;
+  }, [isComparisonActive, steps, secondarySteps]);
+
+  const isCurrentTaskUnlocked =
+    unlockedTaskIds.includes(currentGuidedTask.id) ||
+    completedTaskIds.includes(currentGuidedTask.id);
+
+  const maxAllowedStepIndex =
+    activeModule === 'guided_tasks' && !isCurrentTaskUnlocked
+      ? currentGuidedTask.breakpointStepIndex
+      : undefined;
+
+  const playback = usePlayback(
+    playbackTimelineSteps,
+    maxAllowedStepIndex,
+    initialState.initialStepJump ?? undefined
+  );
+  const playbackReset = playback.reset;
+  const playbackGoToStep = playback.goToStep;
+  const playbackPlay = playback.play;
+
+  useEffect(() => {
+    if (pendingStepJumpRef.current !== null && steps.length > 0) {
+      const targetIdx = Math.max(0, Math.min(pendingStepJumpRef.current, steps.length - 1));
+      pendingStepJumpRef.current = null;
+      playbackGoToStep(targetIdx);
+    }
+  }, [steps, playbackGoToStep]);
+
+  useEffect(() => {
+    if (pendingAutoPlayRef.current && steps.length > 0 && maxAllowedStepIndex === undefined) {
+      pendingAutoPlayRef.current = false;
+      playbackPlay();
+    }
+  }, [steps, maxAllowedStepIndex, playbackPlay]);
+
+  const isKeyboardEnabled =
+    activeModule === 'algorithms' ||
+    activeModule === 'guided_tasks' ||
+    (activeModule === 'student_code' && isASTExecuting) ||
+    (activeModule === 'evaluation' && isPostestVisualizerActive);
 
   useKeyboard({
     onTogglePlay: playback.togglePlay,
@@ -126,6 +395,7 @@ export function App() {
     onReset: playback.reset,
     onGoToStart: playback.goToStart,
     onGoToEnd: playback.goToEnd,
+    enabled: isKeyboardEnabled,
   });
 
   const handleGenerateRandom = (size: number = dataset.length) => {
@@ -141,7 +411,11 @@ export function App() {
   };
 
   const handleApplyCustomDataset = (customData: number[]) => {
-    setDataset(customData);
+    if (activeModule === 'algorithms' && selectedAlgorithm.id === 'binary-search') {
+      setDataset([...customData].sort((a, b) => a - b));
+    } else {
+      setDataset(customData);
+    }
   };
 
   const handleLoadTaskScenario = useCallback(
@@ -149,12 +423,15 @@ export function App() {
       algorithmId: string,
       presetData: number[],
       presetTarget?: number,
-      enablePrediction?: boolean
+      enablePrediction?: boolean,
+      initialStepIndex?: number
     ) => {
       const targetAlgo = ALGORITHMS_CATALOG.find(a => a.id === algorithmId);
       if (targetAlgo) {
         setSelectedAlgorithm(targetAlgo);
+        setIsMemoryOpen(targetAlgo.family !== 'divide_and_conquer');
       }
+      setCustomSteps(null);
       setDataset([...presetData]);
       if (presetTarget !== undefined) {
         setSearchTarget(presetTarget);
@@ -162,9 +439,49 @@ export function App() {
       if (enablePrediction !== undefined) {
         setIsPredictionModeActive(enablePrediction);
       }
-      playback.reset();
+      if (initialStepIndex !== undefined) {
+        pendingStepJumpRef.current = initialStepIndex;
+        playbackGoToStep(initialStepIndex);
+      } else {
+        playbackReset();
+      }
     },
-    [playback]
+    [playbackGoToStep, playbackReset]
+  );
+
+  const handlePostestScenarioChange = useCallback(
+    (isActive: boolean, scenario?: PostestVisualizerScenario) => {
+      setIsPostestVisualizerActive(isActive);
+      if (!isActive || !scenario) {
+        setPostestCompareAlgorithmId(null);
+        return;
+      }
+      const targetAlgo = ALGORITHMS_CATALOG.find(a => a.id === scenario.algorithmId);
+      if (targetAlgo) {
+        setSelectedAlgorithm(targetAlgo);
+        setIsMemoryOpen(targetAlgo.family !== 'divide_and_conquer');
+      }
+      setCustomSteps(null);
+      setIsPredictionModeActive(false);
+      setDataset([...scenario.dataset]);
+      if (scenario.searchTarget !== undefined) {
+        setSearchTarget(scenario.searchTarget);
+      }
+      setPostestCompareAlgorithmId(scenario.compareWithAlgorithmId || null);
+      pendingStepJumpRef.current = 0;
+      playbackReset();
+    },
+    [playbackReset]
+  );
+
+  const handleUnlockTaskExecution = useCallback(
+    ( _customAstSteps?: Step[]) => {
+      setUnlockedTaskIds(prev =>
+        prev.includes(currentGuidedTask.id) ? prev : [...prev, currentGuidedTask.id]
+      );
+      pendingAutoPlayRef.current = true;
+    },
+    [currentGuidedTask.id]
   );
 
   const handleToggleFullscreen = () => {
@@ -180,12 +497,19 @@ export function App() {
   };
 
   const handleNavigateModule = (targetModule: AppModule) => {
+    if (targetModule !== 'evaluation') {
+      setIsPostestVisualizerActive(false);
+      setPostestCompareAlgorithmId(null);
+    }
     if (targetModule === 'home') {
       setIsPredictionModeActive(false);
       setActiveModule('home');
     } else if (targetModule === 'algorithms') {
       if (selectedAlgorithm.id === 'custom-ast') {
         setSelectedAlgorithm(ALGORITHMS_CATALOG[0]);
+        setIsMemoryOpen(ALGORITHMS_CATALOG[0].family !== 'divide_and_conquer');
+      } else {
+        setIsMemoryOpen(selectedAlgorithm.family !== 'divide_and_conquer');
       }
       setIsPredictionModeActive(false);
       setActiveModule('algorithms');
@@ -200,11 +524,31 @@ export function App() {
     } else if (targetModule === 'guided_tasks') {
       if (selectedAlgorithm.id === 'custom-ast') {
         setSelectedAlgorithm(ALGORITHMS_CATALOG[0]);
+        setIsMemoryOpen(ALGORITHMS_CATALOG[0].family !== 'divide_and_conquer');
       }
       setActiveModule('guided_tasks');
-      playback.reset();
+    } else if (targetModule === 'evaluation') {
+      setIsPredictionModeActive(false);
+      setActiveModule('evaluation');
     }
   };
+
+  const handleShareLink = useCallback(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('algo', selectedAlgorithm.id);
+    url.searchParams.set('data', dataset.join(','));
+    url.searchParams.set('step', String(playback.currentStepIndex));
+    if (selectedAlgorithm.family === 'searching') {
+      url.searchParams.set('target', String(searchTarget));
+    } else {
+      url.searchParams.delete('target');
+    }
+    const shareUrl = url.toString();
+    window.history.replaceState({}, '', shareUrl);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareUrl).catch(() => {});
+    }
+  }, [selectedAlgorithm.id, selectedAlgorithm.family, dataset, playback.currentStepIndex, searchTarget]);
 
   // PORTADA DE INICIO (separada del entorno de trabajo para futuro login de estudiantes)
   if (activeModule === 'home') {
@@ -214,6 +558,7 @@ export function App() {
           onEnterAlgorithmsModule={initialAlgo => {
             const target = initialAlgo || ALGORITHMS_CATALOG[0];
             setSelectedAlgorithm(target);
+            setIsMemoryOpen(target.family !== 'divide_and_conquer');
             if (target.id === 'binary-search') {
               setDataset(prev => [...prev].sort((a, b) => a - b));
             }
@@ -223,7 +568,9 @@ export function App() {
           }}
           onEnterStudentCodeModule={() => handleNavigateModule('student_code')}
           onEnterGuidedTasksModule={() => handleNavigateModule('guided_tasks')}
+          onEnterEvaluationModule={() => handleNavigateModule('evaluation')}
           completedTasksCount={completedTaskIds.length}
+          activeParticipantId={participantSession?.participantId || null}
         />
       </div>
     );
@@ -243,6 +590,7 @@ export function App() {
         selectedAlgorithm={selectedAlgorithm}
         onSelectAlgorithm={algo => {
           setSelectedAlgorithm(algo);
+          setIsMemoryOpen(algo.family !== 'divide_and_conquer');
           if (algo.id === 'binary-search') {
             setDataset(prev => [...prev].sort((a, b) => a - b));
           }
@@ -256,12 +604,31 @@ export function App() {
         searchTarget={searchTarget}
         onChangeSearchTarget={setSearchTarget}
         completedTasksCount={completedTaskIds.length}
+        isComparing={isComparing}
+        onToggleComparison={() => setIsComparing(prev => !prev)}
+        onShareLink={handleShareLink}
+        activeParticipantId={participantSession?.participantId || null}
       />
 
       {/* Área principal de trabajo del módulo activo */}
       <main className="flex-1 flex min-h-0 overflow-hidden">
-        {/* Panel izquierdo: Editor de Código del Estudiante (en student_code) o Pseudocódigo (en algorithms / guided_tasks) */}
-        {activeModule === 'student_code' ? (
+        {/* Columna izquierda (o pantalla completa en Pretest/Resumen de evaluación) */}
+        {activeModule === 'evaluation' ? (
+          <EvaluationModule
+            session={participantSession}
+            onUpdateSession={handleUpdateParticipantSession}
+            taskOutcomes={taskOutcomes}
+            completedTasksCount={completedTaskIds.length}
+            onGoToGuidedTasks={() => handleNavigateModule('algorithms')}
+            onPostestScenarioChange={handlePostestScenarioChange}
+            algorithm={selectedAlgorithm}
+            currentStep={playback.currentStep}
+            stepIndex={playback.currentStepIndex}
+            totalSteps={playback.totalSteps}
+            selectedLanguage={selectedLanguage}
+            onChangeLanguage={setSelectedLanguage}
+          />
+        ) : activeModule === 'student_code' ? (
           <StudentCodeEditor
             currentDataset={dataset}
             searchTarget={searchTarget}
@@ -281,6 +648,31 @@ export function App() {
               playback.reset();
             }}
           />
+        ) : activeModule === 'guided_tasks' ? (
+          <InteractiveTaskPanel
+            isOpen={true}
+            onClose={() => {
+              setIsPredictionModeActive(false);
+              setActiveModule('home');
+            }}
+            onLoadTaskScenario={handleLoadTaskScenario}
+            onUnlockTaskExecution={handleUnlockTaskExecution}
+            completedTaskIds={completedTaskIds}
+            onMarkTaskCompleted={handleMarkTaskCompleted}
+            taskOutcomes={taskOutcomes}
+            onRecordTaskOutcome={handleRecordTaskOutcome}
+            isPredictionModeActive={isPredictionModeActive}
+            onTogglePredictionMode={() => setIsPredictionModeActive(prev => !prev)}
+            selectedTaskId={selectedTaskId}
+            onSelectTaskId={setSelectedTaskId}
+            isTaskUnlocked={isCurrentTaskUnlocked}
+            algorithm={selectedAlgorithm}
+            currentStep={playback.currentStep}
+            stepIndex={playback.currentStepIndex}
+            totalSteps={playback.totalSteps}
+            selectedLanguage={selectedLanguage}
+            onChangeLanguage={setSelectedLanguage}
+          />
         ) : (
           <PseudocodePanel
             algorithm={selectedAlgorithm}
@@ -294,67 +686,74 @@ export function App() {
           />
         )}
 
-        {/* Área central: Memoria (superior) + Visualización gráfica (inferior) */}
-        <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#12131b]">
-          {!isDivideAndConquer && activeModule !== 'student_code' && (
-            <MemoryPanel
+        {/* Columna derecha: Memoria (superior) + Visualización gráfica (inferior) */}
+        {(activeModule !== 'evaluation' || isPostestVisualizerActive) && (
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#12131b]">
+            {activeModule !== 'student_code' && (
+              <MemoryPanel
+                currentStep={playback.currentStep}
+                stepIndex={playback.currentStepIndex}
+                isOpen={isMemoryOpen}
+                onToggleOpen={() => setIsMemoryOpen(!isMemoryOpen)}
+              />
+            )}
+
+            <VisualizerPanel
               currentStep={playback.currentStep}
-              isOpen={isMemoryOpen}
-              onToggleOpen={() => setIsMemoryOpen(!isMemoryOpen)}
+              nextStep={nextStep}
+              stepIndex={playback.currentStepIndex}
+              totalSteps={playback.totalSteps}
+              isFullscreen={isVisualizerFullscreen}
+              onToggleFullscreen={handleToggleFullscreen}
+              algorithmFamily={
+                activeModule === 'student_code' ? customCategory : selectedAlgorithm.family
+              }
+              algorithmId={
+                activeModule === 'student_code' ? 'custom-ast' : selectedAlgorithm.id
+              }
+              isPredictionModeActive={isPredictionModeActive}
+              onTogglePredictionMode={() => setIsPredictionModeActive(prev => !prev)}
+              onAdvanceStep={playback.nextStep}
+              isAwaitingCompilation={activeModule === 'student_code' && !isASTExecuting}
+              comparisonProps={
+                isComparisonActive
+                  ? {
+                      primaryAlgorithm: selectedAlgorithm,
+                      primarySteps: steps,
+                      secondaryAlgorithm: effectiveSecondaryAlgorithm,
+                      secondarySteps,
+                      sameFamilyAlgorithms:
+                        isGuidedTaskComparison || isPostestComparison
+                          ? [effectiveSecondaryAlgorithm]
+                          : sameFamilyAlgorithms,
+                      onSelectSecondaryAlgorithm: algoId => setSecondaryAlgorithmId(algoId),
+                    }
+                  : null
+              }
             />
-          )}
-
-          <VisualizerPanel
-            currentStep={playback.currentStep}
-            nextStep={nextStep}
-            stepIndex={playback.currentStepIndex}
-            totalSteps={playback.totalSteps}
-            isFullscreen={isVisualizerFullscreen}
-            onToggleFullscreen={handleToggleFullscreen}
-            algorithmFamily={
-              activeModule === 'student_code' ? customCategory : selectedAlgorithm.family
-            }
-            algorithmId={
-              activeModule === 'student_code' ? 'custom-ast' : selectedAlgorithm.id
-            }
-            isPredictionModeActive={isPredictionModeActive}
-            onTogglePredictionMode={() => setIsPredictionModeActive(prev => !prev)}
-            onAdvanceStep={playback.nextStep}
-            isAwaitingCompilation={activeModule === 'student_code' && !isASTExecuting}
-          />
-        </div>
-
-        {/* Panel de Tareas Interactivas Guiadas (exclusivo del módulo guided_tasks) */}
-        <InteractiveTaskPanel
-          isOpen={activeModule === 'guided_tasks'}
-          onClose={() => {
-            setIsPredictionModeActive(false);
-            setActiveModule('home');
-          }}
-          onLoadTaskScenario={handleLoadTaskScenario}
-          completedTaskIds={completedTaskIds}
-          onMarkTaskCompleted={handleMarkTaskCompleted}
-          isPredictionModeActive={isPredictionModeActive}
-          onTogglePredictionMode={() => setIsPredictionModeActive(prev => !prev)}
-        />
+          </div>
+        )}
       </main>
 
       {/* Barra inferior de controles y reproducción */}
-      <PlaybackFooter
-        currentStepIndex={playback.currentStepIndex}
-        totalSteps={playback.totalSteps}
-        isPlaying={playback.isPlaying}
-        speed={playback.speed}
-        onTogglePlay={playback.togglePlay}
-        onNextStep={playback.nextStep}
-        onPrevStep={playback.prevStep}
-        onGoToStart={playback.goToStart}
-        onGoToEnd={playback.goToEnd}
-        onGoToStep={playback.goToStep}
-        onSetSpeed={playback.setSpeed}
-        onReset={playback.reset}
-        disabled={activeModule === 'student_code' && !isASTExecuting}
-      />
+      {(activeModule !== 'evaluation' || isPostestVisualizerActive) && (
+        <PlaybackFooter
+          currentStepIndex={playback.currentStepIndex}
+          totalSteps={playback.totalSteps}
+          isPlaying={playback.isPlaying}
+          speed={playback.speed}
+          onTogglePlay={playback.togglePlay}
+          onNextStep={playback.nextStep}
+          onPrevStep={playback.prevStep}
+          onGoToStart={playback.goToStart}
+          onGoToEnd={playback.goToEnd}
+          onGoToStep={playback.goToStep}
+          onSetSpeed={playback.setSpeed}
+          onReset={playback.reset}
+          disabled={activeModule === 'student_code' && !isASTExecuting}
+          maxAllowedStepIndex={maxAllowedStepIndex}
+        />
+      )}
     </div>
   );
 }

@@ -1,22 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { ALGORITHMS_CATALOG } from '../../core/algorithms/registry';
 import type { AlgorithmMetadata } from '../../types/algorithm';
-import {
-  Layers,
-  Code2,
-  BookOpen,
-  ArrowRight,
-  Play,
-  CheckCircle2,
-} from 'lucide-react';
 
-export type AppModule = 'home' | 'algorithms' | 'student_code' | 'guided_tasks';
+export type AppModule =
+  | 'home'
+  | 'algorithms'
+  | 'student_code'
+  | 'guided_tasks'
+  | 'evaluation';
 
 interface HomeHubProps {
   onEnterAlgorithmsModule: (initialAlgo?: AlgorithmMetadata) => void;
   onEnterStudentCodeModule: () => void;
   onEnterGuidedTasksModule: () => void;
+  onEnterEvaluationModule: () => void;
   completedTasksCount: number;
+  activeParticipantId?: string | null;
 }
 
 interface PreviewFrame {
@@ -69,7 +68,9 @@ export const HomeHub: React.FC<HomeHubProps> = ({
   onEnterAlgorithmsModule,
   onEnterStudentCodeModule,
   onEnterGuidedTasksModule,
+  onEnterEvaluationModule,
   completedTasksCount,
+  activeParticipantId = null,
 }) => {
   const [frameIdx, setFrameIdx] = useState(0);
 
@@ -87,82 +88,78 @@ export const HomeHub: React.FC<HomeHubProps> = ({
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-[#0d0e16] text-slate-100 overflow-y-auto select-none font-sans">
-      {/* Contenedor central de Portada (independiente del workspace del producto) */}
-      <div className="flex-1 max-w-6xl w-full mx-auto px-6 lg:px-10 py-7 lg:py-9 flex flex-col justify-between gap-8">
-        {/* Identidad superior limpia de portada (sin barra de navegación) */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-md bg-indigo-600 flex items-center justify-center text-white font-bold text-xs tracking-tight">
-              <span>V</span>
-            </div>
-            <span className="text-sm font-bold tracking-tight text-white">Visurithm</span>
-            <span className="text-xs text-slate-500 hidden sm:inline">
-              · Visualizador Interactivo de Algoritmos
+      <div className="flex-1 max-w-6xl w-full mx-auto px-6 lg:px-10 py-8 flex flex-col justify-between gap-8">
+        {/* Cabecera tipográfica sobria (sin logos decorativos) */}
+        <div className="flex items-center justify-between border-b border-[#1b1e2e] pb-4">
+          <div className="flex items-baseline gap-2.5">
+            <span className="text-base font-bold tracking-tight text-white">Visurithm</span>
+            <span className="text-xs text-slate-500">
+              Visualización interactiva de algoritmos
             </span>
           </div>
+
+          <button
+            onClick={onEnterEvaluationModule}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#141726] hover:bg-[#1c2033] border border-[#262a40] text-xs font-medium text-slate-200 transition-colors cursor-pointer"
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                activeParticipantId
+                  ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.85)]'
+                  : 'bg-slate-500'
+              }`}
+            />
+            <span>
+              {activeParticipantId ? `Evaluación · ${activeParticipantId}` : 'Evaluación'}
+            </span>
+          </button>
         </div>
+
         {/* Sección principal */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-center">
-          {/* Columna izquierda */}
           <div className="lg:col-span-6 space-y-4">
-            <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-indigo-400">
-              Ruta de Aprendizaje
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight leading-[1.08] text-white">
-              Comprende
-              <br />
-              algoritmos
-              <br />
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight leading-[1.1] text-white">
+              Comprende algoritmos{' '}
               <span className="text-indigo-400">paso a paso.</span>
             </h1>
 
             <p className="text-sm sm:text-base text-slate-400 max-w-md leading-relaxed">
-              Observa cada decisión, predice el siguiente movimiento y domina el razonamiento
-              detrás del código.
+              Inspecciona el estado de la memoria en cada operación, compara estrategias de la misma familia y verifica invariantes sobre ejecuciones reales.
             </p>
 
             <div className="flex flex-wrap items-center gap-3 pt-2">
               <button
                 onClick={() => onEnterAlgorithmsModule()}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
+                className="px-5 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
               >
-                <Play className="w-3.5 h-3.5 fill-white" />
-                <span>Continuar aprendizaje</span>
+                Explorar catálogo
               </button>
 
               <button
                 onClick={onEnterGuidedTasksModule}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-[#141726] hover:bg-[#1c2033] border border-[#262a40] text-slate-300 hover:text-white text-xs sm:text-sm font-medium transition-colors cursor-pointer"
+                className="px-4 py-2.5 rounded-lg bg-[#141726] hover:bg-[#1c2033] border border-[#262a40] text-slate-300 hover:text-white text-xs sm:text-sm font-medium transition-colors cursor-pointer"
               >
-                <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-                <span>Ver mi progreso ({completedTasksCount}/21)</span>
+                Tareas guiadas ({completedTasksCount}/21)
               </button>
             </div>
           </div>
 
-          {/* Columna derecha: Vista previa interactiva de Insertion Sort */}
           <div className="lg:col-span-6">
             <div
               onClick={() => {
                 const insertion = ALGORITHMS_CATALOG.find(a => a.id === 'insertion-sort');
                 onEnterAlgorithmsModule(insertion);
               }}
-              className="bg-[#121422] border border-[#22263c] hover:border-indigo-500/50 rounded-xl p-5 shadow-xl transition-colors cursor-pointer"
+              className="bg-[#121422] border border-[#22263c] hover:border-indigo-500/50 rounded-xl p-5 transition-colors cursor-pointer"
             >
               <div className="flex items-center justify-between mb-5">
                 <span className="text-xs font-bold text-slate-100">Insertion Sort</span>
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-400">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  En ejecución
+                <span className="text-[11px] font-mono text-slate-400">
+                  {currentFrame.stepLabel}
                 </span>
               </div>
 
-              <div className="relative h-48 flex items-end justify-between gap-3 sm:gap-4 px-2 pt-4 pb-2 border-b border-[#1e2236]">
-                <div className="absolute inset-x-0 top-1/4 border-t border-[#181b2c] pointer-events-none" />
-                <div className="absolute inset-x-0 top-2/4 border-t border-[#181b2c] pointer-events-none" />
-                <div className="absolute inset-x-0 top-3/4 border-t border-[#181b2c] pointer-events-none" />
-
+              <div className="relative h-44 flex items-end justify-between gap-3 sm:gap-4 px-2 pt-4 pb-2 border-b border-[#1e2236]">
                 {currentFrame.bars.map((val, idx) => {
                   const isActive = idx === currentFrame.activeIdx;
                   const isComparing = idx === currentFrame.compareIdx;
@@ -179,7 +176,7 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                             ? 'bg-amber-400'
                             : isComparing
                             ? 'bg-indigo-400'
-                            : 'bg-indigo-600/85'
+                            : 'bg-indigo-600/80'
                         }`}
                       />
                     </div>
@@ -187,9 +184,8 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                 })}
               </div>
 
-              <div className="flex items-center justify-between pt-3 text-[11px] font-mono">
-                <span className="text-slate-400">{currentFrame.caption}</span>
-                <span className="text-slate-200 font-semibold">{currentFrame.stepLabel}</span>
+              <div className="pt-3 text-[11px] font-mono text-slate-400">
+                {currentFrame.caption}
               </div>
             </div>
           </div>
@@ -197,27 +193,20 @@ export const HomeHub: React.FC<HomeHubProps> = ({
 
         <div className="border-t border-[#1b1e2e]" />
 
-        {/* Módulos del sistema */}
+        {/* Módulos */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-5 pb-2">
-          {/* Módulo 1 */}
           <div className="bg-[#121422] border border-[#22263c] rounded-xl p-5 flex flex-col justify-between">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="w-8 h-8 rounded-lg bg-[#191d30] border border-[#292f4c] flex items-center justify-center text-indigo-400">
-                  <Layers className="w-4 h-4" />
-                </div>
+                <h2 className="text-sm font-bold text-slate-100">Catálogo de Algoritmos</h2>
                 <span className="text-[11px] font-mono text-slate-400">
                   {uniqueCatalogAlgorithms.length} algoritmos
                 </span>
               </div>
 
-              <div>
-                <h2 className="text-sm font-bold text-slate-100">Catálogo de Algoritmos</h2>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Ordenamiento, Búsqueda y Divide y Vencerás con seguimiento de líneas en 4
-                  lenguajes, estado de variables y árbol de recursión.
-                </p>
-              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Ordenamiento, Búsqueda y Divide y Vencerás con seguimiento en 4 lenguajes, estado de variables y comparación en paralelo.
+              </p>
 
               <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[#1d2136]">
                 {uniqueCatalogAlgorithms.map(algo => (
@@ -234,69 +223,51 @@ export const HomeHub: React.FC<HomeHubProps> = ({
 
             <button
               onClick={() => onEnterAlgorithmsModule()}
-              className="mt-5 w-full py-2 px-3 rounded-lg bg-[#191d30] hover:bg-indigo-600 text-slate-200 hover:text-white border border-[#282e4a] hover:border-indigo-500 text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer"
+              className="mt-5 w-full py-2 px-3 rounded-lg bg-[#191d30] hover:bg-indigo-600 text-slate-200 hover:text-white border border-[#282e4a] hover:border-indigo-500 text-xs font-semibold text-center transition-colors cursor-pointer"
             >
-              <span>Abrir catálogo</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              Abrir catálogo
             </button>
           </div>
 
-          {/* Módulo 2 */}
           <div className="bg-[#121422] border border-[#22263c] rounded-xl p-5 flex flex-col justify-between">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="w-8 h-8 rounded-lg bg-[#191d30] border border-[#292f4c] flex items-center justify-center text-amber-400">
-                  <Code2 className="w-4 h-4" />
-                </div>
-                <span className="text-[11px] font-mono text-slate-400">Lenguaje C / JS</span>
+                <h2 className="text-sm font-bold text-slate-100">Código del Estudiante</h2>
+                <span className="text-[11px] font-mono text-slate-400">C / JS</span>
               </div>
 
-              <div>
-                <h2 className="text-sm font-bold text-slate-100">Código del Estudiante</h2>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Editor con instrumentación AST (Acorn.js) para compilar y depurar paso a paso tus
-                  propias implementaciones en C o JavaScript sobre un lienzo de memoria libre.
-                </p>
-              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Editor con instrumentación AST para compilar y depurar paso a paso tus propias implementaciones sobre el lienzo de memoria.
+              </p>
             </div>
 
             <button
               onClick={onEnterStudentCodeModule}
-              className="mt-5 w-full py-2 px-3 rounded-lg bg-[#191d30] hover:bg-indigo-600 text-slate-200 hover:text-white border border-[#282e4a] hover:border-indigo-500 text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer"
+              className="mt-5 w-full py-2 px-3 rounded-lg bg-[#191d30] hover:bg-indigo-600 text-slate-200 hover:text-white border border-[#282e4a] hover:border-indigo-500 text-xs font-semibold text-center transition-colors cursor-pointer"
             >
-              <span>Abrir laboratorio de código</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              Abrir editor
             </button>
           </div>
 
-          {/* Módulo 3 */}
           <div className="bg-[#121422] border border-[#22263c] rounded-xl p-5 flex flex-col justify-between">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <div className="w-8 h-8 rounded-lg bg-[#191d30] border border-[#292f4c] flex items-center justify-center text-emerald-400">
-                  <BookOpen className="w-4 h-4" />
-                </div>
-                <span className="flex items-center gap-1 text-[11px] font-mono text-emerald-400">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  {completedTasksCount} / 21 resueltas
+                <h2 className="text-sm font-bold text-slate-100">Tareas Guiadas</h2>
+                <span className="text-[11px] font-mono text-emerald-400">
+                  {completedTasksCount}/21
                 </span>
               </div>
 
-              <div>
-                <h2 className="text-sm font-bold text-slate-100">Tareas Interactivas Guiadas</h2>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  21 ejercicios de evaluación práctica (T01–T21) con tablas de traza, predicción de
-                  invariantes, construcción manual y verificación AST en C.
-                </p>
-              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                21 ejercicios prácticos organizados en niveles Básico, Intermedio y Avanzado con verificación sobre la traza real.
+              </p>
             </div>
 
             <button
               onClick={onEnterGuidedTasksModule}
-              className="mt-5 w-full py-2 px-3 rounded-lg bg-[#191d30] hover:bg-indigo-600 text-slate-200 hover:text-white border border-[#282e4a] hover:border-indigo-500 text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer"
+              className="mt-5 w-full py-2 px-3 rounded-lg bg-[#191d30] hover:bg-indigo-600 text-slate-200 hover:text-white border border-[#282e4a] hover:border-indigo-500 text-xs font-semibold text-center transition-colors cursor-pointer"
             >
-              <span>Abrir tareas guiadas</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              Abrir tareas
             </button>
           </div>
         </section>

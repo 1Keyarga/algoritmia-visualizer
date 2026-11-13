@@ -7,12 +7,14 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 
 interface MemoryPanelProps {
   currentStep: Step | null;
+  stepIndex?: number;
   isOpen: boolean;
   onToggleOpen: () => void;
 }
 
 export const MemoryPanel: React.FC<MemoryPanelProps> = ({
   currentStep,
+  stepIndex = 0,
   isOpen,
   onToggleOpen,
 }) => {
@@ -68,6 +70,7 @@ export const MemoryPanel: React.FC<MemoryPanelProps> = ({
           <MetricsOverview
             metrics={currentStep.metrics}
             complexity={currentStep.complexity}
+            stepIndex={stepIndex}
           />
         </div>
       </div>

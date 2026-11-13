@@ -329,7 +329,6 @@ export function generateInsertionSortTrace(initialData: number[]): Step[] {
     }
 
     // Inserción de la clave: arr[j + 1] = clave
-    shiftsCount++;
     for (let k = 0; k <= i; k++) {
       sortedIndices.add(k);
     }

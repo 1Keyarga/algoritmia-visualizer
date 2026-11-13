@@ -24,7 +24,7 @@ export const BUBBLE_SORT_OPTIMIZED_METADATA: AlgorithmMetadata = {
       { lineNumber: 5, code: '', indent: 0 },
       { lineNumber: 6, code: 'algoritmo ordenamiento_burbuja_optimizado(arr):', indent: 0 },
       { lineNumber: 7, code: '    n ← longitud(arr)', indent: 1 },
-      { lineNumber: 8, code: '    para i ← 0 hasta n - 1 hacer:', indent: 1 },
+      { lineNumber: 8, code: '    para i ← 0 hasta n - 2 hacer:', indent: 1 },
       { lineNumber: 9, code: '        intercambiado ← Falso', indent: 2 },
       { lineNumber: 10, code: '        para j ← 0 hasta n - i - 2 hacer:', indent: 2 },
       { lineNumber: 11, code: '            si arr[j] > arr[j + 1] entonces:', indent: 3 },
@@ -40,7 +40,7 @@ export const BUBBLE_SORT_OPTIMIZED_METADATA: AlgorithmMetadata = {
       { lineNumber: 3, code: '', indent: 0 },
       { lineNumber: 4, code: 'def bubble_sort(arr):', indent: 0 },
       { lineNumber: 5, code: '    n = len(arr)', indent: 1 },
-      { lineNumber: 6, code: '    for i in range(n):', indent: 1 },
+      { lineNumber: 6, code: '    for i in range(n - 1):', indent: 1 },
       { lineNumber: 7, code: '        swapped = False', indent: 2 },
       { lineNumber: 8, code: '        for j in range(n - i - 1):', indent: 2 },
       { lineNumber: 9, code: '            if arr[j] > arr[j + 1]:', indent: 3 },
@@ -57,7 +57,7 @@ export const BUBBLE_SORT_OPTIMIZED_METADATA: AlgorithmMetadata = {
       { lineNumber: 4, code: '', indent: 0 },
       { lineNumber: 5, code: 'void bubbleSort(vector<int>& arr) {', indent: 0 },
       { lineNumber: 6, code: '    int n = arr.size();', indent: 1 },
-      { lineNumber: 7, code: '    for (int i = 0; i < n; i++) {', indent: 1 },
+      { lineNumber: 7, code: '    for (int i = 0; i < n - 1; i++) {', indent: 1 },
       { lineNumber: 8, code: '        bool swapped = false;', indent: 2 },
       { lineNumber: 9, code: '        for (int j = 0; j < n - i - 1; j++) {', indent: 2 },
       { lineNumber: 10, code: '            if (arr[j] > arr[j + 1]) {', indent: 3 },
@@ -76,7 +76,7 @@ export const BUBBLE_SORT_OPTIMIZED_METADATA: AlgorithmMetadata = {
       { lineNumber: 4, code: '', indent: 0 },
       { lineNumber: 5, code: 'public static void bubbleSort(int[] arr) {', indent: 0 },
       { lineNumber: 6, code: '    int n = arr.length;', indent: 1 },
-      { lineNumber: 7, code: '    for (int i = 0; i < n; i++) {', indent: 1 },
+      { lineNumber: 7, code: '    for (int i = 0; i < n - 1; i++) {', indent: 1 },
       { lineNumber: 8, code: '        boolean swapped = false;', indent: 2 },
       { lineNumber: 9, code: '        for (int j = 0; j < n - i - 1; j++) {', indent: 2 },
       { lineNumber: 10, code: '            if (arr[j] > arr[j + 1]) {', indent: 3 },
@@ -114,7 +114,7 @@ export const BUBBLE_SORT_CLASSIC_METADATA: AlgorithmMetadata = {
       { lineNumber: 5, code: '', indent: 0 },
       { lineNumber: 6, code: 'algoritmo ordenamiento_burbuja_clasico(arr):', indent: 0 },
       { lineNumber: 7, code: '    n ← longitud(arr)', indent: 1 },
-      { lineNumber: 8, code: '    para i ← 0 hasta n - 1 hacer:', indent: 1 },
+      { lineNumber: 8, code: '    para i ← 0 hasta n - 2 hacer:', indent: 1 },
       { lineNumber: 9, code: '        para j ← 0 hasta n - i - 2 hacer:', indent: 2 },
       { lineNumber: 10, code: '            si arr[j] > arr[j + 1] entonces:', indent: 3 },
       { lineNumber: 11, code: '                intercambiar(arr, j, j + 1)', indent: 4 },
@@ -126,7 +126,7 @@ export const BUBBLE_SORT_CLASSIC_METADATA: AlgorithmMetadata = {
       { lineNumber: 3, code: '', indent: 0 },
       { lineNumber: 4, code: 'def bubble_sort_classic(arr):', indent: 0 },
       { lineNumber: 5, code: '    n = len(arr)', indent: 1 },
-      { lineNumber: 6, code: '    for i in range(n):', indent: 1 },
+      { lineNumber: 6, code: '    for i in range(n - 1):', indent: 1 },
       { lineNumber: 7, code: '        for j in range(n - i - 1):', indent: 2 },
       { lineNumber: 8, code: '            if arr[j] > arr[j + 1]:', indent: 3 },
       { lineNumber: 9, code: '                swap(arr, j, j + 1)', indent: 4 },
@@ -139,7 +139,7 @@ export const BUBBLE_SORT_CLASSIC_METADATA: AlgorithmMetadata = {
       { lineNumber: 4, code: '', indent: 0 },
       { lineNumber: 5, code: 'void bubbleSortClassic(vector<int>& arr) {', indent: 0 },
       { lineNumber: 6, code: '    int n = arr.size();', indent: 1 },
-      { lineNumber: 7, code: '    for (int i = 0; i < n; i++) {', indent: 1 },
+      { lineNumber: 7, code: '    for (int i = 0; i < n - 1; i++) {', indent: 1 },
       { lineNumber: 8, code: '        for (int j = 0; j < n - i - 1; j++) {', indent: 2 },
       { lineNumber: 9, code: '            if (arr[j] > arr[j + 1]) {', indent: 3 },
       { lineNumber: 10, code: '                swap(arr[j], arr[j + 1]);', indent: 4 },
@@ -155,7 +155,7 @@ export const BUBBLE_SORT_CLASSIC_METADATA: AlgorithmMetadata = {
       { lineNumber: 4, code: '', indent: 0 },
       { lineNumber: 5, code: 'public static void bubbleSortClassic(int[] arr) {', indent: 0 },
       { lineNumber: 6, code: '    int n = arr.length;', indent: 1 },
-      { lineNumber: 7, code: '    for (int i = 0; i < n; i++) {', indent: 1 },
+      { lineNumber: 7, code: '    for (int i = 0; i < n - 1; i++) {', indent: 1 },
       { lineNumber: 8, code: '        for (int j = 0; j < n - i - 1; j++) {', indent: 2 },
       { lineNumber: 9, code: '            if (arr[j] > arr[j + 1]) {', indent: 3 },
       { lineNumber: 10, code: '                swap(arr, j, j + 1);', indent: 4 },
@@ -273,7 +273,7 @@ export function generateBubbleSortTrace(initialData: number[], isOptimized: bool
   const sortedIndices = new Set<number>();
   let lastI = 0;
 
-  for (let i = 0; i < n; i++) {
+  for (let i = 0; i < n - 1; i++) {
     lastI = i;
 
     // Bucle exterior

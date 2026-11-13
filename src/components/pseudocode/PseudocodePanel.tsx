@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import type { Step } from '../../types/trace';
 import type { AlgorithmMetadata, SupportedLanguage } from '../../types/algorithm';
 import { StepExplanation } from './StepExplanation';
-import { ChevronLeft, ChevronRight, Code2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PseudocodePanelProps {
   algorithm: AlgorithmMetadata;
@@ -33,6 +33,19 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
   ];
 
   const lines = algorithm.codeByLanguage[selectedLanguage] || [];
+  const activeLineRef = useRef<HTMLDivElement | null>(null);
+
+  const activeLineForSelectedLang =
+    currentStep?.activeLineByLang?.[selectedLanguage] || currentStep?.activeLine || 0;
+
+  useEffect(() => {
+    if (activeLineRef.current) {
+      activeLineRef.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+      });
+    }
+  }, [activeLineForSelectedLang, selectedLanguage]);
 
   const renderCodeWithSyntax = (code: string) => {
     if (!code) return <span>&nbsp;</span>;
@@ -107,7 +120,6 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
             Pseudocódigo
           </span>
         </div>
-        <Code2 className="w-4 h-4 text-indigo-400/70 mt-4" />
       </div>
     );
   }
@@ -185,6 +197,7 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
           return (
             <div
               key={line.lineNumber}
+              ref={line.lineNumber === activeLineForSelectedLang ? activeLineRef : null}
               className={`flex items-center px-3 py-1 border-l-4 ${borderClass} ${rowClass} min-w-0`}
             >
               <div className="w-9 text-slate-500 text-right pr-3 select-none flex items-center justify-end text-xs shrink-0">
@@ -212,6 +225,7 @@ export const PseudocodePanel: React.FC<PseudocodePanelProps> = ({
           currentStep={currentStep}
           stepIndex={stepIndex}
           totalSteps={totalSteps}
+          activeLineNumber={activeLineForSelectedLang}
         />
       </div>
     </div>

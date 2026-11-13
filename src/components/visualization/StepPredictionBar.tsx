@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Step } from '../../types/trace';
 import { Crosshair, CheckCircle2, AlertCircle, ArrowRight, X } from 'lucide-react';
 
@@ -20,14 +20,14 @@ export const StepPredictionBar: React.FC<StepPredictionBarProps> = ({
   onClose,
 }) => {
   const [score, setScore] = useState({ hits: 0, attempts: 0 });
-  const [feedback, setFeedback] = useState<{
+  const [feedbackState, setFeedbackState] = useState<{
+    stepIndex: number;
     isCorrect: boolean;
     message: string;
   } | null>(null);
 
-  useEffect(() => {
-    setFeedback(null);
-  }, [stepIndex]);
+  const feedback =
+    feedbackState && feedbackState.stepIndex === stepIndex ? feedbackState : null;
 
   const expectedAction: PredictedAction = useMemo(() => {
     if (!nextStep || !currentStep) return 'control';
@@ -58,7 +58,8 @@ export const StepPredictionBar: React.FC<StepPredictionBarProps> = ({
     }));
 
     if (isCorrect) {
-      setFeedback({
+      setFeedbackState({
+        stepIndex,
         isCorrect: true,
         message: `Correcto: ${nextStep.explanation}`,
       });
@@ -67,7 +68,8 @@ export const StepPredictionBar: React.FC<StepPredictionBarProps> = ({
       }, 650);
     } else {
       const correctLabel = options.find(o => o.key === expectedAction)?.label || '';
-      setFeedback({
+      setFeedbackState({
+        stepIndex,
         isCorrect: false,
         message: `El siguiente paso corresponde a "${correctLabel}": ${nextStep.explanation}`,
       });

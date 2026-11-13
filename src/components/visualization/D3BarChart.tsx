@@ -269,6 +269,7 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array, showHeatmap = fal
       .attr('fill', d => getFill(d))
       .attr('stroke', d => getStroke(d))
       .attr('stroke-width', d => (d.state !== 'default' && d.state !== 'discarded' ? 2 : 1))
+      .attr('stroke-dasharray', d => (d.state === 'selected' ? '4,2' : null))
       .transition()
       .duration(duration)
       .ease(d3.easeCubicOut)
@@ -289,6 +290,15 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array, showHeatmap = fal
       })
       .attr('height', d => Math.max(4, innerHeight - yScale(d.value)))
       .attr('opacity', d => (d.state === 'comparing' ? 1 : 0));
+
+    const getStateIndicator = (d: ArrayElement) => {
+      if (d.nonColorIndicator) return d.nonColorIndicator;
+      if (d.state === 'comparing') return 'CMP';
+      if (d.state === 'swapped') return 'SWP';
+      if (d.state === 'selected') return 'SEL';
+      if (d.state === 'sorted') return 'OK';
+      return '';
+    };
 
     // Etiqueta inferior: estabilidad / indicador no cromático o contador de accesos en modo Mapa de Calor
     barGroups
@@ -314,10 +324,11 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array, showHeatmap = fal
         if (showHeatmap) {
           return `${d.accessCount || 0} acc`;
         }
-        if (d.nonColorIndicator && d.label) {
-          return `${d.label} (${d.nonColorIndicator})`;
+        const indicator = getStateIndicator(d);
+        if (indicator && d.label) {
+          return array.length <= 12 ? `${d.label}·${indicator}` : indicator;
         }
-        return d.nonColorIndicator || d.label || '';
+        return indicator || d.label || '';
       });
 
     // Valor numérico sobre la barra

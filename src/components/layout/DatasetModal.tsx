@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { parseCustomDataset, generateRandomDataset } from '../../core/utils/generator';
 import { X, Sliders, AlertCircle, Dices, TrendingDown, TrendingUp } from 'lucide-react';
 
@@ -7,25 +7,17 @@ interface DatasetModalProps {
   onClose: () => void;
   onApplyDataset: (dataset: number[]) => void;
   currentDataset: number[];
+  isBinarySearch?: boolean;
 }
 
-export const DatasetModal: React.FC<DatasetModalProps> = ({
-  isOpen,
+const DatasetModalContent: React.FC<Omit<DatasetModalProps, 'isOpen'>> = ({
   onClose,
   onApplyDataset,
   currentDataset,
+  isBinarySearch = false,
 }) => {
   const [inputValue, setInputValue] = useState(currentDataset.join(', '));
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (isOpen) {
-      setInputValue(currentDataset.join(', '));
-      setError(null);
-    }
-  }, [isOpen, currentDataset]);
-
-  if (!isOpen) return null;
 
   const handleApply = () => {
     const parsed = parseCustomDataset(inputValue);
@@ -82,6 +74,12 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
             />
           </div>
 
+          {isBinarySearch && (
+            <div className="text-[11px] text-indigo-200/90 bg-indigo-950/35 border border-indigo-500/30 px-3 py-2 rounded-lg leading-snug">
+              La Búsqueda Binaria requiere un arreglo ordenado: si ingresas valores desordenados, se ordenarán ascendentemente al aplicar.
+            </div>
+          )}
+
           {error && (
             <div className="flex items-center gap-2 text-xs text-rose-300 bg-rose-950/40 border border-rose-800/50 p-2.5 rounded-lg">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -136,4 +134,12 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
       </div>
     </div>
   );
+};
+
+export const DatasetModal: React.FC<DatasetModalProps> = ({
+  isOpen,
+  ...rest
+}) => {
+  if (!isOpen) return null;
+  return <DatasetModalContent key={rest.currentDataset.join(',')} {...rest} />;
 };

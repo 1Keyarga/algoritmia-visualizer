@@ -1,18 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { GUIDED_TASKS_REPOSITORY, type GuidedTask } from '../../core/tasks/tasksRepository';
 import { instrumentAndTraceStudentCode } from '../../core/ast/astInstrumenter';
-import {
-  BookOpen,
-  CheckCircle2,
-  AlertCircle,
-  ChevronLeft,
-  ChevronRight,
-  RotateCcw,
-  ArrowLeftRight,
-  SlidersHorizontal,
-  Crosshair,
-  Cpu,
-} from 'lucide-react';
+import type { AlgorithmMetadata, SupportedLanguage } from '../../types/algorithm';
+import type { Step } from '../../types/trace';
+import { StepExplanation } from '../pseudocode/StepExplanation';
+import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+
+export type TaskAttemptCategory =
+  | 'first_attempt'
+  | 'second_attempt'
+  | 'multiple_attempts'
+  | 'failed';
 
 interface InteractiveTaskPanelProps {
   isOpen: boolean;
@@ -21,138 +19,179 @@ interface InteractiveTaskPanelProps {
     algorithmId: string,
     dataset: number[],
     searchTarget?: number,
-    enablePredictionMode?: boolean
+    enablePredictionMode?: boolean,
+    initialStepIndex?: number
   ) => void;
+  onUnlockTaskExecution: (customAstSteps?: Step[]) => void;
   completedTaskIds: string[];
   onMarkTaskCompleted: (taskId: string) => void;
+  taskOutcomes?: Record<string, TaskAttemptCategory>;
+  onRecordTaskOutcome?: (taskId: string, category: TaskAttemptCategory) => void;
   isPredictionModeActive: boolean;
   onTogglePredictionMode: () => void;
+  selectedTaskId: string;
+  onSelectTaskId: (taskId: string) => void;
+  isTaskUnlocked: boolean;
+  algorithm: AlgorithmMetadata;
+  currentStep: Step | null;
+  stepIndex: number;
+  totalSteps: number;
+  selectedLanguage: SupportedLanguage;
+  onChangeLanguage: (lang: SupportedLanguage) => void;
 }
 
-export const InteractiveTaskPanel: React.FC<InteractiveTaskPanelProps> = ({
-  isOpen,
+/**
+ * Envuelve arreglos ({6, 3, 8, 1, 5}), accesos indexados (arr[j + 1]) y expresiones
+ * cortas (n = 5, i = 0) en bloques indivisibles para que nunca se partan a mitad de línea.
+ */
+function renderCleanPrompt(text: string): React.ReactNode {
+  const cleaned = text.replace(/\bint\s+arr\[\]\s*=\s*/g, '');
+  const tokenRegex =
+    /(\{[0-9,\s]+\}|\[[0-9,\s.]+\]|\([nijklowhigm\s=0-9+]+\)|\b(?:arr|left|right|result)\[[^\]]+\]|\b(?:mid|piso|techo|log2)\([^)]+\)|\b[nij]\s*=\s*[0-9]+(?:\s*\.\.\s*[n0-9\s\-+]+)?)/g;
+
+  const parts = cleaned.split(tokenRegex);
+  return parts.map((part, idx) => {
+    if (!part) return null;
+    if (tokenRegex.test(part)) {
+      tokenRegex.lastIndex = 0;
+      return (
+        <code
+          key={idx}
+          className="whitespace-nowrap inline-block font-mono text-[11px] bg-[#121525] text-indigo-200 px-1.5 py-0.2 rounded border border-[#272c48] mx-0.5 leading-snug"
+        >
+          {part}
+        </code>
+      );
+    }
+    tokenRegex.lastIndex = 0;
+    return <React.Fragment key={idx}>{part}</React.Fragment>;
+  });
+}
+
+interface InteractiveTaskBodyProps extends InteractiveTaskPanelProps {
+  currentTask: GuidedTask;
+}
+
+export const InteractiveTaskPanel: React.FC<InteractiveTaskPanelProps> = props => {
+  if (!props.isOpen) return null;
+
+  const currentTask =
+    GUIDED_TASKS_REPOSITORY.find(t => t.id === props.selectedTaskId) || GUIDED_TASKS_REPOSITORY[0];
+
+  return <InteractiveTaskBody key={currentTask.id} {...props} currentTask={currentTask} />;
+};
+
+const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
+  currentTask,
   onLoadTaskScenario,
+  onUnlockTaskExecution,
   completedTaskIds,
   onMarkTaskCompleted,
-  isPredictionModeActive,
-  onTogglePredictionMode,
+  taskOutcomes = {},
+  onRecordTaskOutcome,
+  onSelectTaskId,
+  isTaskUnlocked,
+  algorithm,
+  currentStep,
+  stepIndex,
+  totalSteps,
+  selectedLanguage,
+  onChangeLanguage,
 }) => {
-  const [familyFilter, setFamilyFilter] = useState<string>('Todas');
-  const [selectedTaskId, setSelectedTaskId] = useState<string>('T01');
+  const [levelFilter, setLevelFilter] = useState<'Básico' | 'Intermedio' | 'Avanzado'>(
+    currentTask.difficulty
+  );
+  const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<'activity' | 'code'>('activity');
+  const [isTaskMenuOpen, setIsTaskMenuOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // 1. Estados para 'Completar código'
-  const [blankInputs, setBlankInputs] = useState<string[]>([]);
+  const [blankInputs, setBlankInputs] = useState<string[]>(() =>
+    Array(currentTask.expectedBlanks ? currentTask.expectedBlanks.length : 0).fill('')
+  );
   const [astCompileSummary, setAstCompileSummary] = useState<string | null>(null);
 
-  // 2. Estados para 'Construcción manual'
-  const [manualArray, setManualArray] = useState<number[]>([]);
+  const [manualArray, setManualArray] = useState<number[]>(() =>
+    currentTask.manualInitialArray ? [...currentTask.manualInitialArray] : []
+  );
   const [selectedSwapIdx, setSelectedSwapIdx] = useState<number | null>(null);
   const [manualExtraInput, setManualExtraInput] = useState<string>('');
 
-  // 3. Estados para 'Predicción de arreglo' (T01, T03, T16)
-  const [predictedArrayInputs, setPredictedArrayInputs] = useState<string[]>([]);
+  const [predictedArrayInputs, setPredictedArrayInputs] = useState<string[]>(() =>
+    currentTask.arrayPredictionCheck
+      ? currentTask.arrayPredictionCheck.initialArray.map(v => String(v))
+      : []
+  );
   const [predictedExtraInput, setPredictedExtraInput] = useState<string>('');
 
-  // 4. Estados para 'Tabla de traza' (T09, T12)
-  const [traceRowsInputs, setTraceRowsInputs] = useState<string[][]>([]);
+  const [traceRowsInputs, setTraceRowsInputs] = useState<string[][]>(() =>
+    currentTask.traceTableCheck
+      ? currentTask.traceTableCheck.expectedRows.map(() => ['', '', ''])
+      : []
+  );
   const [traceExtraInput, setTraceExtraInput] = useState<string>('');
 
-  // 5. Estados para 'Campos numéricos exactos' (T05, T07, T11, T13, T15, T19)
-  const [numericInputs, setNumericInputs] = useState<string[]>([]);
+  const [numericInputs, setNumericInputs] = useState<string[]>(() =>
+    Array(currentTask.numericFieldsCheck ? currentTask.numericFieldsCheck.length : 0).fill('')
+  );
+  const [selectedConceptOption, setSelectedConceptOption] = useState<number | null>(null);
 
-  // Justificación técnica abierta y resultado de verificación
-  const [openResponse, setOpenResponse] = useState<string>('');
+  const [attemptsUsed, setAttemptsUsed] = useState<number>(0);
+  const [manualHintLevel, setManualHintLevel] = useState<number>(0);
+
   const [verificationState, setVerificationState] = useState<{
     checked: boolean;
     isCorrect: boolean;
     message: string;
   } | null>(null);
 
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsTaskMenuOpen(false);
+      }
+    };
+    if (isTaskMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isTaskMenuOpen]);
+
   const filteredTasks = useMemo(() => {
-    if (familyFilter === 'Todas') return GUIDED_TASKS_REPOSITORY;
-    return GUIDED_TASKS_REPOSITORY.filter(t => t.family === familyFilter);
-  }, [familyFilter]);
+    return GUIDED_TASKS_REPOSITORY.filter(t => t.difficulty === levelFilter);
+  }, [levelFilter]);
 
-  const currentTask: GuidedTask = useMemo(() => {
-    return (
-      GUIDED_TASKS_REPOSITORY.find(t => t.id === selectedTaskId) ||
-      filteredTasks[0] ||
-      GUIDED_TASKS_REPOSITORY[0]
-    );
-  }, [selectedTaskId, filteredTasks]);
+  const isCodeCompletionTask = currentTask.interactionType === 'Completar código';
+  const isCodeTabSpoiled =
+    isCodeCompletionTask && !isTaskUnlocked && !completedTaskIds.includes(currentTask.id);
 
-  // Renderizado del snippet con numeración de blancos [BLANCO_1], [BLANCO_2]
   const formattedSnippet = useMemo(() => {
-    let blankCounter = 0;
-    return currentTask.codeSnippet.replace(/____/g, () => {
-      blankCounter += 1;
-      return `[BLANCO_${blankCounter}]`;
-    });
+    const parts = currentTask.codeSnippet.split('____');
+    return parts
+      .map((part, idx) => (idx < parts.length - 1 ? `${part}[BLANCO_${idx + 1}]` : part))
+      .join('');
   }, [currentTask.codeSnippet]);
 
-  // Reiniciar controles interactivos y sincronizar escenario cuando cambia la tarea seleccionada
   useEffect(() => {
-    if (!currentTask) return;
-    const numBlanks = currentTask.expectedBlanks ? currentTask.expectedBlanks.length : 0;
-    setBlankInputs(Array(numBlanks).fill(''));
-    setAstCompileSummary(null);
-
-    setManualArray(currentTask.manualInitialArray ? [...currentTask.manualInitialArray] : []);
-    setSelectedSwapIdx(null);
-    setManualExtraInput('');
-
-    if (currentTask.arrayPredictionCheck) {
-      setPredictedArrayInputs(
-        currentTask.arrayPredictionCheck.initialArray.map(v => String(v))
-      );
-      setPredictedExtraInput('');
-    } else {
-      setPredictedArrayInputs([]);
-      setPredictedExtraInput('');
-    }
-
-    if (currentTask.traceTableCheck) {
-      setTraceRowsInputs(
-        currentTask.traceTableCheck.expectedRows.map(() => ['', '', ''])
-      );
-      setTraceExtraInput('');
-    } else {
-      setTraceRowsInputs([]);
-      setTraceExtraInput('');
-    }
-
-    if (currentTask.numericFieldsCheck) {
-      setNumericInputs(Array(currentTask.numericFieldsCheck.length).fill(''));
-    } else {
-      setNumericInputs([]);
-    }
-
-    setOpenResponse('');
-    setVerificationState(null);
-
-    if (isOpen) {
-      onLoadTaskScenario(
-        currentTask.targetAlgorithmId,
-        currentTask.presetDataset,
-        currentTask.presetSearchTarget,
-        false
-      );
-    }
-  }, [currentTask.id, isOpen]);
-
-  if (!isOpen) return null;
+    onLoadTaskScenario(
+      currentTask.targetAlgorithmId,
+      currentTask.presetDataset,
+      currentTask.presetSearchTarget,
+      false,
+      currentTask.breakpointStepIndex
+    );
+  }, [currentTask, onLoadTaskScenario]);
 
   const currentIndexInFiltered = filteredTasks.findIndex(t => t.id === currentTask.id);
 
   const handlePrevTask = () => {
     if (currentIndexInFiltered > 0) {
-      setSelectedTaskId(filteredTasks[currentIndexInFiltered - 1].id);
+      onSelectTaskId(filteredTasks[currentIndexInFiltered - 1].id);
     }
   };
 
   const handleNextTask = () => {
     if (currentIndexInFiltered < filteredTasks.length - 1) {
-      setSelectedTaskId(filteredTasks[currentIndexInFiltered + 1].id);
+      onSelectTaskId(filteredTasks[currentIndexInFiltered + 1].id);
     }
   };
 
@@ -178,22 +217,70 @@ export const InteractiveTaskPanel: React.FC<InteractiveTaskPanelProps> = ({
     }
   };
 
+  const registerFailedAttempt = (errorMessage: string) => {
+    const nextAttempts = Math.min(3, attemptsUsed + 1);
+    setAttemptsUsed(nextAttempts);
+    const exhausted = nextAttempts >= 3;
+    if (exhausted) {
+      if (!completedTaskIds.includes(currentTask.id)) {
+        onRecordTaskOutcome?.(currentTask.id, 'failed');
+      }
+      onUnlockTaskExecution();
+    }
+    setVerificationState({
+      checked: true,
+      isCorrect: false,
+      message: exhausted
+        ? `${errorMessage} Se agotaron los 3 intentos y se desbloqueó la traza completa.`
+        : `${errorMessage} (Intento ${nextAttempts} de 3).`,
+    });
+  };
+
+  const registerSuccess = (successMessage: string, customAstSteps?: Step[]) => {
+    const attemptNumber = attemptsUsed + 1;
+    const category: TaskAttemptCategory =
+      attemptNumber === 1
+        ? 'first_attempt'
+        : attemptNumber === 2
+        ? 'second_attempt'
+        : 'multiple_attempts';
+    onRecordTaskOutcome?.(currentTask.id, category);
+    onMarkTaskCompleted(currentTask.id);
+    onUnlockTaskExecution(customAstSteps);
+    setVerificationState({
+      checked: true,
+      isCorrect: true,
+      message: `${successMessage} La ejecución completa ha sido desbloqueada.`,
+    });
+  };
+
   const handleVerifyTask = () => {
-    // 1. Verificación de Completar Código + Compilación AST Real
+    if (selectedConceptOption === null) {
+      setVerificationState({
+        checked: true,
+        isCorrect: false,
+        message: 'Selecciona una alternativa en la pregunta conceptual antes de verificar.',
+      });
+      return;
+    }
+
+    const conceptMatches = selectedConceptOption === currentTask.conceptualQuestion.correctIndex;
+
     if (currentTask.interactionType === 'Completar código' && currentTask.expectedBlanks) {
       const anyEmpty = blankInputs.some(b => !b.trim());
       if (anyEmpty) {
         setVerificationState({
           checked: true,
           isCorrect: false,
-          message: 'Completa todas las expresiones en blanco antes de compilar y verificar.',
+          message: 'Completa los espacios en blanco del código antes de verificar.',
         });
         return;
       }
 
-      // Ejecutar realmente el código C completado en el motor AST si tiene plantilla ejecutable
       let astDiagnostic = '';
       let astSuccess = true;
+      let generatedAstSteps: Step[] | undefined = undefined;
+
       if (currentTask.cExecutableTemplate) {
         let compiledC = currentTask.cExecutableTemplate;
         blankInputs.forEach((val, idx) => {
@@ -203,12 +290,13 @@ export const InteractiveTaskPanel: React.FC<InteractiveTaskPanelProps> = ({
         const astResult = instrumentAndTraceStudentCode(compiledC, currentTask.presetDataset);
         if (!astResult.success) {
           astSuccess = false;
-          astDiagnostic = `Diagnóstico del motor AST: ${astResult.error}`;
+          astDiagnostic = astResult.error || 'Error de ejecución';
           setAstCompileSummary(astDiagnostic);
         } else {
+          generatedAstSteps = astResult.steps;
           const lastStep = astResult.steps?.[astResult.steps.length - 1];
           const finalArr = lastStep?.array.map(e => e.value).join(', ') || '';
-          astDiagnostic = `Motor AST ejecutó ${astResult.steps?.length || 0} pasos sin errores (Estado final: [${finalArr}]).`;
+          astDiagnostic = `Resultado final: [${finalArr}] (${astResult.steps?.length || 0} pasos).`;
           setAstCompileSummary(astDiagnostic);
         }
       }
@@ -218,26 +306,18 @@ export const InteractiveTaskPanel: React.FC<InteractiveTaskPanelProps> = ({
         return acceptedList.some(acc => normalizeCodeToken(acc) === studentVal);
       });
 
-      if (allBlanksMatch && astSuccess) {
-        onMarkTaskCompleted(currentTask.id);
-        setVerificationState({
-          checked: true,
-          isCorrect: true,
-          message: 'Código verificado y validado por el motor de ejecución AST.',
-        });
+      if (allBlanksMatch && astSuccess && conceptMatches) {
+        registerSuccess('Respuesta correcta.', generatedAstSteps);
+      } else if (!astSuccess) {
+        registerFailedAttempt(`La expresión produjo un fallo (${astDiagnostic}).`);
+      } else if (!allBlanksMatch) {
+        registerFailedAttempt('La expresión ingresada en el código no es correcta.');
       } else {
-        setVerificationState({
-          checked: true,
-          isCorrect: false,
-          message: !astSuccess
-            ? `La condición ingresada produjo un fallo en ejecución (${astDiagnostic}).`
-            : 'La condición ingresada compila pero no cumple la propiedad algorítmica requerida (estabilidad, cota o caso base).',
-        });
+        registerFailedAttempt('El código es correcto, pero la alternativa conceptual no coincide.');
       }
       return;
     }
 
-    // 2. Verificación de Construcción Manual + Invariante/Pivote
     if (currentTask.interactionType === 'Construcción manual' && currentTask.manualTargetArray) {
       const arrayMatches =
         manualArray.length === currentTask.manualTargetArray.length &&
@@ -248,26 +328,20 @@ export const InteractiveTaskPanel: React.FC<InteractiveTaskPanelProps> = ({
           manualExtraInput.trim() !== ''
         : true;
 
-      if (arrayMatches && extraMatches) {
-        onMarkTaskCompleted(currentTask.id);
-        setVerificationState({
-          checked: true,
-          isCorrect: true,
-          message: 'Construcción del arreglo e invariante verificados correctamente.',
-        });
+      if (arrayMatches && extraMatches && conceptMatches) {
+        registerSuccess('Respuesta correcta.');
+      } else if (!arrayMatches) {
+        registerFailedAttempt(
+          `El arreglo [${manualArray.join(', ')}] no coincide con el estado esperado.`
+        );
+      } else if (!extraMatches) {
+        registerFailedAttempt('El arreglo es correcto, pero el valor numérico indicado no coincide.');
       } else {
-        setVerificationState({
-          checked: true,
-          isCorrect: false,
-          message: !arrayMatches
-            ? `El arreglo construido [${manualArray.join(', ')}] aún no coincide con el estado exacto tras la operación.`
-            : 'El arreglo es correcto, pero el valor numérico del prefijo/pivote indicado no es exacto.',
-        });
+        registerFailedAttempt('La construcción es correcta, pero la alternativa conceptual no coincide.');
       }
       return;
     }
 
-    // 3. Verificación de Predicción Exacta de Arreglo + Valor de Invariante (T01, T03, T16)
     if (currentTask.arrayPredictionCheck) {
       const { expectedArray, expectedExtraValue } = currentTask.arrayPredictionCheck;
       const studentNums = predictedArrayInputs.map(v => Number(v.trim()));
@@ -280,26 +354,20 @@ export const InteractiveTaskPanel: React.FC<InteractiveTaskPanelProps> = ({
         predictedExtraInput.trim() !== '' &&
         Number(predictedExtraInput.trim()) === expectedExtraValue;
 
-      if (arrayMatches && extraMatches) {
-        onMarkTaskCompleted(currentTask.id);
-        setVerificationState({
-          checked: true,
-          isCorrect: true,
-          message: 'Predicción del arreglo y valor de invariante verificados con exactitud.',
-        });
+      if (arrayMatches && extraMatches && conceptMatches) {
+        registerSuccess('Respuesta correcta.');
+      } else if (!arrayMatches) {
+        registerFailedAttempt(
+          `El arreglo [${studentNums.join(', ')}] no coincide con el resultado de la operación.`
+        );
+      } else if (!extraMatches) {
+        registerFailedAttempt('El arreglo es correcto, pero el valor de (b) no coincide.');
       } else {
-        setVerificationState({
-          checked: true,
-          isCorrect: false,
-          message: !arrayMatches
-            ? `El estado predicho [${studentNums.join(', ')}] no coincide con el resultado exacto de la operación.`
-            : 'El arreglo predicho es correcto, pero el valor numérico de la pregunta (b) es incorrecto.',
-        });
+        registerFailedAttempt('Los valores numéricos son correctos, pero la alternativa conceptual no coincide.');
       }
       return;
     }
 
-    // 4. Verificación de Tabla de Traza Paso a Paso (low, high, mid) (T09, T12)
     if (currentTask.traceTableCheck) {
       const { expectedRows, expectedExtraValue } = currentTask.traceTableCheck;
       let firstWrongRow = -1;
@@ -322,27 +390,18 @@ export const InteractiveTaskPanel: React.FC<InteractiveTaskPanelProps> = ({
         traceExtraInput.trim() !== '' &&
         Number(traceExtraInput.trim()) === expectedExtraValue;
 
-      if (firstWrongRow === -1 && extraMatches) {
-        onMarkTaskCompleted(currentTask.id);
-        setVerificationState({
-          checked: true,
-          isCorrect: true,
-          message: 'Traza completa (low, high, mid) y retorno verificados correctamente.',
-        });
+      if (firstWrongRow === -1 && extraMatches && conceptMatches) {
+        registerSuccess('Respuesta correcta.');
+      } else if (firstWrongRow !== -1) {
+        registerFailedAttempt(`Revisa los punteros en el Paso ${firstWrongRow} de la tabla.`);
+      } else if (!extraMatches) {
+        registerFailedAttempt('La tabla es correcta, pero el valor retornado no coincide.');
       } else {
-        setVerificationState({
-          checked: true,
-          isCorrect: false,
-          message:
-            firstWrongRow !== -1
-              ? `Error en la Iteración ${firstWrongRow} de la tabla de traza: verifica el cálculo entero mid = Math.floor((low + high) / 2) y qué mitad se descarta.`
-              : 'Las iteraciones de la traza son correctas, pero el valor final retornado no coincide.',
-        });
+        registerFailedAttempt('La traza es correcta, pero la alternativa conceptual no coincide.');
       }
       return;
     }
 
-    // 5. Verificación de Campos Cuantitativos Exactos (T05, T07, T11, T13, T15, T19)
     if (currentTask.numericFieldsCheck) {
       let wrongIdx = -1;
       currentTask.numericFieldsCheck.forEach((field, idx) => {
@@ -352,462 +411,638 @@ export const InteractiveTaskPanel: React.FC<InteractiveTaskPanelProps> = ({
         }
       });
 
-      if (wrongIdx === -1) {
-        onMarkTaskCompleted(currentTask.id);
-        setVerificationState({
-          checked: true,
-          isCorrect: true,
-          message: 'Cálculos cuantitativos y métricas verificados correctamente.',
-        });
+      if (wrongIdx === -1 && conceptMatches) {
+        registerSuccess('Respuesta correcta.');
+      } else if (wrongIdx !== -1) {
+        registerFailedAttempt(
+          `El valor en "${currentTask.numericFieldsCheck[wrongIdx].label}" no es exacto.`
+        );
       } else {
-        setVerificationState({
-          checked: true,
-          isCorrect: false,
-          message: `El valor ingresado en "${currentTask.numericFieldsCheck[wrongIdx].label}" no es exacto. Compáralo con las métricas del visualizador.`,
-        });
+        registerFailedAttempt('Los valores numéricos son correctos, pero la alternativa conceptual no coincide.');
       }
     }
   };
 
   const isCompleted = completedTaskIds.includes(currentTask.id);
+  const currentOutcome = taskOutcomes[currentTask.id];
+  const unlockedHintsCount = Math.max(attemptsUsed, manualHintLevel);
+  const showFullCriteria =
+    verificationState?.isCorrect === true || attemptsUsed >= 3 || isCompleted;
+
+  const languages: { id: SupportedLanguage; label: string }[] = [
+    { id: 'pseudocode', label: 'Pseudocódigo' },
+    { id: 'python', label: 'Python' },
+    { id: 'cpp', label: 'C++' },
+    { id: 'java', label: 'Java' },
+  ];
+  const codeLines = algorithm.codeByLanguage[selectedLanguage] || [];
+  const activeLineForSelectedLang =
+    currentStep?.activeLineByLang?.[selectedLanguage] || currentStep?.activeLine || 0;
+
+  // Lucecita de estado para cada tarea (verde = resuelta, ámbar = intentos agotados, gris = pendiente)
+  const renderStatusDot = (taskId: string) => {
+    const done = completedTaskIds.includes(taskId);
+    const outcome = taskOutcomes[taskId];
+    if (done || (outcome && outcome !== 'failed')) {
+      return (
+        <span
+          className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.85)] shrink-0"
+          title="Completada"
+        />
+      );
+    }
+    if (outcome === 'failed') {
+      return (
+        <span
+          className="w-2 h-2 rounded-full bg-amber-400/80 shrink-0"
+          title="Intentos agotados"
+        />
+      );
+    }
+    return <span className="w-2 h-2 rounded-full bg-[#2e334d] shrink-0" title="Pendiente" />;
+  };
 
   return (
-    <aside className="w-[400px] xl:w-[450px] bg-[#141520] border-l border-[#232532] flex flex-col min-h-0 shrink-0 select-none z-30">
-      {/* Cabecera del repositorio de tareas */}
-      <div className="h-11 px-3.5 bg-[#181a28] border-b border-[#25283a] flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2">
-          <BookOpen className="w-4 h-4 text-emerald-400" />
-          <span className="text-xs font-bold tracking-wider uppercase text-slate-200">
-            Laboratorio de Tareas ({completedTaskIds.length}/21)
-          </span>
+    <aside className="w-[410px] lg:w-[460px] xl:w-[500px] bg-[#141520] border-r border-[#232532] flex flex-col min-h-0 shrink-0 select-none z-20 overflow-hidden">
+      {/* Cabecera: Actividad / Código + Indicador de posición en el nivel */}
+      <div className="h-11 px-3.5 bg-[#161826] border-b border-[#232638] flex items-center justify-between gap-2 shrink-0">
+        <div className="flex items-center gap-1 bg-[#10121c] p-0.5 rounded-md border border-[#222538]">
+          <button
+            onClick={() => setActiveWorkspaceTab('activity')}
+            className={`px-3 py-1 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+              activeWorkspaceTab === 'activity'
+                ? 'bg-[#232741] text-white font-semibold'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            Actividad
+          </button>
+          <button
+            onClick={() => {
+              if (!isCodeTabSpoiled) setActiveWorkspaceTab('code');
+            }}
+            disabled={isCodeTabSpoiled}
+            className={`px-3 py-1 rounded text-[11px] font-medium transition-colors ${
+              isCodeTabSpoiled
+                ? 'text-slate-600 cursor-not-allowed'
+                : activeWorkspaceTab === 'code'
+                ? 'bg-[#232741] text-white font-semibold cursor-pointer'
+                : 'text-slate-400 hover:text-slate-200 cursor-pointer'
+            }`}
+            title={
+              isCodeTabSpoiled
+                ? 'Disponible al resolver la actividad'
+                : 'Ver código sincronizado con el visualizador'
+            }
+          >
+            Código
+          </button>
         </div>
 
-        <button
-          onClick={onTogglePredictionMode}
-          className={`flex items-center gap-1 px-2 py-1 rounded-md border text-[10px] font-semibold transition-colors cursor-pointer ${
-            isPredictionModeActive
-              ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-              : 'bg-[#1f2235] hover:bg-[#272b42] border-[#313652] text-slate-300'
-          }`}
-          title="Activar/Desactivar predicción paso a paso sobre el visualizador"
-        >
-          <Crosshair className="w-3 h-3" />
-          <span>Predicción en Vivo</span>
-        </button>
+        <span className="text-[11px] font-mono text-slate-400">
+          {currentIndexInFiltered + 1} / {filteredTasks.length}
+        </span>
       </div>
 
-      {/* Filtro por familia y selector de tarea T01-T21 */}
-      <div className="p-3 bg-[#151724] border-b border-[#232638] flex flex-col gap-2 shrink-0">
-        <div className="grid grid-cols-4 gap-1 bg-[#10121c] p-1 rounded-lg border border-[#222538]">
-          {['Todas', 'Ordenamiento', 'Búsqueda', 'Divide y vencerás'].map(fam => (
-            <button
-              key={fam}
-              onClick={() => {
-                setFamilyFilter(fam);
-                const firstMatch =
-                  fam === 'Todas'
-                    ? GUIDED_TASKS_REPOSITORY[0]
-                    : GUIDED_TASKS_REPOSITORY.find(t => t.family === fam);
-                if (firstMatch) setSelectedTaskId(firstMatch.id);
-              }}
-              className={`px-1.5 py-1 rounded text-[10px] font-semibold truncate transition-colors cursor-pointer ${
-                familyFilter === fam
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-              title={fam}
-            >
-              {fam === 'Divide y vencerás' ? 'Div. y Venc.' : fam}
-            </button>
-          ))}
+      {/* Selector por niveles (Básico, Intermedio, Avanzado) y menú desplegable propio */}
+      <div className="p-3 bg-[#151724] border-b border-[#232638] flex flex-col gap-2 shrink-0 min-w-0">
+        <div className="grid grid-cols-3 gap-1 bg-[#10121c] p-1 rounded-lg border border-[#222538]">
+          {(['Básico', 'Intermedio', 'Avanzado'] as const).map(lvl => {
+            const levelTasks = GUIDED_TASKS_REPOSITORY.filter(t => t.difficulty === lvl);
+            const solvedCount = levelTasks.filter(t => completedTaskIds.includes(t.id)).length;
+            const allSolved = solvedCount === levelTasks.length && levelTasks.length > 0;
+
+            return (
+              <button
+                key={lvl}
+                onClick={() => {
+                  setLevelFilter(lvl);
+                  setIsTaskMenuOpen(false);
+                  if (levelTasks[0]) onSelectTaskId(levelTasks[0].id);
+                }}
+                className={`py-1 px-2 rounded text-[11px] font-medium transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                  levelFilter === lvl
+                    ? 'bg-indigo-600 text-white font-semibold'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <span>{lvl}</span>
+                {allSolved ? (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.9)]" />
+                ) : (
+                  <span
+                    className={`text-[10px] font-mono ${
+                      levelFilter === lvl ? 'text-indigo-200' : 'text-slate-500'
+                    }`}
+                  >
+                    {solvedCount}/{levelTasks.length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-0 relative" ref={dropdownRef}>
           <button
             onClick={handlePrevTask}
             disabled={currentIndexInFiltered <= 0}
-            className="p-1.5 rounded-lg bg-[#1b1d2e] hover:bg-[#25283e] border border-[#2b2e44] text-slate-300 disabled:opacity-30 cursor-pointer"
-            title="Tarea anterior"
+            className="p-1.5 rounded-lg bg-[#1b1d2e] hover:bg-[#25283e] border border-[#2b2e44] text-slate-300 disabled:opacity-30 cursor-pointer shrink-0"
+            title="Anterior"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
 
-          <select
-            value={currentTask.id}
-            onChange={e => setSelectedTaskId(e.target.value)}
-            className="flex-1 bg-[#1b1d2e] border border-[#2b2e44] rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer truncate"
+          <button
+            type="button"
+            onClick={() => setIsTaskMenuOpen(prev => !prev)}
+            className="flex-1 min-w-0 bg-[#1b1d2e] hover:bg-[#22253a] border border-[#2b2e44] rounded-lg px-2.5 py-1.5 text-left flex items-center justify-between gap-2 cursor-pointer transition-colors"
           >
-            {filteredTasks.map(task => {
-              const done = completedTaskIds.includes(task.id);
-              return (
-                <option key={task.id} value={task.id}>
-                  {task.id} [{task.algorithm}] — {task.title} {done ? '(Resuelta)' : ''}
-                </option>
-              );
-            })}
-          </select>
+            <div className="flex items-center gap-2 min-w-0">
+              {renderStatusDot(currentTask.id)}
+              <span className="text-xs font-medium text-slate-200 truncate">
+                {currentTask.algorithm} — {currentTask.title}
+              </span>
+            </div>
+            <ChevronDown
+              className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform ${
+                isTaskMenuOpen ? 'rotate-180' : ''
+              }`}
+            />
+          </button>
 
           <button
             onClick={handleNextTask}
             disabled={currentIndexInFiltered >= filteredTasks.length - 1}
-            className="p-1.5 rounded-lg bg-[#1b1d2e] hover:bg-[#25283e] border border-[#2b2e44] text-slate-300 disabled:opacity-30 cursor-pointer"
-            title="Siguiente tarea"
+            className="p-1.5 rounded-lg bg-[#1b1d2e] hover:bg-[#25283e] border border-[#2b2e44] text-slate-300 disabled:opacity-30 cursor-pointer shrink-0"
+            title="Siguiente"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
+
+          {/* Menú desplegable contenido dentro del panel */}
+          {isTaskMenuOpen && (
+            <div className="absolute left-0 right-0 top-full mt-1.5 bg-[#181a28] border border-[#2d314d] rounded-xl shadow-2xl py-1.5 z-50 max-h-[65vh] overflow-y-auto custom-scrollbar">
+              {['Ordenamiento', 'Búsqueda', 'Divide y vencerás'].map(fam => {
+                const groupTasks = filteredTasks.filter(t => t.family === fam);
+                if (groupTasks.length === 0) return null;
+                return (
+                  <div key={fam} className="px-1.5 py-1">
+                    <div className="px-2.5 py-1 text-[10px] font-bold tracking-wider text-slate-500 uppercase">
+                      {fam}
+                    </div>
+                    {groupTasks.map(task => {
+                      const isSelected = task.id === currentTask.id;
+                      return (
+                        <button
+                          key={task.id}
+                          type="button"
+                          onClick={() => {
+                            onSelectTaskId(task.id);
+                            setIsTaskMenuOpen(false);
+                          }}
+                          className={`w-full text-left px-2.5 py-2 rounded-lg text-xs transition-colors flex items-start gap-2.5 cursor-pointer ${
+                            isSelected
+                              ? 'bg-indigo-600/20 text-indigo-100 font-medium'
+                              : 'text-slate-300 hover:bg-[#22253a] hover:text-white'
+                          }`}
+                        >
+                          <div className="mt-1 shrink-0">{renderStatusDot(task.id)}</div>
+                          <div className="min-w-0 flex-1 leading-snug">
+                            <span className="text-indigo-300 font-medium">{task.algorithm}: </span>
+                            <span>{task.title}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Contenido desplazable de la tarea */}
-      <div className="flex-1 overflow-y-auto p-3.5 space-y-3.5 custom-scrollbar">
-        {/* Metadatos taxonómicos de la tesis */}
-        <div className="bg-[#181a28] border border-[#262940] rounded-xl p-3 space-y-2">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-[10px] font-mono font-bold">
-                {currentTask.id}
-              </span>
-              <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[10px] font-semibold">
-                Bloom: {currentTask.bloom}
-              </span>
-              <span className="px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30 text-[10px] font-semibold">
-                {currentTask.interactionType}
-              </span>
-              <span className="px-2 py-0.5 rounded bg-[#212438] text-slate-300 border border-[#2f334d] text-[10px]">
-                {currentTask.difficulty}
-              </span>
-            </div>
-
-            {isCompleted && (
-              <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-700/50 px-2 py-0.5 rounded">
-                <CheckCircle2 className="w-3 h-3" />
-                Resuelta
-              </span>
-            )}
-          </div>
-
-          <h3 className="text-xs font-bold text-slate-100 leading-snug">{currentTask.title}</h3>
-
-          <div className="text-[10px] text-slate-400 space-y-0.5 pt-1 border-t border-[#23263a]">
-            <div>
-              <span className="text-slate-300 font-semibold">Competencia:</span>{' '}
-              {currentTask.competence}
-            </div>
-            <div>
-              <span className="text-slate-300 font-semibold">Indicador:</span>{' '}
-              {currentTask.indicator}
-            </div>
-          </div>
-        </div>
-
-        {/* Botón para recargar escenario exacto en el visualizador */}
-        <button
-          onClick={() =>
-            onLoadTaskScenario(
-              currentTask.targetAlgorithmId,
-              currentTask.presetDataset,
-              currentTask.presetSearchTarget,
-              false
-            )
-          }
-          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#1e2136] hover:bg-[#272b46] border border-indigo-500/40 text-indigo-300 text-[11px] font-semibold transition-colors cursor-pointer"
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-          <span>Reiniciar Escenario de {currentTask.id} en el Visualizador</span>
-        </button>
-
-        {/* Enunciado para el estudiante */}
-        <div className="bg-[#12131f] border border-[#22253a] rounded-xl p-3 space-y-1.5">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
-            Enunciado
-          </div>
-          <p className="text-xs text-slate-300 leading-relaxed select-text">{currentTask.prompt}</p>
-        </div>
-
-        {/* Código / Pseudocódigo de referencia */}
-        <div className="bg-[#0d0e17] border border-[#22253a] rounded-xl p-3 space-y-1.5">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-            Código / Escenario ({currentTask.algorithm})
-          </div>
-          <pre className="text-[11px] font-mono text-indigo-200 overflow-x-auto leading-relaxed whitespace-pre-wrap select-text">
-            {formattedSnippet}
-          </pre>
-        </div>
-
-        {/* ÁREA DE EVALUACIÓN PRÁCTICA UNIVERSITARIA */}
-        <div className="bg-[#171929] border border-[#292d46] rounded-xl p-3.5 space-y-3">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-amber-300 flex items-center justify-between">
-            <span>Evaluación Práctica ({currentTask.interactionType})</span>
-          </div>
-
-          {/* MECÁNICA 1: Completar código en C con ejecución AST real */}
-          {currentTask.interactionType === 'Completar código' && currentTask.expectedBlanks && (
-            <div className="space-y-2.5">
-              {currentTask.expectedBlanks.map((_, idx) => (
-                <div key={idx} className="space-y-1">
-                  <label className="block text-[11px] font-mono text-slate-300">
-                    Condición C/C++ para [BLANCO_{idx + 1}]:
-                  </label>
-                  <input
-                    type="text"
-                    value={blankInputs[idx] || ''}
-                    onChange={e => {
-                      const next = [...blankInputs];
-                      next[idx] = e.target.value;
-                      setBlankInputs(next);
-                      setVerificationState(null);
-                    }}
-                    placeholder="Escribe la expresión en C (ej. arr[j] > arr[j + 1])"
-                    className="w-full bg-[#10121d] border border-[#2d314d] rounded-lg px-2.5 py-1.5 text-xs font-mono text-amber-200 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
+      {/* VISTA B: CÓDIGO SINCRONIZADO */}
+      {activeWorkspaceTab === 'code' && !isCodeTabSpoiled ? (
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#161722]">
+          <div className="p-2 bg-[#13141d] border-b border-[#232532]">
+            <div className="flex items-center gap-1 bg-[#1a1c27] p-1 rounded-lg border border-[#27293a]">
+              {languages.map(lang => (
+                <button
+                  key={lang.id}
+                  onClick={() => onChangeLanguage(lang.id)}
+                  className={`flex-1 py-1 px-1.5 text-[11px] font-medium rounded-md transition-all cursor-pointer text-center ${
+                    selectedLanguage === lang.id
+                      ? 'bg-indigo-600 text-white font-bold'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {lang.label}
+                </button>
               ))}
+            </div>
+          </div>
 
-              {astCompileSummary && (
-                <div className="p-2 rounded-lg bg-[#111320] border border-[#282c46] flex items-start gap-2 text-[11px] font-mono text-indigo-200">
-                  <Cpu className="w-3.5 h-3.5 text-indigo-400 shrink-0 mt-0.5" />
-                  <span>{astCompileSummary}</span>
+          <div className="flex-1 overflow-y-auto py-2.5 font-mono-code text-xs leading-relaxed">
+            {codeLines.map(line => {
+              const isActive = line.lineNumber === activeLineForSelectedLang;
+              return (
+                <div
+                  key={line.lineNumber}
+                  className={`flex items-center px-3 py-1 border-l-4 ${
+                    isActive
+                      ? 'border-indigo-500 bg-indigo-950/80 text-indigo-100 font-semibold'
+                      : 'border-transparent text-slate-300'
+                  }`}
+                >
+                  <span className="w-7 text-right pr-2.5 text-slate-500 text-[11px] shrink-0">
+                    {line.lineNumber}
+                  </span>
+                  <span className="whitespace-pre overflow-x-auto">{line.code || ' '}</span>
                 </div>
-              )}
+              );
+            })}
+          </div>
+
+          <div className="p-3 bg-[#12131b] border-t border-[#232532]">
+            <StepExplanation
+              currentStep={currentStep}
+              stepIndex={stepIndex}
+              totalSteps={totalSteps}
+              activeLineNumber={activeLineForSelectedLang}
+            />
+          </div>
+        </div>
+      ) : (
+        /* VISTA A: ACTIVIDAD */
+        <div className="flex-1 overflow-y-auto p-3.5 space-y-3 custom-scrollbar">
+          {/* Tarjeta 1: Enunciado limpio sin códigos internos ni textos cortados */}
+          <div className="bg-[#181a28] border border-[#262940] rounded-xl p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                {renderStatusDot(currentTask.id)}
+                <span className="text-[11px] font-semibold text-indigo-300">
+                  {currentTask.algorithm}
+                </span>
+                <span className="text-slate-600">·</span>
+                <span className="text-[11px] text-slate-400">
+                  {currentTask.difficulty}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {currentOutcome && currentOutcome !== 'failed' && (
+                  <span className="text-[10px] text-emerald-400 font-medium">
+                    {currentOutcome === 'first_attempt'
+                      ? '1.er intento'
+                      : currentOutcome === 'second_attempt'
+                      ? '2.° intento'
+                      : '3.er intento'}
+                  </span>
+                )}
+                <span className="text-[11px] font-mono text-slate-400">
+                  Intentos: {Math.max(0, 3 - attemptsUsed)}/3
+                </span>
+              </div>
+            </div>
+
+            <h3 className="text-[13px] font-bold text-slate-100 leading-snug">
+              {currentTask.title}
+            </h3>
+
+            <p className="text-xs text-slate-300 leading-relaxed select-text">
+              {renderCleanPrompt(currentTask.prompt)}
+            </p>
+          </div>
+
+          {/* Plantilla de código solo cuando la tarea es de completar código */}
+          {isCodeCompletionTask && (
+            <div className="bg-[#0d0e17] border border-[#22253a] rounded-xl p-3 space-y-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+                Código C/C++
+              </div>
+              <pre className="text-[11px] font-mono text-indigo-200 overflow-x-auto leading-relaxed whitespace-pre-wrap select-text">
+                {formattedSnippet}
+              </pre>
             </div>
           )}
 
-          {/* MECÁNICA 2: Construcción manual de arreglo + Invariante/Pivote */}
-          {currentTask.interactionType === 'Construcción manual' && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <span className="flex items-center gap-1">
-                  <ArrowLeftRight className="w-3.5 h-3.5 text-indigo-400" />
-                  Haz clic en dos celdas para intercambiar sus valores:
-                </span>
-                <button
-                  onClick={() => {
-                    setManualArray(
-                      currentTask.manualInitialArray ? [...currentTask.manualInitialArray] : []
+          {/* Tarjeta 2: Resolución práctica */}
+          <div className="bg-[#171929] border border-[#292d46] rounded-xl p-3.5 space-y-3">
+            {currentTask.interactionType === 'Completar código' && currentTask.expectedBlanks && (
+              <div className="space-y-2.5">
+                {currentTask.expectedBlanks.map((_, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <label className="block text-[11px] font-mono text-slate-300">
+                      [BLANCO_{idx + 1}]:
+                    </label>
+                    <input
+                      type="text"
+                      value={blankInputs[idx] || ''}
+                      onChange={e => {
+                        const next = [...blankInputs];
+                        next[idx] = e.target.value;
+                        setBlankInputs(next);
+                        setVerificationState(null);
+                      }}
+                      placeholder="Ej. arr[j] > arr[j + 1]"
+                      className="w-full bg-[#10121d] border border-[#2d314d] rounded-lg px-2.5 py-1.5 text-xs font-mono text-amber-200 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                ))}
+
+                {astCompileSummary && (
+                  <div className="p-2 rounded-lg bg-[#111320] border border-[#282c46] text-[11px] font-mono text-indigo-200">
+                    {astCompileSummary}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentTask.interactionType === 'Construcción manual' && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-[11px] text-slate-400">
+                  <span>Selecciona dos celdas para intercambiar sus valores:</span>
+                  <button
+                    onClick={() => {
+                      setManualArray(
+                        currentTask.manualInitialArray ? [...currentTask.manualInitialArray] : []
+                      );
+                      setSelectedSwapIdx(null);
+                      setVerificationState(null);
+                    }}
+                    className="text-[11px] text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    Reiniciar
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-center gap-2 py-1 flex-wrap">
+                  {manualArray.map((val, idx) => {
+                    const isSelected = selectedSwapIdx === idx;
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => handleManualCellClick(idx)}
+                        className={`w-12 h-14 rounded-lg border flex flex-col items-center justify-between p-1.5 font-mono transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-amber-500/25 border-amber-400 text-amber-200 -translate-y-0.5'
+                            : 'bg-[#111320] hover:bg-[#1b1f33] border-[#2d314d] text-slate-200'
+                        }`}
+                      >
+                        <span className="text-[9px] text-slate-400">[{idx}]</span>
+                        <span className="text-sm font-bold">{val}</span>
+                      </button>
                     );
-                    setSelectedSwapIdx(null);
-                    setVerificationState(null);
-                  }}
-                  className="flex items-center gap-1 text-[10px] text-slate-400 hover:text-white cursor-pointer"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                  Reiniciar
-                </button>
-              </div>
+                  })}
+                </div>
 
-              <div className="flex items-center justify-center gap-2 py-1 flex-wrap">
-                {manualArray.map((val, idx) => {
-                  const isSelected = selectedSwapIdx === idx;
-                  return (
-                    <button
+                {currentTask.manualExtraField && (
+                  <div className="space-y-1 pt-1">
+                    <label className="block text-[11px] text-slate-300 leading-snug">
+                      {renderCleanPrompt(currentTask.manualExtraField.label)}
+                    </label>
+                    <input
+                      type="number"
+                      value={manualExtraInput}
+                      onChange={e => {
+                        setManualExtraInput(e.target.value);
+                        setVerificationState(null);
+                      }}
+                      placeholder="Valor entero"
+                      className="w-full bg-[#10121d] border border-[#2d314d] rounded-lg px-2.5 py-1.5 text-xs font-mono text-amber-200 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {currentTask.arrayPredictionCheck && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-[11px] text-slate-300">
+                  <span>(a) Estado resultante del arreglo:</span>
+                  <button
+                    onClick={() => {
+                      setPredictedArrayInputs(
+                        currentTask.arrayPredictionCheck!.initialArray.map(v => String(v))
+                      );
+                      setVerificationState(null);
+                    }}
+                    className="text-[11px] text-slate-400 hover:text-white cursor-pointer"
+                  >
+                    Restaurar
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-6 sm:grid-cols-7 gap-1.5">
+                  {predictedArrayInputs.map((val, idx) => (
+                    <div
                       key={idx}
-                      onClick={() => handleManualCellClick(idx)}
-                      className={`w-12 h-14 rounded-lg border flex flex-col items-center justify-between p-1.5 font-mono transition-all cursor-pointer ${
-                        isSelected
-                          ? 'bg-amber-500/25 border-amber-400 text-amber-200 ring-2 ring-amber-400/30 -translate-y-0.5'
-                          : 'bg-[#111320] hover:bg-[#1b1f33] border-[#2d314d] text-slate-200'
-                      }`}
+                      className="bg-[#111320] border border-[#2c304c] rounded-lg p-1.5 flex flex-col items-center"
                     >
-                      <span className="text-[9px] text-slate-400">[{idx}]</span>
-                      <span className="text-sm font-bold">{val}</span>
-                    </button>
-                  );
-                })}
-              </div>
+                      <span className="text-[9px] font-mono text-slate-400 mb-1">[{idx}]</span>
+                      <input
+                        type="number"
+                        value={val}
+                        onChange={e => {
+                          const next = [...predictedArrayInputs];
+                          next[idx] = e.target.value;
+                          setPredictedArrayInputs(next);
+                          setVerificationState(null);
+                        }}
+                        className="w-full bg-[#191c2e] border border-[#343958] rounded text-center text-xs font-mono font-bold text-amber-200 py-1 focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  ))}
+                </div>
 
-              {currentTask.manualExtraField && (
-                <div className="space-y-1 pt-1">
-                  <label className="block text-[11px] text-slate-300">
-                    {currentTask.manualExtraField.label}
+                <div className="space-y-1">
+                  <label className="block text-[11px] text-slate-300 leading-snug">
+                    {renderCleanPrompt(currentTask.arrayPredictionCheck.extraFieldLabel)}
                   </label>
                   <input
                     type="number"
-                    value={manualExtraInput}
+                    value={predictedExtraInput}
                     onChange={e => {
-                      setManualExtraInput(e.target.value);
+                      setPredictedExtraInput(e.target.value);
                       setVerificationState(null);
                     }}
-                    placeholder="Ingresa el valor entero"
+                    placeholder="Valor numérico"
                     className="w-full bg-[#10121d] border border-[#2d314d] rounded-lg px-2.5 py-1.5 text-xs font-mono text-amber-200 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* MECÁNICA 3: Predicción exacta de celdas del arreglo + valor clave (T01, T03, T16) */}
-          {currentTask.arrayPredictionCheck && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-[11px] text-slate-300">
-                <span>(a) Ingresa el valor de cada celda del arreglo resultante:</span>
-                <button
-                  onClick={() => {
-                    setPredictedArrayInputs(
-                      currentTask.arrayPredictionCheck!.initialArray.map(v => String(v))
-                    );
-                    setVerificationState(null);
-                  }}
-                  className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer"
-                >
-                  <RotateCcw className="w-3 h-3" />
-                  Restaurar inicial
-                </button>
               </div>
+            )}
 
-              <div className="grid grid-cols-6 sm:grid-cols-7 gap-1.5">
-                {predictedArrayInputs.map((val, idx) => (
-                  <div
-                    key={idx}
-                    className="bg-[#111320] border border-[#2c304c] rounded-lg p-1.5 flex flex-col items-center"
-                  >
-                    <span className="text-[9px] font-mono text-slate-400 mb-1">[{idx}]</span>
+            {currentTask.traceTableCheck && (
+              <div className="space-y-3">
+                <div className="text-[11px] text-slate-300">
+                  Valores de los punteros en cada iteración:
+                </div>
+
+                <div className="overflow-x-auto border border-[#2b2f4a] rounded-lg">
+                  <table className="w-full text-left border-collapse font-mono text-[11px]">
+                    <thead>
+                      <tr className="bg-[#111320] text-slate-400 border-b border-[#2b2f4a]">
+                        <th className="py-1.5 px-2">Iteración</th>
+                        {currentTask.traceTableCheck.columns.map((col, cIdx) => (
+                          <th key={cIdx} className="py-1.5 px-2 text-center">
+                            {col}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {traceRowsInputs.map((row, rIdx) => (
+                        <tr key={rIdx} className="border-b border-[#22253a] last:border-b-0">
+                          <td className="py-1.5 px-2 text-indigo-300 font-bold">
+                            Paso {rIdx + 1}
+                          </td>
+                          {row.map((cellVal, cIdx) => (
+                            <td key={cIdx} className="p-1">
+                              <input
+                                type="number"
+                                value={cellVal}
+                                onChange={e => {
+                                  const next = traceRowsInputs.map(r => [...r]);
+                                  next[rIdx][cIdx] = e.target.value;
+                                  setTraceRowsInputs(next);
+                                  setVerificationState(null);
+                                }}
+                                placeholder="0"
+                                className="w-full bg-[#10121d] border border-[#2f3452] rounded px-1.5 py-1 text-center text-xs font-bold text-amber-200 focus:outline-none focus:border-indigo-500"
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="block text-[11px] text-slate-300 leading-snug">
+                    {renderCleanPrompt(currentTask.traceTableCheck.extraFieldLabel)}
+                  </label>
+                  <input
+                    type="number"
+                    value={traceExtraInput}
+                    onChange={e => {
+                      setTraceExtraInput(e.target.value);
+                      setVerificationState(null);
+                    }}
+                    placeholder="Valor de retorno"
+                    className="w-full bg-[#10121d] border border-[#2d314d] rounded-lg px-2.5 py-1.5 text-xs font-mono text-amber-200 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {currentTask.numericFieldsCheck && (
+              <div className="space-y-2.5">
+                {currentTask.numericFieldsCheck.map((field, idx) => (
+                  <div key={idx} className="space-y-1">
+                    <label className="block text-[11px] text-slate-300 leading-snug">
+                      {renderCleanPrompt(field.label)}
+                    </label>
                     <input
                       type="number"
-                      value={val}
+                      value={numericInputs[idx] || ''}
                       onChange={e => {
-                        const next = [...predictedArrayInputs];
+                        const next = [...numericInputs];
                         next[idx] = e.target.value;
-                        setPredictedArrayInputs(next);
+                        setNumericInputs(next);
                         setVerificationState(null);
                       }}
-                      className="w-full bg-[#191c2e] border border-[#343958] rounded text-center text-xs font-mono font-bold text-amber-200 py-1 focus:outline-none focus:border-indigo-500"
+                      placeholder="Valor numérico"
+                      className="w-full bg-[#10121d] border border-[#2d314d] rounded-lg px-2.5 py-1.5 text-xs font-mono text-amber-200 focus:outline-none focus:border-indigo-500"
                     />
                   </div>
                 ))}
               </div>
+            )}
+          </div>
 
-              <div className="space-y-1">
-                <label className="block text-[11px] text-slate-300">
-                  {currentTask.arrayPredictionCheck.extraFieldLabel}
-                </label>
-                <input
-                  type="number"
-                  value={predictedExtraInput}
-                  onChange={e => {
-                    setPredictedExtraInput(e.target.value);
-                    setVerificationState(null);
-                  }}
-                  placeholder="Ingresa el valor numérico exacto"
-                  className="w-full bg-[#10121d] border border-[#2d314d] rounded-lg px-2.5 py-1.5 text-xs font-mono text-amber-200 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* MECÁNICA 4: Tabla de Traza Paso a Paso (low, high, mid) (T09, T12) */}
-          {currentTask.traceTableCheck && (
-            <div className="space-y-3">
-              <div className="text-[11px] text-slate-300">
-                Completa los valores enteros de los punteros en cada iteración:
-              </div>
-
-              <div className="overflow-x-auto border border-[#2b2f4a] rounded-lg">
-                <table className="w-full text-left border-collapse font-mono text-[11px]">
-                  <thead>
-                    <tr className="bg-[#111320] text-slate-400 border-b border-[#2b2f4a]">
-                      <th className="py-1.5 px-2">Iteración</th>
-                      {currentTask.traceTableCheck.columns.map((col, cIdx) => (
-                        <th key={cIdx} className="py-1.5 px-2 text-center">
-                          {col}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {traceRowsInputs.map((row, rIdx) => (
-                      <tr key={rIdx} className="border-b border-[#22253a] last:border-b-0">
-                        <td className="py-1.5 px-2 text-indigo-300 font-bold">
-                          Paso {rIdx + 1}
-                        </td>
-                        {row.map((cellVal, cIdx) => (
-                          <td key={cIdx} className="p-1">
-                            <input
-                              type="number"
-                              value={cellVal}
-                              onChange={e => {
-                                const next = traceRowsInputs.map(r => [...r]);
-                                next[rIdx][cIdx] = e.target.value;
-                                setTraceRowsInputs(next);
-                                setVerificationState(null);
-                              }}
-                              placeholder="0"
-                              className="w-full bg-[#10121d] border border-[#2f3452] rounded px-1.5 py-1 text-center text-xs font-bold text-amber-200 focus:outline-none focus:border-indigo-500"
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-[11px] text-slate-300">
-                  {currentTask.traceTableCheck.extraFieldLabel}
-                </label>
-                <input
-                  type="number"
-                  value={traceExtraInput}
-                  onChange={e => {
-                    setTraceExtraInput(e.target.value);
-                    setVerificationState(null);
-                  }}
-                  placeholder="Ej. 5 o -1"
-                  className="w-full bg-[#10121d] border border-[#2d314d] rounded-lg px-2.5 py-1.5 text-xs font-mono text-amber-200 focus:outline-none focus:border-indigo-500"
-                />
-              </div>
-            </div>
-          )}
-
-          {/* MECÁNICA 5: Campos Cuantitativos Exactos (T05, T07, T11, T13, T15, T19) */}
-          {currentTask.numericFieldsCheck && (
-            <div className="space-y-2.5">
-              {currentTask.numericFieldsCheck.map((field, idx) => (
-                <div key={idx} className="space-y-1">
-                  <label className="block text-[11px] text-slate-300">{field.label}</label>
-                  <input
-                    type="number"
-                    value={numericInputs[idx] || ''}
-                    onChange={e => {
-                      const next = [...numericInputs];
-                      next[idx] = e.target.value;
-                      setNumericInputs(next);
+          {/* Tarjeta 3: Pregunta conceptual */}
+          <div className="bg-[#171929] border border-[#292d46] rounded-xl p-3.5 space-y-2.5">
+            <p className="text-xs font-medium text-slate-200 leading-relaxed">
+              {renderCleanPrompt(currentTask.conceptualQuestion.question)}
+            </p>
+            <div className="space-y-1.5">
+              {currentTask.conceptualQuestion.options.map((opt, idx) => {
+                const isSelected = selectedConceptOption === idx;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setSelectedConceptOption(idx);
                       setVerificationState(null);
                     }}
-                    placeholder="Ingresa el valor calculado"
-                    className="w-full bg-[#10121d] border border-[#2d314d] rounded-lg px-2.5 py-1.5 text-xs font-mono text-amber-200 focus:outline-none focus:border-indigo-500"
-                  />
+                    className={`w-full text-left p-2.5 rounded-lg border text-xs leading-relaxed transition-colors cursor-pointer flex items-start gap-2.5 ${
+                      isSelected
+                        ? 'bg-indigo-600/20 border-indigo-500 text-slate-100 font-medium'
+                        : 'bg-[#111320] hover:bg-[#191c2e] border-[#282c46] text-slate-300'
+                    }`}
+                  >
+                    <span
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center text-[10px] font-mono shrink-0 mt-0.5 ${
+                        isSelected
+                          ? 'border-indigo-400 bg-indigo-600 text-white font-bold'
+                          : 'border-slate-500 text-slate-400'
+                      }`}
+                    >
+                      {String.fromCharCode(65 + idx)}
+                    </span>
+                    <span className="leading-relaxed">{renderCleanPrompt(opt)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Pistas desplegadas */}
+          {unlockedHintsCount > 0 && (
+            <div className="space-y-1.5">
+              {unlockedHintsCount >= 1 && (
+                <div className="p-2.5 rounded-lg bg-[#181b2c] border border-amber-500/30 text-[11px] text-slate-200 leading-relaxed">
+                  <span className="font-semibold text-amber-300">Pista 1: </span>
+                  {renderCleanPrompt(currentTask.hints[0])}
                 </div>
-              ))}
+              )}
+              {unlockedHintsCount >= 2 && (
+                <div className="p-2.5 rounded-lg bg-[#181b2c] border border-indigo-500/30 text-[11px] text-slate-200 leading-relaxed">
+                  <span className="font-semibold text-indigo-300">Pista 2: </span>
+                  {renderCleanPrompt(currentTask.hints[1])}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Campo de argumentación técnica para las tareas que lo requieren */}
-          {currentTask.requiresJustification && (
-            <div className="space-y-1 pt-1">
-              <label className="block text-[11px] text-slate-400">
-                Argumentación / justificación algorítmica:
-              </label>
-              <textarea
-                rows={2}
-                value={openResponse}
-                onChange={e => setOpenResponse(e.target.value)}
-                placeholder="Fundamenta en función del invariante, estabilidad, precondición o cota asintótica..."
-                className="w-full bg-[#10121d] border border-[#2d314d] rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 resize-none"
-              />
-            </div>
-          )}
+          {/* Barra de acción: Verificar + Pista discreta */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleVerifyTask}
+              className="flex-1 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors cursor-pointer"
+            >
+              Verificar respuesta
+            </button>
 
-          <button
-            onClick={handleVerifyTask}
-            className="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-colors cursor-pointer shadow-sm"
-          >
-            {currentTask.interactionType === 'Completar código'
-              ? 'Compilar en Motor AST y Verificar'
-              : 'Verificar Resolución'}
-          </button>
+            {unlockedHintsCount < 2 && (
+              <button
+                type="button"
+                onClick={() =>
+                  setManualHintLevel(prev => Math.min(2, Math.max(prev, unlockedHintsCount) + 1))
+                }
+                className="px-3 py-2.5 rounded-lg bg-[#1b1e30] hover:bg-[#242840] border border-[#2d3250] text-slate-300 text-xs font-medium transition-colors cursor-pointer shrink-0"
+              >
+                Pista ({unlockedHintsCount}/2)
+              </button>
+            )}
+          </div>
 
-          {/* Retroalimentación inmediata y criterio de éxito oficial */}
+          {/* Retroalimentación */}
           {verificationState && (
             <div
               className={`p-3 rounded-xl border space-y-1.5 text-xs ${
@@ -816,25 +1051,17 @@ export const InteractiveTaskPanel: React.FC<InteractiveTaskPanelProps> = ({
                   : 'bg-rose-950/35 border-rose-500/40 text-rose-200'
               }`}
             >
-              <div className="flex items-center gap-1.5 font-bold">
-                {verificationState.isCorrect ? (
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                ) : (
-                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-                )}
-                <span>{verificationState.message}</span>
-              </div>
+              <div className="font-semibold">{verificationState.message}</div>
 
-              <div className="pt-1.5 border-t border-white/10 text-[11px] text-slate-200 leading-relaxed select-text">
-                <span className="font-bold text-amber-300 block mb-0.5">
-                  Fundamento algorítmico (Criterio de validación):
-                </span>
-                {currentTask.expectedCriteria}
-              </div>
+              {showFullCriteria && (
+                <div className="pt-1.5 border-t border-white/10 text-[11px] text-slate-200 leading-relaxed select-text">
+                  {renderCleanPrompt(currentTask.expectedCriteria)}
+                </div>
+              )}
             </div>
           )}
         </div>
-      </div>
+      )}
     </aside>
   );
 };
