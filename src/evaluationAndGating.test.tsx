@@ -315,4 +315,68 @@ describe('Tareas accesibles sin cuenta, ocultamiento CSV y sincronización al co
     expect(syncedNew.tasksSecondAttempt).toBe(1);
     expect(syncedNew.tasksDetail).toBe('T03:2do_intento');
   });
+
+  it('muestra el bloque IMI al finalizar Pretest y Postest con enlace cuando está configurado (RF-28)', async () => {
+    const completedResult = {
+      completedAt: '2026-11-13T19:00:00.000Z',
+      durationSeconds: 90,
+      totalScore: 8,
+      percentage: 89,
+      byCompetency: {
+        C1: { earned: 2, max: 2 },
+        C2: { earned: 2, max: 2 },
+        C3: { earned: 2, max: 2 },
+        C4: { earned: 2, max: 3 },
+      },
+      itemScores: {},
+      rawAnswers: {},
+    };
+
+    const doneSession: ParticipantSession = {
+      participantId: 'P-TEST99',
+      consentedAt: '2026-11-13T18:50:00.000Z',
+      startedAt: '2026-11-13T18:50:00.000Z',
+      pretest: completedResult,
+      postest: completedResult,
+    };
+
+    root = createRoot(container);
+    await act(async () => {
+      root!.render(
+        <EvaluationModule
+          session={doneSession}
+          onUpdateSession={vi.fn()}
+          taskOutcomes={{}}
+          completedTasksCount={0}
+          onGoToGuidedTasks={vi.fn()}
+          imiFormUrl="https://forms.gle/imi-ejemplo"
+        />
+      );
+    });
+    await flushEffects();
+
+    const imiLink = container.querySelector('a[href="https://forms.gle/imi-ejemplo"]');
+    expect(imiLink).not.toBeNull();
+    expect(imiLink?.getAttribute('target')).toBe('_blank');
+    expect(imiLink?.getAttribute('rel')).toContain('noopener');
+    expect(container.textContent).toContain('P-TEST99');
+
+    await act(async () => {
+      root!.render(
+        <EvaluationModule
+          session={doneSession}
+          onUpdateSession={vi.fn()}
+          taskOutcomes={{}}
+          completedTasksCount={0}
+          onGoToGuidedTasks={vi.fn()}
+          imiFormUrl=""
+        />
+      );
+    });
+    await flushEffects();
+
+    expect(container.querySelector('a[href="https://forms.gle/imi-ejemplo"]')).toBeNull();
+    expect(container.textContent).toContain('Cuestionario de percepción y motivación (R3.4)');
+    expect(container.textContent).toContain('VITE_IMI_FORM_URL');
+  });
 });

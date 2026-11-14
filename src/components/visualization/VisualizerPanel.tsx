@@ -1,17 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { AlgorithmMetadata } from '../../types/algorithm';
 import type { Step } from '../../types/trace';
 import { D3BarChart } from './D3BarChart';
 import { DivideAndConquerContainer } from './divide_and_conquer/DivideAndConquerContainer';
 import { SearchMapVisualizer } from './SearchMapVisualizer';
 import { StudentCodeVisualizer } from './StudentCodeVisualizer';
+import { ArrayTableView } from './ArrayTableView';
 import { StepPredictionBar } from './StepPredictionBar';
 import { AlgorithmComparisonView } from './AlgorithmComparisonView';
 import type {
   ComparisonSyncMode,
   ComparisonTraceEntry,
 } from '../../core/utils/comparisonSync';
-import { Maximize2, Minimize2 } from 'lucide-react';
+import { BarChart3, Maximize2, Minimize2, Table2 } from 'lucide-react';
 
 interface VisualizerPanelProps {
   currentStep: Step | null;
@@ -57,16 +58,18 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
   isAwaitingCompilation = false,
   comparisonProps = null,
 }) => {
+  const [viewMode, setViewMode] = useState<'visual' | 'table'>('visual');
   const isComparing = !!comparisonProps;
   const isDivideAndConquer = !isComparing && !!currentStep?.divideAndConquer;
   const isSearching = algorithmFamily === 'searching';
   const isCustomCode = algorithmFamily === 'custom' || algorithmId === 'custom-ast';
   const searchType = algorithmId === 'binary-search' ? 'binary' : 'linear';
+  const canToggleTable = !isComparing && !isAwaitingCompilation && !!currentStep;
 
   return (
     <div className="flex-1 bg-[#151622] p-3 flex flex-col min-h-0 select-none relative overflow-hidden">
       {/* Encabezado limpio sin iconos decorativos */}
-      <div className="flex items-center justify-between gap-3 pb-2 mb-2 border-b border-[#232534] shrink-0 h-8">
+      <div className="flex items-center justify-between gap-3 pb-2 mb-2 border-b border-[#232534] shrink-0 min-h-[36px]">
         <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
           <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase shrink-0">
             {isComparing
@@ -129,6 +132,41 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
             </div>
           )}
 
+          {canToggleTable && (
+            <div
+              role="group"
+              aria-label="Modo de vista del arreglo"
+              className="flex items-center bg-[#1c1e2e] border border-[#2b2e46] rounded-md p-0.5 text-[11px] font-medium"
+            >
+              <button
+                type="button"
+                aria-pressed={viewMode === 'visual'}
+                onClick={() => setViewMode('visual')}
+                className={`inline-flex items-center gap-1 min-h-[24px] px-2.5 py-0.5 rounded transition-colors cursor-pointer ${
+                  viewMode === 'visual'
+                    ? 'bg-indigo-600 text-white font-semibold'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <BarChart3 className="w-3 h-3" aria-hidden="true" />
+                <span>Gráfica</span>
+              </button>
+              <button
+                type="button"
+                aria-pressed={viewMode === 'table'}
+                onClick={() => setViewMode('table')}
+                className={`inline-flex items-center gap-1 min-h-[24px] px-2.5 py-0.5 rounded transition-colors cursor-pointer ${
+                  viewMode === 'table'
+                    ? 'bg-indigo-600 text-white font-semibold'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <Table2 className="w-3 h-3" aria-hidden="true" />
+                <span>Tabla</span>
+              </button>
+            </div>
+          )}
+
           <span className="text-[11px] font-mono text-slate-400 whitespace-nowrap">
             {isAwaitingCompilation
               ? 'Modo edición'
@@ -138,8 +176,10 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
           </span>
 
           <button
+            type="button"
             onClick={onToggleFullscreen}
-            className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-[#25283d] transition-colors cursor-pointer"
+            aria-label={isFullscreen ? 'Restaurar vista' : 'Maximizar panel'}
+            className="min-w-[26px] min-h-[26px] inline-flex items-center justify-center p-1 rounded-md text-slate-400 hover:text-white hover:bg-[#25283d] transition-colors cursor-pointer"
             title={isFullscreen ? 'Restaurar vista' : 'Maximizar panel'}
           >
             {isFullscreen ? (
@@ -186,7 +226,13 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
             stepIndex={stepIndex}
           />
         ) : currentStep ? (
-          isCustomCode ? (
+          viewMode === 'table' ? (
+            <ArrayTableView
+              currentStep={currentStep}
+              stepIndex={stepIndex}
+              totalSteps={totalSteps}
+            />
+          ) : isCustomCode ? (
             <StudentCodeVisualizer currentStep={currentStep} />
           ) : isDivideAndConquer && currentStep.divideAndConquer ? (
             <DivideAndConquerContainer dcState={currentStep.divideAndConquer} />

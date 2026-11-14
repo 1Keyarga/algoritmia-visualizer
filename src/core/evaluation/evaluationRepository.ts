@@ -295,6 +295,17 @@ export function parseTasksDetailFromSheets(tasksDetail: string): {
 export const DEFAULT_SHEETS_WEBHOOK_URL =
   'https://script.google.com/macros/s/AKfycbzOAWjvaAK0XDkMudWR-ewy5398lafxb57M2BAX30LDSKGRQl8BW2vdfsU_qV0hJLZiGw/exec';
 
+// Enlace al formulario externo de motivación IMI (R3.4); configurable aquí o vía VITE_IMI_FORM_URL en Vercel
+export const DEFAULT_IMI_FORM_URL = '';
+
+export function getImiFormUrl(overrideUrl?: string): string {
+  const raw = (overrideUrl ?? import.meta.env.VITE_IMI_FORM_URL ?? DEFAULT_IMI_FORM_URL).trim();
+  if (/^https?:\/\//i.test(raw)) {
+    return raw;
+  }
+  return '';
+}
+
 /**
  * Genera un código seudonimizado determinista (ej. P-8F3A2C) a partir del código ingresado
  * sin almacenar el código original del estudiante.

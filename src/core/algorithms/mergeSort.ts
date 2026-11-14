@@ -358,6 +358,10 @@ export function generateMergeSortTrace(initialData: number[]): Step[] {
 
     // Línea 2 & 3: Caso Base
     if (inicio >= fin) {
+      if (inicio > fin || !currentArray[inicio]) {
+        callStack.pop();
+        return;
+      }
       treeNodes[nodeId].state = 'base_case';
       currentArray[inicio] = {
         ...currentArray[inicio],

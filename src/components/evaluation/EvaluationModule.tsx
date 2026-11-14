@@ -4,6 +4,7 @@ import {
   POSTEST_ITEMS,
   DEFAULT_SHEETS_WEBHOOK_URL,
   EMPTY_TASK_PROGRESS,
+  getImiFormUrl,
   generateParticipantCode,
   gradeEvaluationAttempt,
   sendEvaluationToGoogleSheets,
@@ -26,7 +27,7 @@ import type { TaskAttemptCategory } from '../tasks/InteractiveTaskPanel';
 import type { AlgorithmMetadata, SupportedLanguage } from '../../types/algorithm';
 import type { Step } from '../../types/trace';
 import { StepExplanation } from '../pseudocode/StepExplanation';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Copy, ExternalLink } from 'lucide-react';
 
 interface EvaluationModuleProps {
   session: ParticipantSession | null;
@@ -49,6 +50,7 @@ interface EvaluationModuleProps {
   totalSteps?: number;
   selectedLanguage?: SupportedLanguage;
   onChangeLanguage?: (lang: SupportedLanguage) => void;
+  imiFormUrl?: string;
 }
 
 function renderCleanText(text: string): React.ReactNode {
@@ -105,12 +107,16 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
   totalSteps = 0,
   selectedLanguage = 'pseudocode',
   onChangeLanguage,
+  imiFormUrl,
 }) => {
   const [rawStudentCode, setRawStudentCode] = useState('');
   const [previewHash, setPreviewHash] = useState('');
   const [consentChecked, setConsentChecked] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isCheckingRemote, setIsCheckingRemote] = useState(false);
+  const [copiedParticipantId, setCopiedParticipantId] = useState(false);
+
+  const resolvedImiFormUrl = getImiFormUrl(imiFormUrl);
 
   const [activeExam, setActiveExam] = useState<'pretest' | 'postest' | null>(
     () => session?.inProgressAnswers?.testType ?? null
@@ -1017,18 +1023,62 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
         </div>
 
         {preDone && posDone && (
-          <div className="bg-[#151724] border border-emerald-500/30 rounded-xl p-5 flex items-center justify-between gap-4">
-            <div className="space-y-1">
-              <h3 className="text-xs font-bold text-slate-100">
-                Evaluación completada ({session.participantId})
-              </h3>
-              <p className="text-xs text-slate-400">
-                Pretest y Postest registrados.
-              </p>
+          <div className="bg-[#151724] border border-emerald-500/30 rounded-xl p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h3 className="text-xs font-bold text-slate-100">
+                  Evaluación completada ({session.participantId})
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Pretest y Postest registrados correctamente.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard?.writeText(session.participantId);
+                    setCopiedParticipantId(true);
+                    window.setTimeout(() => setCopiedParticipantId(false), 2000);
+                  }}
+                  className="inline-flex items-center gap-1.5 min-h-[28px] px-2.5 py-1 rounded-lg bg-[#1d2033] hover:bg-[#262a42] border border-[#313654] text-[11px] font-mono text-slate-200 transition-colors cursor-pointer"
+                >
+                  {copiedParticipantId ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-400" aria-hidden="true" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-slate-400" aria-hidden="true" />
+                  )}
+                  <span>
+                    {copiedParticipantId ? 'Código copiado' : `Copiar ${session.participantId}`}
+                  </span>
+                </button>
+                <span className="text-xs font-semibold text-emerald-400">Finalizado</span>
+              </div>
             </div>
-            <span className="text-xs font-semibold text-emerald-400 shrink-0">
-              Finalizado
-            </span>
+
+            <div className="bg-[#10121d] border border-[#25283d] rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold text-slate-200">
+                  Cuestionario de percepción y motivación (R3.4)
+                </p>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  {resolvedImiFormUrl
+                    ? 'Como paso final tras completar el Postest, responde el cuestionario breve externo en Google Forms usando tu código seudonimizado.'
+                    : 'Como paso final tras completar el Postest, el enlace al cuestionario IMI en Google Forms se habilitará aquí al iniciar la sesión de campo (variable VITE_IMI_FORM_URL).'}
+                </p>
+              </div>
+              {resolvedImiFormUrl && (
+                <a
+                  href={resolvedImiFormUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 shrink-0 min-h-[34px] px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors"
+                >
+                  <span>Abrir cuestionario IMI</span>
+                  <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+                </a>
+              )}
+            </div>
           </div>
         )}
       </div>

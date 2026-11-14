@@ -171,8 +171,11 @@ export function generateInsertionSortTrace(initialData: number[]): Step[] {
   );
 
   // Inicialmente el primer elemento (índice 0) se considera un subarreglo ordenado de 1 elemento
-  const sortedIndices = new Set<number>([0]);
-  currentArray[0] = { ...currentArray[0], state: 'sorted', nonColorIndicator: undefined };
+  const sortedIndices = new Set<number>();
+  if (n > 0) {
+    sortedIndices.add(0);
+    currentArray[0] = { ...currentArray[0], state: 'sorted', nonColorIndicator: undefined };
+  }
 
   let lastI = 1;
 
