@@ -30,7 +30,6 @@ describe('GUIDED_TASKS_REPOSITORY (21 tareas guiadas)', () => {
         task.cExecutableTemplate ||
           task.manualTargetArray ||
           task.arrayPredictionCheck ||
-          task.traceTableCheck ||
           (task.numericFieldsCheck && task.numericFieldsCheck.length > 0)
       );
       expect(hasValidationMechanism).toBe(true);
@@ -45,13 +44,6 @@ describe('GUIDED_TASKS_REPOSITORY (21 tareas guiadas)', () => {
         const sortedInit = [...task.arrayPredictionCheck.initialArray].sort((a, b) => a - b);
         const sortedExpected = [...task.arrayPredictionCheck.expectedArray].sort((a, b) => a - b);
         expect(sortedExpected).toEqual(sortedInit);
-      }
-
-      if (task.traceTableCheck) {
-        expect(task.traceTableCheck.expectedRows.length).toBeGreaterThanOrEqual(1);
-        for (const row of task.traceTableCheck.expectedRows) {
-          expect(row).toHaveLength(3);
-        }
       }
     });
 
@@ -102,5 +94,15 @@ describe('GUIDED_TASKS_REPOSITORY (21 tareas guiadas)', () => {
 
     expect(res.success).toBe(false);
     expect(res.error).toMatch(/Stack Overflow|recursión infinita/i);
+  });
+
+  it('valida los campos numéricos de traza paso a paso en T09 y T12 sin tablas', () => {
+    const t09 = GUIDED_TASKS_REPOSITORY.find(t => t.id === 'T09');
+    const t12 = GUIDED_TASKS_REPOSITORY.find(t => t.id === 'T12');
+
+    expect(t09?.numericFieldsCheck?.map(f => f.expectedValue)).toEqual([4, 7, 5, 5]);
+    expect(t12?.numericFieldsCheck?.map(f => f.expectedValue)).toEqual([2, 1, 0, -1]);
+    expect(t09?.prompt.toLowerCase()).not.toContain('tabla');
+    expect(t12?.prompt.toLowerCase()).not.toContain('tabla');
   });
 });

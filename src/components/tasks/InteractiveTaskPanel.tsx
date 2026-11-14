@@ -141,13 +141,6 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
   );
   const [predictedExtraInput, setPredictedExtraInput] = useState<string>('');
 
-  const [traceRowsInputs, setTraceRowsInputs] = useState<string[][]>(() =>
-    currentTask.traceTableCheck
-      ? currentTask.traceTableCheck.expectedRows.map(() => ['', '', ''])
-      : []
-  );
-  const [traceExtraInput, setTraceExtraInput] = useState<string>('');
-
   const [numericInputs, setNumericInputs] = useState<string[]>(() =>
     Array(currentTask.numericFieldsCheck ? currentTask.numericFieldsCheck.length : 0).fill('')
   );
@@ -392,40 +385,6 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
         registerFailedAttempt('El arreglo es correcto, pero el valor de (b) no coincide.');
       } else {
         registerFailedAttempt('Los valores numéricos son correctos, pero la alternativa conceptual no coincide.');
-      }
-      return;
-    }
-
-    if (currentTask.traceTableCheck) {
-      const { expectedRows, expectedExtraValue } = currentTask.traceTableCheck;
-      let firstWrongRow = -1;
-
-      for (let r = 0; r < expectedRows.length; r++) {
-        const rowInputs = traceRowsInputs[r] || ['', '', ''];
-        const matchesRow = expectedRows[r].every(
-          (expVal, c) =>
-            rowInputs[c] !== undefined &&
-            rowInputs[c].trim() !== '' &&
-            Number(rowInputs[c].trim()) === expVal
-        );
-        if (!matchesRow) {
-          firstWrongRow = r + 1;
-          break;
-        }
-      }
-
-      const extraMatches =
-        traceExtraInput.trim() !== '' &&
-        Number(traceExtraInput.trim()) === expectedExtraValue;
-
-      if (firstWrongRow === -1 && extraMatches && conceptMatches) {
-        registerSuccess('Respuesta correcta.');
-      } else if (firstWrongRow !== -1) {
-        registerFailedAttempt(`Revisa los punteros en el Paso ${firstWrongRow} de la tabla.`);
-      } else if (!extraMatches) {
-        registerFailedAttempt('La tabla es correcta, pero el valor retornado no coincide.');
-      } else {
-        registerFailedAttempt('La traza es correcta, pero la alternativa conceptual no coincide.');
       }
       return;
     }
@@ -909,70 +868,6 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
               </div>
             )}
 
-            {currentTask.traceTableCheck && (
-              <div className="space-y-3">
-                <div className="text-[11px] text-slate-300">
-                  Valores de los punteros en cada iteración:
-                </div>
-
-                <div className="overflow-x-auto border border-[#2b2f4a] rounded-lg">
-                  <table className="w-full text-left border-collapse font-mono text-[11px]">
-                    <thead>
-                      <tr className="bg-[#111320] text-slate-400 border-b border-[#2b2f4a]">
-                        <th className="py-1.5 px-2">Iteración</th>
-                        {currentTask.traceTableCheck.columns.map((col, cIdx) => (
-                          <th key={cIdx} className="py-1.5 px-2 text-center">
-                            {col}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {traceRowsInputs.map((row, rIdx) => (
-                        <tr key={rIdx} className="border-b border-[#22253a] last:border-b-0">
-                          <td className="py-1.5 px-2 text-indigo-300 font-bold">
-                            Paso {rIdx + 1}
-                          </td>
-                          {row.map((cellVal, cIdx) => (
-                            <td key={cIdx} className="p-1">
-                              <input
-                                type="number"
-                                value={cellVal}
-                                onChange={e => {
-                                  const next = traceRowsInputs.map(r => [...r]);
-                                  next[rIdx][cIdx] = e.target.value;
-                                  setTraceRowsInputs(next);
-                                  setVerificationState(null);
-                                }}
-                                placeholder="0"
-                                className="w-full bg-[#10121d] border border-[#2f3452] rounded px-1.5 py-1 text-center text-xs font-bold text-amber-200 focus:outline-none focus:border-indigo-500"
-                              />
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="block text-[11px] text-slate-300 leading-snug">
-                    {renderCleanPrompt(currentTask.traceTableCheck.extraFieldLabel)}
-                  </label>
-                  <input
-                    type="number"
-                    value={traceExtraInput}
-                    onChange={e => {
-                      setTraceExtraInput(e.target.value);
-                      setVerificationState(null);
-                    }}
-                    placeholder="Valor de retorno"
-                    className="w-full bg-[#10121d] border border-[#2d314d] rounded-lg px-2.5 py-1.5 text-xs font-mono text-amber-200 focus:outline-none focus:border-indigo-500"
-                  />
-                </div>
-              </div>
-            )}
-
             {currentTask.numericFieldsCheck && (
               <div className="space-y-2.5">
                 {currentTask.numericFieldsCheck.map((field, idx) => (
@@ -989,7 +884,7 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
                         setNumericInputs(next);
                         setVerificationState(null);
                       }}
-                      placeholder="Valor numérico"
+                      placeholder={field.placeholder || 'Valor numérico'}
                       className="w-full bg-[#10121d] border border-[#2d314d] rounded-lg px-2.5 py-1.5 text-xs font-mono text-amber-200 focus:outline-none focus:border-indigo-500"
                     />
                   </div>

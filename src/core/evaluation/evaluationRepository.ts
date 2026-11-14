@@ -299,11 +299,16 @@ export const DEFAULT_SHEETS_WEBHOOK_URL =
 export const DEFAULT_IMI_FORM_URL = 'https://forms.gle/7ZqCniCRg3ijqBiA6';
 
 export function getImiFormUrl(overrideUrl?: string): string {
-  const raw = (overrideUrl ?? import.meta.env.VITE_IMI_FORM_URL ?? DEFAULT_IMI_FORM_URL).trim();
-  if (/^https?:\/\//i.test(raw)) {
-    return raw;
+  if (overrideUrl !== undefined) {
+    const cleanOverride = overrideUrl.trim();
+    return /^https?:\/\//i.test(cleanOverride) ? cleanOverride : '';
   }
-  return '';
+  const rawEnv = import.meta.env.VITE_IMI_FORM_URL;
+  const cleanEnv = typeof rawEnv === 'string' ? rawEnv.trim() : '';
+  if (/^https?:\/\//i.test(cleanEnv)) {
+    return cleanEnv;
+  }
+  return DEFAULT_IMI_FORM_URL;
 }
 
 /**

@@ -1,11 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  DEFAULT_IMI_FORM_URL,
   EMPTY_TASK_PROGRESS,
   PRETEST_ITEMS,
   POSTEST_ITEMS,
   buildEvaluationPayload,
   fetchParticipantFromSheets,
   generateParticipantCode,
+  getImiFormUrl,
   gradeEvaluationAttempt,
   makeTaskProgressSignature,
   mergeTaskProgress,
@@ -38,6 +40,7 @@ function buildAnswers(
 describe('evaluationRepository', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
@@ -327,5 +330,19 @@ describe('evaluationRepository', () => {
       T07: 2,
     });
     expect(makeTaskProgressSignature(merged)).not.toBe(makeTaskProgressSignature(remoteExisting));
+  });
+
+  it('conserva el enlace IMI por defecto aun cuando VITE_IMI_FORM_URL esté vacío o sea inválido', () => {
+    vi.stubEnv('VITE_IMI_FORM_URL', '');
+    expect(getImiFormUrl()).toBe(DEFAULT_IMI_FORM_URL);
+
+    vi.stubEnv('VITE_IMI_FORM_URL', '   ');
+    expect(getImiFormUrl()).toBe(DEFAULT_IMI_FORM_URL);
+
+    vi.stubEnv('VITE_IMI_FORM_URL', 'sin-protocolo');
+    expect(getImiFormUrl()).toBe(DEFAULT_IMI_FORM_URL);
+
+    vi.stubEnv('VITE_IMI_FORM_URL', 'https://forms.gle/custom123');
+    expect(getImiFormUrl()).toBe('https://forms.gle/custom123');
   });
 });

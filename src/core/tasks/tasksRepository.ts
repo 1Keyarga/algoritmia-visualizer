@@ -11,13 +11,6 @@ export interface ArrayPredictionSpec {
   expectedExtraValue: number;
 }
 
-export interface TraceTableSpec {
-  columns: [string, string, string];
-  expectedRows: [number, number, number][];
-  extraFieldLabel: string;
-  expectedExtraValue: number;
-}
-
 export interface ConceptualQuestionSpec {
   question: string;
   options: [string, string, string];
@@ -75,10 +68,7 @@ export interface GuidedTask {
   // 3. Predicción exacta de estado de arreglo + valor de invariante
   arrayPredictionCheck?: ArrayPredictionSpec;
 
-  // 4. Tabla de traza paso a paso (low, high, mid)
-  traceTableCheck?: TraceTableSpec;
-
-  // 5. Campos cuantitativos exactos (comparaciones, intercambios, cotas, alturas)
+  // 4. Campos cuantitativos exactos (traza paso a paso, comparaciones, intercambios, cotas, alturas)
   numericFieldsCheck?: NumericFieldSpec[];
 }
 
@@ -509,7 +499,7 @@ int main() {
     difficulty: 'Intermedio',
     title: 'Trazar paso a paso los punteros de Búsqueda Binaria',
     prompt:
-      'Sobre int arr[] = {2, 5, 8, 12, 16, 23, 38, 45, 56, 72} (índices 0..9), buscando clave = 23. El visualizador se detiene tras inicializar los límites. Completa la tabla de traza con los valores exactos de inicio (low), fin (high) y medio (mid) en cada iteración.',
+      'Sobre int arr[] = {2, 5, 8, 12, 16, 23, 38, 45, 56, 72} (índices 0..9), buscando clave = 23 con medio = piso((inicio + fin) / 2). El visualizador se detiene tras inicializar los límites. Determina el índice medio (mid) evaluado en cada iteración y el índice final retornado.',
     codeSnippet:
       '// Índices 0..9: {2, 5, 8, 12, 16, 23, 38, 45, 56, 72}\nint clave = 23;\n// medio = piso((inicio + fin) / 2)',
     expectedCriteria:
@@ -528,16 +518,12 @@ int main() {
       ],
       correctIndex: 0,
     },
-    traceTableCheck: {
-      columns: ['low (inicio)', 'high (fin)', 'mid (medio)'],
-      expectedRows: [
-        [0, 9, 4],
-        [5, 9, 7],
-        [5, 6, 5],
-      ],
-      extraFieldLabel: 'Índice final retornado por la búsqueda binaria:',
-      expectedExtraValue: 5,
-    },
+    numericFieldsCheck: [
+      { label: 'Iteración 1 (inicio = 0, fin = 9) — índice medio (mid):', expectedValue: 4 },
+      { label: 'Iteración 2 (inicio = 5, fin = 9) — índice medio (mid):', expectedValue: 7 },
+      { label: 'Iteración 3 (inicio = 5, fin = 6) — índice medio (mid):', expectedValue: 5 },
+      { label: 'Índice final retornado por la búsqueda binaria:', expectedValue: 5 },
+    ],
   },
   {
     id: 'T10',
@@ -665,7 +651,7 @@ int main() {
     difficulty: 'Avanzado',
     title: 'Diagnosticar mediante traza el fallo de Búsqueda Binaria sobre un arreglo desordenado',
     prompt:
-      'Se invoca Búsqueda Binaria sobre el arreglo DESORDENADO int arr[] = {9, 2, 7, 1, 5} buscando clave = 1 (que sí se encuentra en el índice 3). Completa la tabla de traza (low, high, mid) que ejecuta ciegamente el algoritmo e indica qué valor termina retornando.',
+      'Se invoca Búsqueda Binaria sobre el arreglo DESORDENADO int arr[] = {9, 2, 7, 1, 5} buscando clave = 1 (que sí se encuentra en el índice 3). Analiza qué ejecuta ciegamente el algoritmo: determina los índices medios evaluados, el nuevo límite fin (high) tras la primera comparación y qué valor termina retornando.',
     codeSnippet:
       '// Precondición violada: arr[] = {9, 2, 7, 1, 5} NO está ordenado\nint clave = 1; // presente en arr[3]',
     expectedCriteria:
@@ -684,15 +670,12 @@ int main() {
       ],
       correctIndex: 0,
     },
-    traceTableCheck: {
-      columns: ['low (inicio)', 'high (fin)', 'mid (medio)'],
-      expectedRows: [
-        [0, 4, 2],
-        [0, 1, 0],
-      ],
-      extraFieldLabel: 'Valor final retornado por la función (-1 si no lo encuentra):',
-      expectedExtraValue: -1,
-    },
+    numericFieldsCheck: [
+      { label: 'Iteración 1 (inicio = 0, fin = 4) — índice medio (mid):', expectedValue: 2 },
+      { label: 'Nuevo límite fin (high) tras descartar la mitad derecha:', expectedValue: 1 },
+      { label: 'Iteración 2 — siguiente índice medio (mid) evaluado:', expectedValue: 0 },
+      { label: 'Valor final retornado por la función (-1 si no lo encuentra):', expectedValue: -1 },
+    ],
     requiresJustification: true,
   },
   {

@@ -898,7 +898,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               onClick={() => onUpdateSession(null)}
               className="px-3 py-1.5 rounded-lg bg-[#181a28] hover:bg-rose-950/40 border border-[#262a40] hover:border-rose-700/50 text-xs text-slate-400 hover:text-rose-200 transition-colors cursor-pointer"
             >
-              Cambiar participante
+              Cerrar sesión
             </button>
           </div>
         </div>
@@ -1062,9 +1062,22 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                   Cuestionario de percepción y motivación (R3.4)
                 </p>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
-                  {resolvedImiFormUrl
-                    ? 'Como paso final tras completar el Postest, responde el cuestionario breve externo en Google Forms usando tu código seudonimizado.'
-                    : 'Como paso final tras completar el Postest, el enlace al cuestionario IMI en Google Forms se habilitará aquí al iniciar la sesión de campo (variable VITE_IMI_FORM_URL).'}
+                  {resolvedImiFormUrl ? (
+                    <>
+                      Como paso final tras completar el Postest, responde el cuestionario breve
+                      externo en Google Forms usando tu código seudonimizado:{' '}
+                      <a
+                        href={resolvedImiFormUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-300 hover:text-indigo-200 underline underline-offset-2 font-mono break-all"
+                      >
+                        {resolvedImiFormUrl}
+                      </a>
+                    </>
+                  ) : (
+                    'Como paso final tras completar el Postest, el enlace al cuestionario IMI en Google Forms se habilitará aquí al iniciar la sesión de campo (variable VITE_IMI_FORM_URL).'
+                  )}
                 </p>
               </div>
               {resolvedImiFormUrl && (
