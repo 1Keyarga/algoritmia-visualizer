@@ -349,13 +349,12 @@ describe('Tareas accesibles sin cuenta, ocultamiento CSV y sincronización al co
           taskOutcomes={{}}
           completedTasksCount={0}
           onGoToGuidedTasks={vi.fn()}
-          imiFormUrl="https://forms.gle/imi-ejemplo"
         />
       );
     });
     await flushEffects();
 
-    const imiLink = container.querySelector('a[href="https://forms.gle/imi-ejemplo"]');
+    const imiLink = container.querySelector('a[href="https://forms.gle/7ZqCniCRg3ijqBiA6"]');
     expect(imiLink).not.toBeNull();
     expect(imiLink?.getAttribute('target')).toBe('_blank');
     expect(imiLink?.getAttribute('rel')).toContain('noopener');
@@ -375,7 +374,7 @@ describe('Tareas accesibles sin cuenta, ocultamiento CSV y sincronización al co
     });
     await flushEffects();
 
-    expect(container.querySelector('a[href="https://forms.gle/imi-ejemplo"]')).toBeNull();
+    expect(container.querySelector('a[href="https://forms.gle/7ZqCniCRg3ijqBiA6"]')).toBeNull();
     expect(container.textContent).toContain('Cuestionario de percepción y motivación (R3.4)');
     expect(container.textContent).toContain('VITE_IMI_FORM_URL');
   });
