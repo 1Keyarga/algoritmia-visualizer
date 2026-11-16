@@ -154,8 +154,8 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
   const [postestPanelTab, setPostestPanelTab] = useState<'question' | 'code'>('question');
 
   const isSubmittingRef = useRef(false);
-  const latestSubmitRef = useRef<(forceOnTimeout?: boolean) => Promise<void>>(() =>
-    Promise.resolve()
+  const latestSubmitRef = useRef<(mode?: 'normal' | 'force_manual' | 'timeout') => Promise<void>>(
+    () => Promise.resolve()
   );
 
   const displayedPreviewHash = rawStudentCode.trim() ? previewHash : '';
@@ -345,7 +345,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
     setSubmitWarning(null);
   };
 
-  const handleSubmitExam = async (forceOnTimeout = false) => {
+  const handleSubmitExam = async (mode: 'normal' | 'force_manual' | 'timeout' = 'normal') => {
     const examType = activeExam ?? session?.inProgressAnswers?.testType ?? null;
     if (!session || !examType || isSubmittingRef.current) return;
     const effectiveAnswers = activeExam
@@ -353,21 +353,23 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
       : (session.inProgressAnswers?.answers ?? answers);
     const items = examType === 'pretest' ? PRETEST_ITEMS : POSTEST_ITEMS;
 
-    if (!forceOnTimeout) {
+    if (mode === 'normal') {
       const firstIncompleteIdx = items.findIndex(it => !isItemAnswered(it, effectiveAnswers[it.id]));
       if (firstIncompleteIdx !== -1) {
+        const unansweredCount = items.filter(it => !isItemAnswered(it, effectiveAnswers[it.id])).length;
         setCurrentQuestionIdx(firstIncompleteIdx);
         setPostestPanelTab('question');
         setSubmitWarning(
-          `Selecciona una alternativa en la Pregunta ${firstIncompleteIdx + 1} antes de finalizar.`
+          `La Pregunta ${firstIncompleteIdx + 1} aún no tiene respuesta (${unansweredCount} sin marcar). Puedes elegir "No la sé / Dejar en blanco" o enviar de todos modos (valdrán 0 puntos).`
         );
         return;
       }
     }
 
+    const isTimeout = mode === 'timeout';
     isSubmittingRef.current = true;
     const rawElapsed = Math.max(1, Math.round((Date.now() - runningStartedAtMs) / 1000));
-    const durationSeconds = forceOnTimeout
+    const durationSeconds = isTimeout
       ? Math.min(effectiveTimeLimitSeconds, rawElapsed)
       : rawElapsed;
     const result = gradeEvaluationAttempt(items, effectiveAnswers, durationSeconds);
@@ -382,7 +384,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
     onUpdateSession(updatedSession);
     setActiveExam(null);
     setSubmitWarning(null);
-    if (forceOnTimeout) {
+    if (isTimeout) {
       const label = examType === 'pretest' ? 'Pretest' : 'Postest';
       setTimeoutNotice(
         `Tiempo agotado (${formatCountdown(effectiveTimeLimitSeconds)}): el ${label} se envió automáticamente con las respuestas registradas hasta ese momento.`
@@ -416,7 +418,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
       setNowMs(currentNow);
       const elapsedSec = Math.floor((currentNow - runningStartedAtMs) / 1000);
       if (elapsedSec >= effectiveTimeLimitSeconds && !isSubmittingRef.current) {
-        void latestSubmitRef.current(true);
+        void latestSubmitRef.current('timeout');
       }
     };
     tick();
@@ -748,13 +750,40 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                         </button>
                       );
                     })}
+                    <button
+                      type="button"
+                      onClick={() => selectOption(item.id, -1)}
+                      className={`w-full text-left p-2 rounded-lg border text-xs leading-snug transition-colors cursor-pointer flex items-center gap-2.5 ${
+                        currentAns.optionIndex === -1
+                          ? 'bg-slate-800/80 border-slate-400 text-slate-100 font-medium'
+                          : 'bg-[#0d0f18] hover:bg-[#161929] border-[#22263c] text-slate-400'
+                      }`}
+                    >
+                      <span
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center text-[10px] font-mono shrink-0 ${
+                          currentAns.optionIndex === -1
+                            ? 'border-slate-300 bg-slate-600 text-white font-bold'
+                            : 'border-slate-600 text-slate-500'
+                        }`}
+                      >
+                        —
+                      </span>
+                      <span>No la sé / Dejar en blanco (0 puntos)</span>
+                    </button>
                   </div>
                 </div>
               </div>
 
               {submitWarning && (
-                <div className="p-2.5 rounded-lg bg-amber-950/40 border border-amber-500/40 text-xs text-amber-200">
-                  {submitWarning}
+                <div className="p-2.5 rounded-lg bg-amber-950/40 border border-amber-500/40 text-xs text-amber-200 space-y-2">
+                  <div>{submitWarning}</div>
+                  <button
+                    type="button"
+                    onClick={() => void handleSubmitExam('force_manual')}
+                    className="px-3 py-1.5 rounded-md bg-amber-600 hover:bg-amber-500 text-white text-[11px] font-semibold transition-colors cursor-pointer"
+                  >
+                    Enviar de todos modos
+                  </button>
                 </div>
               )}
             </div>
@@ -791,7 +820,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               ) : (
                 <button
                   type="button"
-                  onClick={() => void handleSubmitExam(false)}
+                  onClick={() => void handleSubmitExam('normal')}
                   className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white cursor-pointer"
                 >
                   Finalizar y guardar Postest
@@ -912,12 +941,39 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                     </button>
                   );
                 })}
+                <button
+                  type="button"
+                  onClick={() => selectOption(item.id, -1)}
+                  className={`w-full text-left p-2.5 rounded-lg border text-xs leading-relaxed transition-colors cursor-pointer flex items-center gap-3 ${
+                    currentAns.optionIndex === -1
+                      ? 'bg-slate-800/80 border-slate-400 text-slate-100 font-medium'
+                      : 'bg-[#0d0f18] hover:bg-[#161929] border-[#22263c] text-slate-400'
+                  }`}
+                >
+                  <span
+                    className={`w-5 h-5 rounded-full border flex items-center justify-center text-[11px] font-mono shrink-0 ${
+                      currentAns.optionIndex === -1
+                        ? 'border-slate-300 bg-slate-600 text-white font-bold'
+                        : 'border-slate-600 text-slate-500'
+                    }`}
+                  >
+                    —
+                  </span>
+                  <span>No la sé / Dejar en blanco (0 puntos)</span>
+                </button>
               </div>
             </div>
 
             {submitWarning && (
-              <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/40 text-xs text-amber-200">
-                {submitWarning}
+              <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/40 text-xs text-amber-200 flex flex-wrap items-center justify-between gap-3">
+                <span>{submitWarning}</span>
+                <button
+                  type="button"
+                  onClick={() => void handleSubmitExam('force_manual')}
+                  className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition-colors cursor-pointer shrink-0"
+                >
+                  Enviar de todos modos
+                </button>
               </div>
             )}
 
@@ -952,7 +1008,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               ) : (
                 <button
                   type="button"
-                  onClick={() => void handleSubmitExam(false)}
+                  onClick={() => void handleSubmitExam('normal')}
                   className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white cursor-pointer"
                 >
                   Finalizar y guardar Pretest

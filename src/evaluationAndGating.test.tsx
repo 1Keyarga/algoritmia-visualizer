@@ -445,4 +445,74 @@ describe('Tareas accesibles sin cuenta, ocultamiento CSV y sincronización al co
     expect(latestSession?.inProgressAnswers).toBeUndefined();
     expect(container.textContent).toContain('Tiempo agotado (05:00)');
   });
+
+  it('permite marcar "No la sé / Dejar en blanco (0 puntos)" o confirmar "Enviar de todos modos" sin obligar a adivinar', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) }));
+
+    let latestSession: ParticipantSession | null = {
+      participantId: 'P-SKIP01',
+      consentedAt: '2026-11-16T12:00:00.000Z',
+      startedAt: '2026-11-16T12:00:00.000Z',
+      inProgressAnswers: {
+        testType: 'pretest',
+        startedAtMs: Date.now(),
+        answers: {
+          'PRE-01': { optionIndex: 1 }, // correcta (1 pto)
+        },
+      },
+    };
+
+    root = createRoot(container);
+    await act(async () => {
+      root!.render(
+        <EvaluationModule
+          session={latestSession}
+          onUpdateSession={next => {
+            latestSession = next;
+          }}
+          taskOutcomes={{}}
+          completedTasksCount={0}
+          onGoToGuidedTasks={vi.fn()}
+        />
+      );
+    });
+    await flushEffects();
+
+    // Ir a la Pregunta 2 y marcar "No la sé / Dejar en blanco (0 puntos)"
+    const q2Btn = findButtonByText(container, '2');
+    await act(async () => {
+      q2Btn!.click();
+    });
+    const skipBtn = findButtonByText(container, 'No la sé / Dejar en blanco (0 puntos)');
+    expect(skipBtn).toBeDefined();
+    await act(async () => {
+      skipBtn!.click();
+    });
+    expect(latestSession?.inProgressAnswers?.answers['PRE-02']?.optionIndex).toBe(-1);
+
+    // Ir a la Pregunta 9 y pulsar "Finalizar y guardar Pretest" teniendo aún preguntas 3..9 vacías
+    const q9Btn = findButtonByText(container, '9');
+    await act(async () => {
+      q9Btn!.click();
+    });
+    const finishBtn = findButtonByText(container, 'Finalizar y guardar Pretest');
+    await act(async () => {
+      finishBtn!.click();
+    });
+    await flushEffects();
+
+    // Muestra advertencia y el botón "Enviar de todos modos"
+    const forceBtn = findButtonByText(container, 'Enviar de todos modos');
+    expect(forceBtn).toBeDefined();
+    await act(async () => {
+      forceBtn!.click();
+    });
+    await flushEffects(60);
+
+    expect(latestSession?.pretest).toBeDefined();
+    expect(latestSession?.pretest?.totalScore).toBe(1);
+    expect(latestSession?.pretest?.itemScores['PRE-01']).toBe(1);
+    expect(latestSession?.pretest?.itemScores['PRE-02']).toBe(0);
+    expect(latestSession?.pretest?.itemScores['PRE-03']).toBe(0);
+  });
 });
