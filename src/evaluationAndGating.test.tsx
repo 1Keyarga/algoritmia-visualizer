@@ -378,4 +378,71 @@ describe('Tareas accesibles sin cuenta, ocultamiento CSV y sincronización al co
     expect(container.textContent).toContain('Cuestionario de percepción y motivación (R3.4)');
     expect(container.textContent).toContain('VITE_IMI_FORM_URL');
   });
+
+  it('muestra tiempos de 5 min (Pretest) y 8 min (Postest) y envía automáticamente al agotarse el tiempo aun con preguntas sin responder', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ ok: true }) }));
+
+    let latestSession: ParticipantSession | null = {
+      participantId: 'P-TIMER1',
+      consentedAt: '2026-11-16T12:00:00.000Z',
+      startedAt: '2026-11-16T12:00:00.000Z',
+    };
+
+    root = createRoot(container);
+    await act(async () => {
+      root!.render(
+        <EvaluationModule
+          session={latestSession}
+          onUpdateSession={next => {
+            latestSession = next;
+          }}
+          taskOutcomes={{}}
+          completedTasksCount={0}
+          onGoToGuidedTasks={vi.fn()}
+        />
+      );
+    });
+    await flushEffects();
+
+    expect(container.textContent).toContain('tiempo límite: 5 min');
+    expect(container.textContent).toContain('tiempo límite: 8 min');
+
+    // Al abrir Pretest con un intento que ya superó los 5 minutos (ej. hace 301s) y solo 1 pregunta respondida
+    const expiredSession: ParticipantSession = {
+      participantId: 'P-TIMER1',
+      consentedAt: '2026-11-16T12:00:00.000Z',
+      startedAt: '2026-11-16T12:00:00.000Z',
+      inProgressAnswers: {
+        testType: 'pretest',
+        startedAtMs: Date.now() - 301 * 1000,
+        answers: {
+          'PRE-01': { optionIndex: 1 }, // correcta
+        },
+      },
+    };
+
+    root.unmount();
+    root = createRoot(container);
+    await act(async () => {
+      root!.render(
+        <EvaluationModule
+          session={expiredSession}
+          onUpdateSession={next => {
+            latestSession = next;
+          }}
+          taskOutcomes={{}}
+          completedTasksCount={0}
+          onGoToGuidedTasks={vi.fn()}
+        />
+      );
+    });
+    await flushEffects(60);
+
+    expect(latestSession?.pretest).toBeDefined();
+    expect(latestSession?.pretest?.totalScore).toBe(1);
+    expect(latestSession?.pretest?.itemScores['PRE-01']).toBe(1);
+    expect(latestSession?.pretest?.itemScores['PRE-02']).toBe(0);
+    expect(latestSession?.inProgressAnswers).toBeUndefined();
+    expect(container.textContent).toContain('Tiempo agotado (05:00)');
+  });
 });

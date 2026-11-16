@@ -298,6 +298,10 @@ export const DEFAULT_SHEETS_WEBHOOK_URL =
 // Enlace al formulario externo de motivación IMI (R3.4); configurable aquí o vía VITE_IMI_FORM_URL en Vercel
 export const DEFAULT_IMI_FORM_URL = 'https://forms.gle/7ZqCniCRg3ijqBiA6';
 
+// Tiempo máximo por intento individual: 5 minutos (300 s) en Pretest y 8 minutos (480 s) en Postest
+export const PRETEST_TIME_LIMIT_SECONDS = 5 * 60;
+export const POSTEST_TIME_LIMIT_SECONDS = 8 * 60;
+
 export function getImiFormUrl(overrideUrl?: string): string {
   if (overrideUrl !== undefined) {
     const cleanOverride = overrideUrl.trim();

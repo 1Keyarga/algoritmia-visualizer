@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   PRETEST_ITEMS,
   POSTEST_ITEMS,
   DEFAULT_SHEETS_WEBHOOK_URL,
+  PRETEST_TIME_LIMIT_SECONDS,
+  POSTEST_TIME_LIMIT_SECONDS,
   EMPTY_TASK_PROGRESS,
   getImiFormUrl,
   generateParticipantCode,
@@ -27,7 +29,7 @@ import type { TaskAttemptCategory } from '../tasks/InteractiveTaskPanel';
 import type { AlgorithmMetadata, SupportedLanguage } from '../../types/algorithm';
 import type { Step } from '../../types/trace';
 import { StepExplanation } from '../pseudocode/StepExplanation';
-import { Check, ChevronLeft, ChevronRight, Copy, ExternalLink } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Clock, Copy, ExternalLink } from 'lucide-react';
 
 interface EvaluationModuleProps {
   session: ParticipantSession | null;
@@ -51,6 +53,14 @@ interface EvaluationModuleProps {
   selectedLanguage?: SupportedLanguage;
   onChangeLanguage?: (lang: SupportedLanguage) => void;
   imiFormUrl?: string;
+  examTimeLimitSeconds?: number;
+}
+
+function formatCountdown(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const mins = Math.floor(safe / 60);
+  const secs = safe % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
 function renderCleanText(text: string): React.ReactNode {
@@ -108,6 +118,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
   selectedLanguage = 'pseudocode',
   onChangeLanguage,
   imiFormUrl,
+  examTimeLimitSeconds,
 }) => {
   const [rawStudentCode, setRawStudentCode] = useState('');
   const [previewHash, setPreviewHash] = useState('');
@@ -115,21 +126,37 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isCheckingRemote, setIsCheckingRemote] = useState(false);
   const [copiedParticipantId, setCopiedParticipantId] = useState(false);
+  const [timeoutNotice, setTimeoutNotice] = useState<string | null>(null);
 
   const resolvedImiFormUrl = getImiFormUrl(imiFormUrl);
 
   const [activeExam, setActiveExam] = useState<'pretest' | 'postest' | null>(
     () => session?.inProgressAnswers?.testType ?? null
   );
+  const runningExamType = activeExam ?? session?.inProgressAnswers?.testType ?? null;
+  const effectiveTimeLimitSeconds = Math.max(
+    1,
+    examTimeLimitSeconds ??
+      (runningExamType === 'postest' ? POSTEST_TIME_LIMIT_SECONDS : PRETEST_TIME_LIMIT_SECONDS)
+  );
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [examStartedAtMs, setExamStartedAtMs] = useState<number>(
     () => session?.inProgressAnswers?.startedAtMs ?? Date.now()
   );
+  const runningStartedAtMs = activeExam
+    ? examStartedAtMs
+    : (session?.inProgressAnswers?.startedAtMs ?? examStartedAtMs);
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
   const [answers, setAnswers] = useState<EvaluationAttemptResult['rawAnswers']>(
     () => session?.inProgressAnswers?.answers ?? {}
   );
   const [submitWarning, setSubmitWarning] = useState<string | null>(null);
   const [postestPanelTab, setPostestPanelTab] = useState<'question' | 'code'>('question');
+
+  const isSubmittingRef = useRef(false);
+  const latestSubmitRef = useRef<(forceOnTimeout?: boolean) => Promise<void>>(() =>
+    Promise.resolve()
+  );
 
   const displayedPreviewHash = rawStudentCode.trim() ? previewHash : '';
 
@@ -274,13 +301,17 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
       session.inProgressAnswers?.testType === type
         ? session.inProgressAnswers.answers
         : createEmptyAnswers(items);
+    const now = Date.now();
     const startedMs =
       session.inProgressAnswers?.testType === type
         ? session.inProgressAnswers.startedAtMs
-        : Date.now();
+        : now;
 
+    isSubmittingRef.current = false;
+    setTimeoutNotice(null);
     setAnswers(initialAns);
     setExamStartedAtMs(startedMs);
+    setNowMs(now);
     setCurrentQuestionIdx(0);
     setPostestPanelTab('question');
     setSubmitWarning(null);
@@ -314,33 +345,49 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
     setSubmitWarning(null);
   };
 
-  const handleSubmitExam = async () => {
-    if (!session || !activeExam) return;
-    const items = activeExam === 'pretest' ? PRETEST_ITEMS : POSTEST_ITEMS;
-    const firstIncompleteIdx = items.findIndex(it => !isItemAnswered(it, answers[it.id]));
+  const handleSubmitExam = async (forceOnTimeout = false) => {
+    const examType = activeExam ?? session?.inProgressAnswers?.testType ?? null;
+    if (!session || !examType || isSubmittingRef.current) return;
+    const effectiveAnswers = activeExam
+      ? answers
+      : (session.inProgressAnswers?.answers ?? answers);
+    const items = examType === 'pretest' ? PRETEST_ITEMS : POSTEST_ITEMS;
 
-    if (firstIncompleteIdx !== -1) {
-      setCurrentQuestionIdx(firstIncompleteIdx);
-      setPostestPanelTab('question');
-      setSubmitWarning(
-        `Selecciona una alternativa en la Pregunta ${firstIncompleteIdx + 1} antes de finalizar.`
-      );
-      return;
+    if (!forceOnTimeout) {
+      const firstIncompleteIdx = items.findIndex(it => !isItemAnswered(it, effectiveAnswers[it.id]));
+      if (firstIncompleteIdx !== -1) {
+        setCurrentQuestionIdx(firstIncompleteIdx);
+        setPostestPanelTab('question');
+        setSubmitWarning(
+          `Selecciona una alternativa en la Pregunta ${firstIncompleteIdx + 1} antes de finalizar.`
+        );
+        return;
+      }
     }
 
-    const durationSeconds = Math.max(1, Math.round((Date.now() - examStartedAtMs) / 1000));
-    const result = gradeEvaluationAttempt(items, answers, durationSeconds);
+    isSubmittingRef.current = true;
+    const rawElapsed = Math.max(1, Math.round((Date.now() - runningStartedAtMs) / 1000));
+    const durationSeconds = forceOnTimeout
+      ? Math.min(effectiveTimeLimitSeconds, rawElapsed)
+      : rawElapsed;
+    const result = gradeEvaluationAttempt(items, effectiveAnswers, durationSeconds);
 
     const updatedSession: ParticipantSession = {
       ...session,
-      pretest: activeExam === 'pretest' ? result : session.pretest,
-      postest: activeExam === 'postest' ? result : session.postest,
+      pretest: examType === 'pretest' ? result : session.pretest,
+      postest: examType === 'postest' ? result : session.postest,
       inProgressAnswers: undefined,
     };
 
     onUpdateSession(updatedSession);
     setActiveExam(null);
     setSubmitWarning(null);
+    if (forceOnTimeout) {
+      const label = examType === 'pretest' ? 'Pretest' : 'Postest';
+      setTimeoutNotice(
+        `Tiempo agotado (${formatCountdown(effectiveTimeLimitSeconds)}): el ${label} se envió automáticamente con las respuestas registradas hasta ese momento.`
+      );
+    }
 
     if (DEFAULT_SHEETS_WEBHOOK_URL.trim()) {
       const ok = await sendEvaluationToGoogleSheets(
@@ -353,6 +400,50 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
         onUpdateSession({ ...updatedSession, sheetsSynced: true });
       }
     }
+  };
+
+  useEffect(() => {
+    latestSubmitRef.current = handleSubmitExam;
+  });
+
+  useEffect(() => {
+    if (!runningExamType) {
+      isSubmittingRef.current = false;
+      return;
+    }
+    const tick = () => {
+      const currentNow = Date.now();
+      setNowMs(currentNow);
+      const elapsedSec = Math.floor((currentNow - runningStartedAtMs) / 1000);
+      if (elapsedSec >= effectiveTimeLimitSeconds && !isSubmittingRef.current) {
+        void latestSubmitRef.current(true);
+      }
+    };
+    tick();
+    const intervalId = window.setInterval(tick, 1000);
+    return () => window.clearInterval(intervalId);
+  }, [runningExamType, runningStartedAtMs, effectiveTimeLimitSeconds]);
+
+  const elapsedExamSeconds = Math.max(0, Math.floor((nowMs - runningStartedAtMs) / 1000));
+  const remainingExamSeconds = Math.max(0, effectiveTimeLimitSeconds - elapsedExamSeconds);
+
+  const renderCountdownBadge = () => {
+    const isUrgent = remainingExamSeconds <= 30;
+    const isWarning = !isUrgent && remainingExamSeconds <= 60;
+    const badgeClasses = isUrgent
+      ? 'bg-rose-950/60 border-rose-500/60 text-rose-200 animate-pulse'
+      : isWarning
+      ? 'bg-amber-950/50 border-amber-500/50 text-amber-200'
+      : 'bg-[#10121c] border-[#262a42] text-indigo-200';
+    return (
+      <span
+        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-mono font-bold ${badgeClasses}`}
+        title="Tiempo restante (se enviará automáticamente al llegar a 00:00)"
+      >
+        <Clock className="w-3 h-3 shrink-0" aria-hidden="true" />
+        <span>{formatCountdown(remainingExamSeconds)}</span>
+      </span>
+    );
   };
 
   // VISTA 1: INGRESO DE PARTICIPANTE Y CONSENTIMIENTO INFORMADO
@@ -485,9 +576,12 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
             </div>
           </div>
 
-          <span className="text-[11px] font-mono text-slate-400">
-            {answeredCount}/{items.length} listas
-          </span>
+          <div className="flex items-center gap-2">
+            {renderCountdownBadge()}
+            <span className="text-[11px] font-mono text-slate-400">
+              {answeredCount}/{items.length} listas
+            </span>
+          </div>
         </div>
 
         {/* Selector numérico de las 9 preguntas del Postest */}
@@ -697,7 +791,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               ) : (
                 <button
                   type="button"
-                  onClick={handleSubmitExam}
+                  onClick={() => void handleSubmitExam(false)}
                   className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white cursor-pointer"
                 >
                   Finalizar y guardar Postest
@@ -765,6 +859,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
             <span className="ml-2 text-[11px] font-mono text-slate-400">
               {answeredCount}/{items.length} respondidas
             </span>
+            {renderCountdownBadge()}
           </div>
         </div>
 
@@ -857,7 +952,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               ) : (
                 <button
                   type="button"
-                  onClick={handleSubmitExam}
+                  onClick={() => void handleSubmitExam(false)}
                   className="px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white cursor-pointer"
                 >
                   Finalizar y guardar Pretest
@@ -903,6 +998,12 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
           </div>
         </div>
 
+        {timeoutNotice && (
+          <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/40 text-xs text-amber-200">
+            {timeoutNotice}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Etapa 1: Pretest (sin visualizador) */}
           <div className="bg-[#151724] border border-[#24283e] rounded-xl p-5 flex flex-col justify-between space-y-4">
@@ -928,7 +1029,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               </div>
 
               <p className="text-xs text-slate-400 leading-relaxed">
-                9 preguntas iniciales de opción múltiple antes de usar el visualizador.
+                9 preguntas iniciales de opción múltiple antes de usar el visualizador (tiempo límite: 5 min).
               </p>
 
               {preDone && (
@@ -951,7 +1052,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               {preDone
                 ? 'Pretest completado'
                 : session.inProgressAnswers?.testType === 'pretest'
-                ? 'Continuar Pretest'
+                ? `Continuar Pretest (${formatCountdown(remainingExamSeconds)})`
                 : 'Iniciar Pretest'}
             </button>
           </div>
@@ -982,7 +1083,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               </div>
 
               <p className="text-xs text-slate-400 leading-relaxed">
-                9 preguntas con el visualizador a la derecha para probar cada caso mientras respondes.
+                9 preguntas con el visualizador a la derecha para probar cada caso mientras respondes (tiempo límite: 8 min).
               </p>
 
               {posDone && (
@@ -1015,7 +1116,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                   : posDone
                   ? 'Postest completado'
                   : session.inProgressAnswers?.testType === 'postest'
-                  ? 'Continuar Postest'
+                  ? `Continuar Postest (${formatCountdown(remainingExamSeconds)})`
                   : 'Iniciar Postest'}
               </button>
             </div>
