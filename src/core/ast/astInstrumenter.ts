@@ -244,11 +244,22 @@ export function instrumentAndTraceStudentCode(
   const declaredVariables = new Set<string>(['arr']);
   const functionLocalVars = new Map<string, Set<string>>();
   const declaredFunctions = new Set<string>();
+  const swapHelperFunctions = new Set<string>(['swap', 'intercambiar', 'cambiar', 'permutar']);
   let firstDeclaredFunction: string | null = null;
   let firstFunctionParams: string[] = [];
 
-  function registerFunctionParams(fnName: string, params: any[]) {
+  function registerFunctionParams(fnName: string, params: any[], bodyNode?: any) {
     declaredFunctions.add(fnName);
+    if (params.length === 2 && params[0]?.type === 'Identifier' && params[1]?.type === 'Identifier' && bodyNode) {
+      const p0 = params[0].name;
+      const p1 = params[1].name;
+      const bodySrc = normalizedCode.slice(bodyNode.start, bodyNode.end);
+      const assignsP0 = new RegExp(`\\b${p0}\\s*=\\s*${p1}\\b`).test(bodySrc);
+      const assignsP1 = new RegExp(`\\b${p1}\\s*=\\s*[a-zA-Z_]\\w*\\b`).test(bodySrc);
+      if (assignsP0 && assignsP1) {
+        swapHelperFunctions.add(fnName);
+      }
+    }
     if (!firstDeclaredFunction) {
       firstDeclaredFunction = fnName;
       firstFunctionParams = params.map(p => (p.type === 'Identifier' ? p.name : '')).filter(Boolean);
@@ -273,7 +284,7 @@ export function instrumentAndTraceStudentCode(
     if (node.type === 'FunctionDeclaration' && node.id?.name) {
       const fnName = node.id.name;
       activeFunc = fnName;
-      registerFunctionParams(fnName, Array.isArray(node.params) ? node.params : []);
+      registerFunctionParams(fnName, Array.isArray(node.params) ? node.params : [], node.body);
     } else if (
       node.type === 'VariableDeclarator' &&
       node.id?.type === 'Identifier' &&
@@ -406,7 +417,7 @@ export function instrumentAndTraceStudentCode(
     if (node.type === 'CallExpression' && node.callee?.type === 'Identifier') {
       if (
         declaredFunctions.has(node.callee.name) ||
-        ['swap', 'intercambiar'].includes(node.callee.name)
+        swapHelperFunctions.has(node.callee.name)
       ) {
         return true;
       }
@@ -459,10 +470,10 @@ export function instrumentAndTraceStudentCode(
 
     // 2. Transformar llamadas especiales (swap(arr[i], arr[j])) y funciones de usuario
     if (node.type === 'CallExpression') {
-      // 2a. swap(arr[i], arr[j]) o intercambiar(arr[i], arr[j])
+      // 2a. swap(arr[i], arr[j]), intercambiar(arr[i], arr[j]) o cualquier función swap con punteros/referencias
       if (
         node.callee?.type === 'Identifier' &&
-        (node.callee.name === 'swap' || node.callee.name === 'intercambiar')
+        swapHelperFunctions.has(node.callee.name)
       ) {
         if (
           node.arguments.length === 2 &&
@@ -538,13 +549,35 @@ export function instrumentAndTraceStudentCode(
         }
       }
 
-      // P-01: En lenguaje C, truncar la división entera (ej. (izq + der) / 2 -> Math.trunc((izq + der) / 2))
-      if (op === '/' && detectedLanguage === 'c' && !isFloatingPointExpr(node)) {
+      // P-01: En lenguaje C (o en JS cuando se calcula un índice de punto medio como mid/medio/mitad/centro), truncar la división entera
+      const targetVarName =
+        parent?.type === 'VariableDeclarator' && parent.id?.type === 'Identifier'
+          ? parent.id.name
+          : parent?.type === 'AssignmentExpression' && parent.left?.type === 'Identifier'
+          ? parent.left.name
+          : '';
+      const isMidpointIndexVar = /^(?:mid|medio|mitad|centro|center|m|pivoteIdx|pivotIdx)$/i.test(targetVarName);
+      if (
+        op === '/' &&
+        ((detectedLanguage === 'c' && !isFloatingPointExpr(node)) ||
+          (detectedLanguage === 'javascript' && isMidpointIndexVar))
+      ) {
         const leftCode = renderRange(node.left.start, node.left.end);
         const rightCode = renderRange(node.right.start, node.right.end);
         replaceNode(node.start, node.end, `Math.trunc((${leftCode}) / (${rightCode}))`);
         return;
       }
+    }
+
+    // 3b. Auto-truncar índices en accesos de lectura a arreglos (evita arr[3.5] = undefined en JS)
+    if (
+      node.type === 'MemberExpression' &&
+      isArrayAccess(node) &&
+      node.property &&
+      node.property.type !== 'Literal'
+    ) {
+      const propCode = renderRange(node.property.start, node.property.end);
+      replaceNode(node.property.start, node.property.end, `Math.trunc(${propCode})`);
     }
 
     // 4. Transformar asignaciones a arreglos (P-03: soporta =, +=, -=, *=, /=, %=)
