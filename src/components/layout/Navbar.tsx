@@ -175,7 +175,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     onClick={() => setIsAlgoMenuOpen(false)}
                   />
                   <div
-                    className="fixed w-64 bg-[#181a28] border border-[#2c3048] rounded-lg shadow-2xl py-1.5 z-[50] max-h-[75vh] overflow-y-auto custom-scrollbar"
+                    className="fixed w-72 bg-[#181a28] border border-[#2c3048] rounded-lg shadow-2xl py-1.5 z-[50] max-h-[75vh] overflow-y-auto custom-scrollbar"
                     style={{ top: `${dropdownPosition.top}px`, left: `${dropdownPosition.left}px` }}
                   >
                     {families.map(fam => {
