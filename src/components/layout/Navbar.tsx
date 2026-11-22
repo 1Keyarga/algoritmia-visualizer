@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ALGORITHMS_CATALOG } from '../../core/algorithms/registry';
 import type { AlgorithmMetadata } from '../../types/algorithm';
 import { TrazarithmMark, type AppModule } from './HomeHub';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Moon, Sun } from 'lucide-react';
 import { DatasetModal } from './DatasetModal';
+import type { ThemeMode } from '../../core/utils/themeMode';
 
 interface NavbarProps {
   activeModule: Exclude<AppModule, 'home'>;
@@ -22,6 +23,8 @@ interface NavbarProps {
   onToggleComparison?: () => void;
   onShareLink?: () => void;
   activeParticipantId?: string | null;
+  themeMode?: ThemeMode;
+  onToggleThemeMode?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -41,6 +44,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onToggleComparison,
   onShareLink,
   activeParticipantId = null,
+  themeMode = 'dark',
+  onToggleThemeMode,
 }) => {
   const [isAlgoMenuOpen, setIsAlgoMenuOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -309,6 +314,50 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {linkCopied ? 'Copiado' : 'Compartir'}
               </button>
             )}
+
+            {onToggleThemeMode && (
+              <button
+                type="button"
+                onClick={onToggleThemeMode}
+                aria-pressed={themeMode === 'light'}
+                className="flex items-center gap-1.5 bg-[#191b2a] hover:bg-[#222538] border border-[#2b2f46] text-slate-300 hover:text-white px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0"
+              >
+                {themeMode === 'light' ? (
+                  <>
+                    <Moon aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
+                    <span>Modo oscuro</span>
+                  </>
+                ) : (
+                  <>
+                    <Sun aria-hidden="true" className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    <span>Fondo claro</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        )}
+
+        {activeModule !== 'algorithms' && onToggleThemeMode && (
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={onToggleThemeMode}
+              aria-pressed={themeMode === 'light'}
+              className="flex items-center gap-1.5 bg-[#191b2a] hover:bg-[#222538] border border-[#2b2f46] text-slate-300 hover:text-white px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0"
+            >
+              {themeMode === 'light' ? (
+                <>
+                  <Moon aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
+                  <span>Modo oscuro</span>
+                </>
+              ) : (
+                <>
+                  <Sun aria-hidden="true" className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                  <span>Fondo claro (Daltonismo)</span>
+                </>
+              )}
+            </button>
           </div>
         )}
       </header>

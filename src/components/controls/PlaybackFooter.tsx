@@ -78,10 +78,10 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
       </div>
 
       {/* Barra de controles de reproducción */}
-      <div className="h-14 px-6 flex items-center justify-between">
-        {/* Contador de pasos y estado de punto de control */}
-        <div className="flex items-center gap-2.5 min-w-[140px]">
-          <div className="bg-[#1c1d2c] px-3 py-1 rounded-lg border border-[#2b2d42]">
+      <div className="h-14 px-6 flex items-center justify-between gap-3">
+        {/* Contador de pasos, punto de control y guía visible de atajos de teclado (CP-07) */}
+        <div className="flex items-center gap-2 min-w-[140px]">
+          <div className="bg-[#1c1d2c] px-3 py-1 rounded-lg border border-[#2b2d42] shrink-0">
             <span className="text-xs font-mono text-slate-300 font-semibold">
               {disabled
                 ? 'Sin ejecución'
@@ -89,70 +89,111 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
             </span>
           </div>
 
-          {isCheckpointLocked && (
+          {isCheckpointLocked ? (
             <div
               className="hidden sm:flex items-center px-2.5 py-1 rounded-lg bg-amber-950/40 border border-amber-600/40 text-amber-300 text-[11px] font-medium"
-              title="Resuelve la actividad en el panel izquierdo para desbloquear la ejecución completa del algoritmo"
             >
               <span>Punto de control en paso {effectiveMax + 1}</span>
+            </div>
+          ) : (
+            <div
+              aria-label="Atajos de teclado disponibles"
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#161826] border border-[#26293e] text-[10px] text-slate-300"
+            >
+              <span className="font-semibold text-slate-400">Atajos:</span>
+              <span className="inline-flex items-center gap-1">
+                <kbd className="px-1.5 py-0.2 rounded bg-[#22253a] border border-[#343956] font-mono text-[10px] text-indigo-200">
+                  Espacio
+                </kbd>
+                <span>Play/Pausa</span>
+              </span>
+              <span className="text-slate-600">·</span>
+              <span className="inline-flex items-center gap-1">
+                <kbd className="px-1 py-0.2 rounded bg-[#22253a] border border-[#343956] font-mono text-[10px] text-indigo-200">
+                  ←/→
+                </kbd>
+                <span>Paso</span>
+              </span>
+              <span className="text-slate-600">·</span>
+              <span className="inline-flex items-center gap-1">
+                <kbd className="px-1 py-0.2 rounded bg-[#22253a] border border-[#343956] font-mono text-[10px] text-indigo-200">
+                  Home/End
+                </kbd>
+                <span>Extremos</span>
+              </span>
+              <span className="text-slate-600">·</span>
+              <span className="inline-flex items-center gap-1">
+                <kbd className="px-1 py-0.2 rounded bg-[#22253a] border border-[#343956] font-mono text-[10px] text-indigo-200">
+                  R
+                </kbd>
+                <span>Reset</span>
+              </span>
             </div>
           )}
         </div>
 
         {/* Controles multimedia */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           {/* Ir al inicio */}
           <button
             onClick={onGoToStart}
             disabled={disabled || currentStepIndex === 0}
+            aria-label="Ir al inicio (Atajo Home)"
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed"
             title="Ir al inicio (Home)"
           >
-            <SkipBack className="w-4 h-4" />
+            <SkipBack aria-hidden="true" className="w-4 h-4" />
           </button>
 
           {/* Paso anterior */}
           <button
             onClick={onPrevStep}
             disabled={disabled || currentStepIndex === 0}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed"
+            aria-label="Paso anterior (Atajo Flecha Izquierda)"
+            className="px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed flex items-center gap-1"
             title="Paso anterior (Flecha Izquierda)"
           >
-            <ChevronLeft className="w-5 h-5" />
+            <ChevronLeft aria-hidden="true" className="w-5 h-5" />
+            <kbd className="hidden sm:inline text-[10px] font-mono text-slate-400">←</kbd>
           </button>
 
           {/* Botón Reproducir / Pausar */}
           <button
             onClick={onTogglePlay}
             disabled={disabled || totalSteps === 0}
-            className="w-10 h-10 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 text-white flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed"
+            aria-label={isPlaying ? 'Pausar (Atajo Espacio)' : 'Reproducir (Atajo Espacio)'}
+            className="h-10 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:cursor-not-allowed"
             title={isPlaying ? 'Pausar (Espacio)' : 'Reproducir (Espacio)'}
           >
             {isPlaying && !disabled ? (
-              <Pause className="w-4 h-4 fill-white" />
+              <Pause aria-hidden="true" className="w-4 h-4 fill-white" />
             ) : (
-              <Play className="w-4 h-4 fill-white ml-0.5" />
+              <Play aria-hidden="true" className="w-4 h-4 fill-white ml-0.5" />
             )}
+            <kbd className="hidden md:inline text-[10px] font-mono opacity-90">Espacio</kbd>
           </button>
 
           {/* Paso siguiente */}
           <button
             onClick={onNextStep}
             disabled={disabled || currentStepIndex >= effectiveMax || isAtCheckpointLimit}
-            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed"
+            aria-label="Paso siguiente (Atajo Flecha Derecha)"
+            className="px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed flex items-center gap-1"
             title="Paso siguiente (Flecha Derecha)"
           >
-            <ChevronRight className="w-5 h-5" />
+            <kbd className="hidden sm:inline text-[10px] font-mono text-slate-400">→</kbd>
+            <ChevronRight aria-hidden="true" className="w-5 h-5" />
           </button>
 
           {/* Ir al final */}
           <button
             onClick={onGoToEnd}
             disabled={disabled || currentStepIndex >= effectiveMax || isAtCheckpointLimit}
+            aria-label="Ir al final permitido (Atajo End)"
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed"
             title="Ir al final permitido (End)"
           >
-            <SkipForward className="w-4 h-4" />
+            <SkipForward aria-hidden="true" className="w-4 h-4" />
           </button>
         </div>
 
@@ -181,8 +222,11 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1c1d29] hover:bg-[#25283d] disabled:opacity-40 disabled:cursor-not-allowed border border-[#2b2e42] text-slate-300 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
             title="Reiniciar ejecución (R)"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <RotateCcw aria-hidden="true" className="w-3.5 h-3.5" />
             <span>Reset</span>
+            <kbd className="hidden sm:inline px-1 py-0.2 rounded bg-[#25283d] border border-[#343956] text-[10px] font-mono text-slate-300">
+              R
+            </kbd>
           </button>
         </div>
       </div>

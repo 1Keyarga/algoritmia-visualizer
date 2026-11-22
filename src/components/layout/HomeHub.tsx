@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Pause, Play } from 'lucide-react';
+import { ArrowRight, Moon, Pause, Play, Sun } from 'lucide-react';
 import { ALGORITHMS_CATALOG } from '../../core/algorithms/registry';
 import type { AlgorithmMetadata } from '../../types/algorithm';
+import type { ThemeMode } from '../../core/utils/themeMode';
 
 export type AppModule =
   | 'home'
@@ -17,6 +18,8 @@ interface HomeHubProps {
   onEnterEvaluationModule: () => void;
   completedTasksCount: number;
   activeParticipantId?: string | null;
+  themeMode?: ThemeMode;
+  onToggleThemeMode?: () => void;
 }
 
 interface PreviewFrame {
@@ -97,6 +100,8 @@ export const HomeHub: React.FC<HomeHubProps> = ({
   onEnterEvaluationModule,
   completedTasksCount,
   activeParticipantId = null,
+  themeMode = 'dark',
+  onToggleThemeMode,
 }) => {
   const [frameIdx, setFrameIdx] = useState(0);
   const [isPaused, setIsPaused] = useState(() =>
@@ -133,23 +138,46 @@ export const HomeHub: React.FC<HomeHubProps> = ({
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={onEnterEvaluationModule}
-            className="min-h-9 flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-[#141726] hover:bg-[#1c2035] border border-[#282d46] hover:border-[#3c4469] text-xs font-medium text-slate-100 transition-colors cursor-pointer shrink-0"
-          >
-            <span
-              aria-hidden="true"
-              className={`w-2 h-2 rounded-full ${
-                activeParticipantId
-                  ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.85)]'
-                  : 'bg-slate-400'
-              }`}
-            />
-            <span>
-              {activeParticipantId ? `Evaluación (${activeParticipantId})` : 'Evaluación'}
-            </span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            {onToggleThemeMode && (
+              <button
+                type="button"
+                onClick={onToggleThemeMode}
+                aria-pressed={themeMode === 'light'}
+                className="min-h-9 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141726] hover:bg-[#1c2035] border border-[#282d46] hover:border-[#3c4469] text-xs font-medium text-slate-200 transition-colors cursor-pointer"
+              >
+                {themeMode === 'light' ? (
+                  <>
+                    <Moon aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
+                    <span>Modo oscuro</span>
+                  </>
+                ) : (
+                  <>
+                    <Sun aria-hidden="true" className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    <span>Fondo claro (Daltonismo)</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onEnterEvaluationModule}
+              className="min-h-9 flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-[#141726] hover:bg-[#1c2035] border border-[#282d46] hover:border-[#3c4469] text-xs font-medium text-slate-100 transition-colors cursor-pointer shrink-0"
+            >
+              <span
+                aria-hidden="true"
+                className={`w-2 h-2 rounded-full ${
+                  activeParticipantId
+                    ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.85)]'
+                    : 'bg-slate-400'
+                }`}
+              />
+              <span>
+                {activeParticipantId ? `Evaluación (${activeParticipantId})` : 'Evaluación'}
+              </span>
+            </button>
+          </div>
         </header>
 
         <main className="flex flex-col gap-8">

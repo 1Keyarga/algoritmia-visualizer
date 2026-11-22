@@ -1,3 +1,28 @@
+export type TaskAttemptOutcome =
+  | 'first_attempt'
+  | 'second_attempt'
+  | 'multiple_attempts'
+  | 'failed';
+
+export function getTaskStarCount(
+  taskId: string,
+  completedTaskIds: string[],
+  taskOutcomes: Record<string, TaskAttemptOutcome>
+): 0 | 1 | 2 | 3 {
+  const outcome = taskOutcomes[taskId];
+  if (outcome === 'first_attempt') return 3;
+  if (outcome === 'second_attempt') return 2;
+  if (outcome === 'multiple_attempts') return 1;
+  if (outcome === 'failed') return 0;
+  if (completedTaskIds.includes(taskId)) return 1;
+  return 0;
+}
+
+export function formatStarBadge(stars: number): string {
+  const clamped = Math.max(0, Math.min(3, Math.floor(stars)));
+  return '★'.repeat(clamped) + '☆'.repeat(3 - clamped);
+}
+
 export interface NumericFieldSpec {
   label: string;
   expectedValue: number;
@@ -82,7 +107,7 @@ export const GUIDED_TASKS_REPOSITORY: GuidedTask[] = [
     bloom: 'Comprender',
     competence: 'Pensar lógicamente',
     indicator: 'Encuentra la relación entre objetos reales o abstractos',
-    descriptor: 'Escoge los bloques de instrucciones necesarios para la solución del problema',
+    descriptor: 'Identifica la relación entre los elementos del problema y las instrucciones que se derivan de ella',
     abstraction: 'Básico',
     interactionType: 'Predicción',
     difficulty: 'Básico',
@@ -124,7 +149,7 @@ export const GUIDED_TASKS_REPOSITORY: GuidedTask[] = [
     bloom: 'Aplicar',
     competence: 'Diseñar algoritmos',
     indicator: 'Crea una secuencia ordenada de instrucciones',
-    descriptor: 'Selecciona las órdenes en forma ordenada y secuencial',
+    descriptor: 'Selecciona la instrucción secuencial inmediata requerida en un paso específico del procedimiento',
     abstraction: 'Básico',
     interactionType: 'Completar código',
     difficulty: 'Intermedio',
@@ -198,7 +223,7 @@ int main() {
     bloom: 'Comprender',
     competence: 'Pensar lógicamente',
     indicator: 'Encuentra la relación entre objetos reales o abstractos',
-    descriptor: 'Escoge los bloques de instrucciones necesarios para la solución del problema',
+    descriptor: 'Identifica la relación entre los elementos del problema y las instrucciones que se derivan de ella',
     abstraction: 'Básico',
     interactionType: 'Predicción',
     difficulty: 'Básico',
@@ -240,7 +265,7 @@ int main() {
     bloom: 'Aplicar',
     competence: 'Diseñar algoritmos',
     indicator: 'Crea una secuencia ordenada de instrucciones',
-    descriptor: 'Selecciona las órdenes en forma ordenada y secuencial',
+    descriptor: 'Selecciona la instrucción secuencial inmediata requerida en un paso específico del procedimiento',
     abstraction: 'Básico',
     interactionType: 'Completar código',
     difficulty: 'Intermedio',
@@ -348,7 +373,7 @@ int main() {
     bloom: 'Crear',
     competence: 'Diseñar algoritmos',
     indicator: 'Crea una secuencia ordenada de instrucciones',
-    descriptor: 'Selecciona las órdenes en forma ordenada y secuencial',
+    descriptor: 'Selecciona la instrucción secuencial inmediata requerida en un paso específico del procedimiento',
     abstraction: 'Básico',
     interactionType: 'Construcción manual',
     difficulty: 'Avanzado',
@@ -390,7 +415,7 @@ int main() {
     bloom: 'Comprender',
     competence: 'Pensar lógicamente',
     indicator: 'Encuentra la relación entre objetos reales o abstractos',
-    descriptor: 'Escoge los bloques de instrucciones necesarios para la solución del problema',
+    descriptor: 'Identifica la relación entre los elementos del problema y las instrucciones que se derivan de ella',
     abstraction: 'Básico',
     interactionType: 'Predicción',
     difficulty: 'Básico',
@@ -431,7 +456,7 @@ int main() {
     bloom: 'Aplicar',
     competence: 'Diseñar algoritmos',
     indicator: 'Crea una secuencia ordenada de instrucciones',
-    descriptor: 'Selecciona instrucciones que llevan a otra instrucción',
+    descriptor: 'Selecciona estructuras condicionales o de ramificación que determinan la siguiente instrucción a ejecutar',
     abstraction: 'Intermedio',
     interactionType: 'Completar código',
     difficulty: 'Intermedio',
@@ -493,7 +518,7 @@ int main() {
     bloom: 'Comprender',
     competence: 'Pensar lógicamente',
     indicator: 'Encuentra la relación entre objetos reales o abstractos',
-    descriptor: 'Establece el orden lógico de las órdenes',
+    descriptor: 'Establece la secuencia lógica de las instrucciones',
     abstraction: 'Intermedio',
     interactionType: 'Predicción',
     difficulty: 'Intermedio',
@@ -535,7 +560,7 @@ int main() {
     bloom: 'Aplicar',
     competence: 'Diseñar algoritmos',
     indicator: 'Crea una secuencia ordenada de instrucciones',
-    descriptor: 'Selecciona las órdenes en forma ordenada y secuencial',
+    descriptor: 'Selecciona la instrucción secuencial inmediata requerida en un paso específico del procedimiento',
     abstraction: 'Básico',
     interactionType: 'Completar código',
     difficulty: 'Intermedio',
@@ -604,7 +629,7 @@ int main() {
     bloom: 'Analizar',
     competence: 'Abstracción',
     indicator: 'Planifica la solución del problema',
-    descriptor: 'Ensaya el camino que va a trazar o la figura que va a realizar',
+    descriptor: 'Planifica la secuencia de pasos o ruta de solución antes de ejecutar el algoritmo',
     abstraction: 'Básico',
     interactionType: 'Comparación',
     difficulty: 'Avanzado',
@@ -645,7 +670,7 @@ int main() {
     bloom: 'Evaluar',
     competence: 'Pensar lógicamente',
     indicator: 'Encuentra la relación entre objetos reales o abstractos',
-    descriptor: 'Establece el orden lógico de las órdenes',
+    descriptor: 'Establece la secuencia lógica de las instrucciones',
     abstraction: 'Intermedio',
     interactionType: 'Justificación',
     difficulty: 'Avanzado',
@@ -726,7 +751,7 @@ int main() {
     bloom: 'Aplicar',
     competence: 'Diseñar algoritmos',
     indicator: 'Crea una secuencia ordenada de instrucciones',
-    descriptor: 'Selecciona las órdenes en forma ordenada y secuencial',
+    descriptor: 'Selecciona la instrucción secuencial inmediata requerida en un paso específico del procedimiento',
     abstraction: 'Básico',
     interactionType: 'Completar código',
     difficulty: 'Intermedio',
@@ -832,7 +857,7 @@ int main() {
     bloom: 'Comprender',
     competence: 'Pensar lógicamente',
     indicator: 'Encuentra la relación entre objetos reales o abstractos',
-    descriptor: 'Establece el orden lógico de las órdenes',
+    descriptor: 'Establece la secuencia lógica de las instrucciones',
     abstraction: 'Intermedio',
     interactionType: 'Predicción',
     difficulty: 'Básico',
@@ -873,7 +898,7 @@ int main() {
     bloom: 'Aplicar',
     competence: 'Diseñar algoritmos',
     indicator: 'Crea una secuencia ordenada de instrucciones',
-    descriptor: 'Selecciona las órdenes en forma ordenada y secuencial',
+    descriptor: 'Selecciona la instrucción secuencial inmediata requerida en un paso específico del procedimiento',
     abstraction: 'Básico',
     interactionType: 'Completar código',
     difficulty: 'Avanzado',
@@ -948,7 +973,7 @@ int main() {
     bloom: 'Crear',
     competence: 'Diseñar algoritmos',
     indicator: 'Crea una secuencia ordenada de instrucciones',
-    descriptor: 'Selecciona las órdenes en forma ordenada y secuencial',
+    descriptor: 'Selecciona la instrucción secuencial inmediata requerida en un paso específico del procedimiento',
     abstraction: 'Básico',
     interactionType: 'Construcción manual',
     difficulty: 'Avanzado',
@@ -988,7 +1013,7 @@ int main() {
     bloom: 'Evaluar',
     competence: 'Abstracción',
     indicator: 'Planifica la solución del problema',
-    descriptor: 'Ensaya el camino que va a trazar o la figura que va a realizar',
+    descriptor: 'Planifica la secuencia de pasos o ruta de solución antes de ejecutar el algoritmo',
     abstraction: 'Básico',
     interactionType: 'Justificación',
     difficulty: 'Avanzado',
@@ -1028,7 +1053,7 @@ int main() {
     bloom: 'Crear',
     competence: 'Pensar iterativamente',
     indicator: 'Identifica un ciclo repetitivo',
-    descriptor: 'Agrupa instrucciones dentro de un bloque repetitivo una cantidad de veces',
+    descriptor: 'Agrupa instrucciones dentro de un bloque repetitivo un número determinado de veces',
     abstraction: 'Avanzado',
     interactionType: 'Completar código',
     difficulty: 'Avanzado',
@@ -1096,7 +1121,7 @@ int main() {
     bloom: 'Evaluar',
     competence: 'Diseñar algoritmos',
     indicator: 'Crea una secuencia ordenada de instrucciones',
-    descriptor: 'Selecciona instrucciones finitas',
+    descriptor: 'Construye una secuencia de instrucciones que finaliza en un número finito de pasos',
     abstraction: 'Avanzado',
     interactionType: 'Completar código',
     difficulty: 'Avanzado',

@@ -2,7 +2,7 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light dark;
     accent-color: #6366f1;
     --bg-main: #0c0e14;
     --bg-panel: #131620;
@@ -18,6 +18,28 @@
     --scrollbar-thumb: #36394d;
     scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
     scrollbar-width: thin;
+
+    &:has(> head > meta[name="color-scheme"][content="dark"]) {
+      color-scheme: dark;
+    }
+
+    &:has(> head > meta[name="color-scheme"][content="light"]) {
+      color-scheme: light;
+    }
+  }
+
+  :root:has(> head > meta[name="color-scheme"][content="light"]),
+  :root[data-theme="light"] {
+    color-scheme: light;
+    accent-color: #4338ca;
+    --bg-main: #f5f3ec;
+    --bg-panel: #faf8f3;
+    --bg-card: #efece3;
+    --border-subtle: #d6d0c2;
+    --border-strong: #b8b09f;
+    --focus-ring: #4338ca;
+    --scrollbar-track: #ebe6dc;
+    --scrollbar-thumb: #a39b8b;
   }
 
   html,
@@ -39,6 +61,12 @@
     background-color: var(--bg-main);
     color: #e2e8f0;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  :root:has(> head > meta[name="color-scheme"][content="light"]) body,
+  :root[data-theme="light"] body {
+    background-color: #f5f3ec;
+    color: #1e293b;
   }
 
   #root {
@@ -68,6 +96,10 @@
 }
 
 @supports not (scrollbar-color: auto) {
+  :root,
+  .custom-scrollbar {
+    scrollbar-width: auto;
+  }
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;
@@ -114,4 +146,217 @@
 /* Monospace fonts for code and variables */
 .font-mono-code {
   font-family: 'JetBrains Mono', monospace;
+}
+
+/*
+ * Modo accesible de Fondo Blanco Cálido / Gris Muy Claro para personas con daltonismo
+ * (Observación A5 de validación técnica — Mg. Roger Lazo Mallqui)
+ */
+:root:has(> head > meta[name="color-scheme"][content="light"]),
+:root[data-theme="light"] {
+  /* Fondos principales blanco cálido y gris muy claro */
+  & :is(
+    .bg-\[\#0c0e14\],
+    .bg-\[\#0c0e18\],
+    .bg-\[\#0d0e16\],
+    .bg-\[\#0d0e17\],
+    .bg-\[\#0d0f18\],
+    .bg-\[\#0e1019\],
+    .bg-\[\#0f1019\],
+    .bg-\[\#101119\],
+    .bg-\[\#10121c\],
+    .bg-\[\#10121d\],
+    .bg-\[\#111217\],
+    .bg-\[\#11121a\],
+    .bg-\[\#11121b\],
+    .bg-\[\#11121d\],
+    .bg-\[\#11131e\],
+    .bg-\[\#111320\],
+    .bg-\[\#111424\],
+    .bg-\[\#12131a\],
+    .bg-\[\#12131b\],
+    .bg-\[\#121420\],
+    .bg-\[\#121524\],
+    .bg-\[\#121525\]
+  ) {
+    background-color: #f4f1e8 !important;
+  }
+
+  /* Paneles, tarjetas y contenedores en blanco cálido */
+  & :is(
+    .bg-\[\#13141d\],
+    .bg-\[\#13141e\],
+    .bg-\[\#131620\],
+    .bg-\[\#141520\],
+    .bg-\[\#141726\],
+    .bg-\[\#151622\],
+    .bg-\[\#151624\],
+    .bg-\[\#151724\],
+    .bg-\[\#161722\],
+    .bg-\[\#161826\],
+    .bg-\[\#171926\],
+    .bg-\[\#171928\],
+    .bg-\[\#171929\],
+    .bg-\[\#181a28\],
+    .bg-\[\#181b2c\],
+    .bg-\[\#181c30\]
+  ) {
+    background-color: #fbfaf6 !important;
+  }
+
+  /* Controles secundarios y botones en gris cálido muy claro */
+  & :is(
+    .bg-\[\#191b2a\],
+    .bg-\[\#191c2e\],
+    .bg-\[\#191e34\],
+    .bg-\[\#1a1c27\],
+    .bg-\[\#1a1c29\],
+    .bg-\[\#1a1e2c\],
+    .bg-\[\#1a1e33\],
+    .bg-\[\#1a2436\],
+    .bg-\[\#1b1d2e\],
+    .bg-\[\#1b1e30\],
+    .bg-\[\#1c1d29\],
+    .bg-\[\#1c1d2c\],
+    .bg-\[\#1c1e2e\],
+    .bg-\[\#1c1f32\],
+    .bg-\[\#1d2033\],
+    .bg-\[\#1f2236\],
+    .bg-\[\#222538\],
+    .bg-\[\#232741\],
+    .bg-\[\#25283a\]
+  ) {
+    background-color: #e8e3d7 !important;
+  }
+
+  /* Bordes cálidos de alto contraste */
+  & :is(
+    .border-\[\#1c1d29\],
+    .border-\[\#1c2032\],
+    .border-\[\#1e2338\],
+    .border-\[\#1f2233\],
+    .border-\[\#21253a\],
+    .border-\[\#222532\],
+    .border-\[\#222538\],
+    .border-\[\#22253a\],
+    .border-\[\#22263a\],
+    .border-\[\#22263c\],
+    .border-\[\#222842\],
+    .border-\[\#232532\],
+    .border-\[\#232533\],
+    .border-\[\#232534\],
+    .border-\[\#232638\],
+    .border-\[\#23263a\],
+    .border-\[\#23263b\],
+    .border-\[\#23273d\],
+    .border-\[\#232842\],
+    .border-\[\#24283d\],
+    .border-\[\#24283e\],
+    .border-\[\#242942\],
+    .border-\[\#252838\],
+    .border-\[\#25283d\],
+    .border-\[\#25283e\],
+    .border-\[\#26293e\],
+    .border-\[\#262940\],
+    .border-\[\#262a40\],
+    .border-\[\#262a42\],
+    .border-\[\#27293a\],
+    .border-\[\#272c48\],
+    .border-\[\#282c42\],
+    .border-\[\#282c44\],
+    .border-\[\#282c46\],
+    .border-\[\#282d46\],
+    .border-\[\#292d46\],
+    .border-\[\#2a304d\],
+    .border-\[\#2b2d42\],
+    .border-\[\#2b2e42\],
+    .border-\[\#2b2e44\],
+    .border-\[\#2b2e46\],
+    .border-\[\#2b2f46\],
+    .border-\[\#2b304d\],
+    .border-\[\#2b314d\],
+    .border-\[\#2c3048\],
+    .border-\[\#2c304c\],
+    .border-\[\#2c3252\],
+    .border-\[\#2c3352\],
+    .border-\[\#2c3354\],
+    .border-\[\#2d314d\],
+    .border-\[\#2d3250\],
+    .border-\[\#2e3452\],
+    .border-\[\#313654\],
+    .border-\[\#323756\],
+    .border-\[\#343958\],
+    .border-\[\#353954\]
+  ) {
+    border-color: #cfc8b8 !important;
+  }
+
+  /* Tipografía de alto contraste sobre fondo claro cálido */
+  & :is(.text-white, .text-slate-100) {
+    color: #18181b !important;
+  }
+
+  & :is(.text-slate-200, .text-slate-300) {
+    color: #27272a !important;
+  }
+
+  & :is(.text-slate-400, .text-slate-500) {
+    color: #52525b !important;
+  }
+
+  & :is(.text-indigo-100, .text-indigo-200, .text-indigo-300, .text-indigo-400) {
+    color: #3730a3 !important;
+  }
+
+  & :is(.text-amber-200, .text-amber-300, .text-amber-400) {
+    color: #92400e !important;
+  }
+
+  & :is(.text-emerald-200, .text-emerald-300, .text-emerald-400) {
+    color: #065f46 !important;
+  }
+
+  & :is(.text-rose-200, .text-rose-300, .text-rose-400) {
+    color: #9f1239 !important;
+  }
+
+  /* Mantener texto blanco dentro de botones primarios sólidos */
+  & :is(.bg-indigo-600, .bg-emerald-600, .bg-amber-600, .bg-indigo-500) {
+    color: #ffffff !important;
+  }
+  & :is(.bg-indigo-600, .bg-emerald-600, .bg-amber-600, .bg-indigo-500) span {
+    color: #ffffff !important;
+  }
+
+  /* Resaltado de línea activa y bloques de estado en modo claro cálido */
+  & .bg-indigo-950\/80 {
+    background-color: #e0e7ff !important;
+  }
+  & .bg-emerald-950\/35,
+  & .bg-emerald-950\/60 {
+    background-color: #d1fae5 !important;
+  }
+  & .bg-rose-950\/35,
+  & .bg-rose-950\/40,
+  & .bg-rose-950\/60 {
+    background-color: #ffe4e6 !important;
+  }
+  & .bg-amber-950\/40,
+  & .bg-amber-950\/50 {
+    background-color: #fef3c7 !important;
+  }
+
+  /* Contraste de etiquetas y cuadrícula SVG en lienzo D3 sobre fondo blanco cálido */
+  & svg text.val-label {
+    fill: #18181b !important;
+  }
+  & svg text.x-label {
+    fill: #334155 !important;
+  }
+  & svg .y-axis .tick text {
+    fill: #52525b !important;
+  }
+  & svg .y-axis .tick line {
+    stroke: #cfc8b8 !important;
+  }
 }

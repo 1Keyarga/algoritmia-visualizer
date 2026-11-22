@@ -1,7 +1,13 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { GUIDED_TASKS_REPOSITORY } from './tasksRepository';
+import {
+  GUIDED_TASKS_REPOSITORY,
+  formatStarBadge,
+  getTaskStarCount,
+} from './tasksRepository';
 import { ALGORITHMS_CATALOG } from '../algorithms/registry';
 import { instrumentAndTraceStudentCode } from '../ast/astInstrumenter';
+import { applyThemeMode, getActiveThemeMode } from '../utils/themeMode';
 
 describe('GUIDED_TASKS_REPOSITORY (21 tareas guiadas)', () => {
   it('contiene exactamente las 21 tareas T01..T21 con metadatos, pistas y preguntas conceptuales válidas', () => {
@@ -104,5 +110,44 @@ describe('GUIDED_TASKS_REPOSITORY (21 tareas guiadas)', () => {
     expect(t12?.numericFieldsCheck?.map(f => f.expectedValue)).toEqual([2, 1, 0, -1]);
     expect(t09?.prompt.toLowerCase()).not.toContain('tabla');
     expect(t12?.prompt.toLowerCase()).not.toContain('tabla');
+  });
+
+  it('incorpora los descriptores de competencias refinados según el juicio de expertos (R1.1) y el sistema de estrellas por nivel (H7 / A5)', () => {
+    for (const task of GUIDED_TASKS_REPOSITORY) {
+      expect(task.descriptor).not.toContain('Ensaya el camino');
+      expect(task.descriptor).not.toContain('orden lógico de las órdenes');
+      expect(task.descriptor).not.toContain('una cantidad de veces');
+      expect(task.descriptor).not.toContain('instrucciones que llevan a otra instrucción');
+      expect(task.descriptor).not.toBe('Selecciona instrucciones finitas');
+    }
+
+    const outcomes = {
+      T01: 'first_attempt' as const,
+      T02: 'second_attempt' as const,
+      T03: 'multiple_attempts' as const,
+      T04: 'failed' as const,
+    };
+    const completed = ['T01', 'T02', 'T03'];
+
+    expect(getTaskStarCount('T01', completed, outcomes)).toBe(3);
+    expect(formatStarBadge(getTaskStarCount('T01', completed, outcomes))).toBe('★★★');
+    expect(getTaskStarCount('T02', completed, outcomes)).toBe(2);
+    expect(formatStarBadge(getTaskStarCount('T02', completed, outcomes))).toBe('★★☆');
+    expect(getTaskStarCount('T03', completed, outcomes)).toBe(1);
+    expect(formatStarBadge(getTaskStarCount('T03', completed, outcomes))).toBe('★☆☆');
+    expect(getTaskStarCount('T04', completed, outcomes)).toBe(0);
+    expect(formatStarBadge(getTaskStarCount('T04', completed, outcomes))).toBe('☆☆☆');
+
+    applyThemeMode('light', true);
+    expect(getActiveThemeMode()).toBe('light');
+    if (typeof document !== 'undefined') {
+      expect(document.documentElement.dataset.theme).toBe('light');
+    }
+
+    applyThemeMode('dark', true);
+    expect(getActiveThemeMode()).toBe('dark');
+    if (typeof document !== 'undefined') {
+      expect(document.documentElement.dataset.theme).toBe('dark');
+    }
   });
 });

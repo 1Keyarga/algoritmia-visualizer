@@ -268,8 +268,10 @@ export const D3BarChart: React.FC<D3BarChartProps> = ({ array, showHeatmap = fal
       .select<SVGRectElement>('rect.bar-rect')
       .attr('fill', d => getFill(d))
       .attr('stroke', d => getStroke(d))
-      .attr('stroke-width', d => (d.state !== 'default' && d.state !== 'discarded' ? 2 : 1))
-      .attr('stroke-dasharray', d => (d.state === 'selected' ? '4,2' : null))
+      .attr('stroke-width', d => (d.state !== 'default' && d.state !== 'discarded' ? 2.2 : 1))
+      .attr('stroke-dasharray', d =>
+        d.state === 'selected' ? '5,2' : d.state === 'swapped' ? '2,2' : null
+      )
       .transition()
       .duration(duration)
       .ease(d3.easeCubicOut)

@@ -30,6 +30,11 @@ import {
 } from './components/tasks/InteractiveTaskPanel';
 import { EvaluationModule } from './components/evaluation/EvaluationModule';
 import {
+  applyThemeMode,
+  getActiveThemeMode,
+  type ThemeMode,
+} from './core/utils/themeMode';
+import {
   DEFAULT_SHEETS_WEBHOOK_URL,
   EVALUATION_STORAGE_KEY,
   TASK_PROGRESS_BY_PARTICIPANT_KEY,
@@ -194,6 +199,31 @@ export function App() {
     () => initialState.algorithm.family !== 'divide_and_conquer'
   );
   const [isVisualizerFullscreen, setIsVisualizerFullscreen] = useState(false);
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => getActiveThemeMode());
+
+  useEffect(() => {
+    applyThemeMode(themeMode, false);
+  }, [themeMode]);
+
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'color-scheme') {
+        const next: ThemeMode = e.newValue === 'light' ? 'light' : 'dark';
+        applyThemeMode(next, false);
+        setThemeMode(next);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  const handleToggleThemeMode = useCallback(() => {
+    setThemeMode(prev => {
+      const next: ThemeMode = prev === 'dark' ? 'light' : 'dark';
+      applyThemeMode(next, true);
+      return next;
+    });
+  }, []);
 
   const [dataset, setDataset] = useState<number[]>(initialState.dataset);
 
@@ -791,6 +821,8 @@ export function App() {
           onEnterEvaluationModule={() => handleNavigateModule('evaluation')}
           completedTasksCount={completedTaskIds.length}
           activeParticipantId={participantSession?.participantId || null}
+          themeMode={themeMode}
+          onToggleThemeMode={handleToggleThemeMode}
         />
       </div>
     );
@@ -833,6 +865,8 @@ export function App() {
         onToggleComparison={() => setIsComparing(prev => !prev)}
         onShareLink={handleShareLink}
         activeParticipantId={participantSession?.participantId || null}
+        themeMode={themeMode}
+        onToggleThemeMode={handleToggleThemeMode}
       />
 
       {/* Área principal de trabajo del módulo activo */}

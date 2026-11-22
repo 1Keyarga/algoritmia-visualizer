@@ -1,16 +1,18 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { GUIDED_TASKS_REPOSITORY, type GuidedTask } from '../../core/tasks/tasksRepository';
+import {
+  GUIDED_TASKS_REPOSITORY,
+  formatStarBadge,
+  getTaskStarCount,
+  type GuidedTask,
+  type TaskAttemptOutcome,
+} from '../../core/tasks/tasksRepository';
 import { instrumentAndTraceStudentCode } from '../../core/ast/astInstrumenter';
 import type { AlgorithmMetadata, SupportedLanguage } from '../../types/algorithm';
 import type { Step } from '../../types/trace';
 import { StepExplanation } from '../pseudocode/StepExplanation';
 import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 
-export type TaskAttemptCategory =
-  | 'first_attempt'
-  | 'second_attempt'
-  | 'multiple_attempts'
-  | 'failed';
+export type TaskAttemptCategory = TaskAttemptOutcome;
 
 interface InteractiveTaskPanelProps {
   isOpen: boolean;
@@ -491,12 +493,17 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
         </span>
       </div>
 
-      {/* Selector por niveles (Básico, Intermedio, Avanzado) y menú desplegable propio */}
+      {/* Selector por niveles (Básico, Intermedio, Avanzado), reconocimiento por estrellas (H7) y menú desplegable */}
       <div className="p-3 bg-[#151724] border-b border-[#232638] flex flex-col gap-2 shrink-0 min-w-0">
         <div className="grid grid-cols-3 gap-1 bg-[#10121c] p-1 rounded-lg border border-[#222538]">
           {(['Básico', 'Intermedio', 'Avanzado'] as const).map(lvl => {
             const levelTasks = GUIDED_TASKS_REPOSITORY.filter(t => t.difficulty === lvl);
             const solvedCount = levelTasks.filter(t => completedTaskIds.includes(t.id)).length;
+            const levelStars = levelTasks.reduce(
+              (acc, t) => acc + getTaskStarCount(t.id, completedTaskIds, taskOutcomes),
+              0
+            );
+            const maxLevelStars = levelTasks.length * 3;
             const allSolved = solvedCount === levelTasks.length && levelTasks.length > 0;
 
             return (
@@ -507,28 +514,78 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
                   setIsTaskMenuOpen(false);
                   if (levelTasks[0]) onSelectTaskId(levelTasks[0].id);
                 }}
-                className={`py-1 px-2 rounded text-[11px] font-medium transition-colors cursor-pointer flex items-center justify-center gap-1.5 ${
+                className={`py-1 px-1.5 rounded text-[11px] font-medium transition-colors cursor-pointer flex items-center justify-center gap-1 ${
                   levelFilter === lvl
                     ? 'bg-indigo-600 text-white font-semibold'
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 <span>{lvl}</span>
-                {allSolved ? (
+                <span
+                  className={`text-[10px] font-mono ${
+                    levelFilter === lvl ? 'text-indigo-200' : 'text-slate-400'
+                  }`}
+                >
+                  {solvedCount}/{levelTasks.length}
+                </span>
+                <span
+                  className={`text-[10px] font-mono ${
+                    levelStars > 0
+                      ? 'text-amber-300 font-semibold'
+                      : levelFilter === lvl
+                      ? 'text-indigo-200'
+                      : 'text-slate-500'
+                  }`}
+                  title={`Estrellas del nivel ${lvl}: ${levelStars} de ${maxLevelStars}`}
+                >
+                  ★{levelStars}
+                </span>
+                {allSolved && (
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.9)]" />
-                ) : (
-                  <span
-                    className={`text-[10px] font-mono ${
-                      levelFilter === lvl ? 'text-indigo-200' : 'text-slate-500'
-                    }`}
-                  >
-                    {solvedCount}/{levelTasks.length}
-                  </span>
                 )}
               </button>
             );
           })}
         </div>
+
+        {/* Barra de reconocimiento de estrellas del nivel activo (H7) */}
+        {(() => {
+          const activeLevelTasks = GUIDED_TASKS_REPOSITORY.filter(
+            t => t.difficulty === levelFilter
+          );
+          const earnedLevelStars = activeLevelTasks.reduce(
+            (acc, t) => acc + getTaskStarCount(t.id, completedTaskIds, taskOutcomes),
+            0
+          );
+          const maxLevelStars = activeLevelTasks.length * 3;
+          const levelMedalStars =
+            maxLevelStars > 0 && earnedLevelStars >= Math.ceil(maxLevelStars * 0.8)
+              ? 3
+              : maxLevelStars > 0 && earnedLevelStars >= Math.ceil(maxLevelStars * 0.45)
+              ? 2
+              : earnedLevelStars >= 1
+              ? 1
+              : 0;
+
+          return (
+            <div className="flex items-center justify-between gap-2 px-2.5 py-1 rounded-md bg-[#111320] border border-[#24283e] text-[10px]">
+              <div className="flex items-center gap-1.5">
+                <span className="text-amber-300 font-mono tracking-wider text-[11px]">
+                  {formatStarBadge(levelMedalStars)}
+                </span>
+                <span className="text-slate-300 font-medium">
+                  Nivel {levelFilter}:{' '}
+                  <strong className="text-amber-300 font-mono">
+                    {earnedLevelStars}/{maxLevelStars} ★
+                  </strong>
+                </span>
+              </div>
+              <span className="text-slate-400 font-mono">
+                ★★★ 1.er · ★★☆ 2.° · ★☆☆ 3.er
+              </span>
+            </div>
+          );
+        })()}
 
         <div className="flex items-center gap-1.5 min-w-0 relative" ref={dropdownRef}>
           <button
@@ -580,6 +637,7 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
                     </div>
                     {groupTasks.map(task => {
                       const isSelected = task.id === currentTask.id;
+                      const taskStars = getTaskStarCount(task.id, completedTaskIds, taskOutcomes);
                       return (
                         <button
                           key={task.id}
@@ -599,6 +657,13 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
                             <span className="text-indigo-300 font-medium">{task.algorithm}: </span>
                             <span>{task.title}</span>
                           </div>
+                          <span
+                            className={`text-[10px] font-mono shrink-0 mt-0.5 ${
+                              taskStars > 0 ? 'text-amber-300' : 'text-slate-500'
+                            }`}
+                          >
+                            {formatStarBadge(taskStars)}
+                          </span>
                         </button>
                       );
                     })}
@@ -679,6 +744,18 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
+                <span
+                  className={`text-[11px] font-mono ${
+                    getTaskStarCount(currentTask.id, completedTaskIds, taskOutcomes) > 0
+                      ? 'text-amber-300 font-bold'
+                      : 'text-slate-500'
+                  }`}
+                  title="Reconocimiento por intentos: ★★★ (1.er intento), ★★☆ (2.° intento), ★☆☆ (3.er intento)"
+                >
+                  {formatStarBadge(
+                    getTaskStarCount(currentTask.id, completedTaskIds, taskOutcomes)
+                  )}
+                </span>
                 {currentOutcome && (
                   <span
                     className={`text-[10px] font-medium ${
@@ -703,6 +780,11 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
             <h3 className="text-[13px] font-bold text-slate-100 leading-snug">
               {currentTask.title}
             </h3>
+
+            <div className="text-[11px] text-slate-400 leading-snug">
+              <span className="font-medium text-indigo-300">{currentTask.competence}:</span>{' '}
+              <span>{currentTask.descriptor}</span>
+            </div>
 
             <p className="text-xs text-slate-300 leading-relaxed select-text">
               {renderCleanPrompt(currentTask.prompt)}

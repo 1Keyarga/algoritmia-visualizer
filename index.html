@@ -2,7 +2,22 @@
 <html lang="es" class="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      try {
+        const storedScheme = localStorage.getItem('color-scheme');
+        const metaScheme = document.querySelector('meta[name="color-scheme"]');
+        if (metaScheme) {
+          metaScheme.content = storedScheme ?? 'light dark';
+        }
+        if (storedScheme === 'light') {
+          document.documentElement.dataset.theme = 'light';
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      } catch {}
+    </script>
     <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
