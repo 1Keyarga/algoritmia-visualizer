@@ -320,17 +320,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 type="button"
                 onClick={onToggleThemeMode}
                 aria-pressed={themeMode === 'light'}
+                title={themeMode === 'light' ? 'Cambiar a tema oscuro' : 'Cambiar a tema claro'}
                 className="flex items-center gap-1.5 bg-[#191b2a] hover:bg-[#222538] border border-[#2b2f46] text-slate-300 hover:text-white px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0"
               >
                 {themeMode === 'light' ? (
                   <>
                     <Moon aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
-                    <span>Modo oscuro</span>
+                    <span>Oscuro</span>
                   </>
                 ) : (
                   <>
                     <Sun aria-hidden="true" className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                    <span>Fondo claro</span>
+                    <span>Claro</span>
                   </>
                 )}
               </button>
@@ -344,17 +345,18 @@ export const Navbar: React.FC<NavbarProps> = ({
               type="button"
               onClick={onToggleThemeMode}
               aria-pressed={themeMode === 'light'}
+              title={themeMode === 'light' ? 'Cambiar a tema oscuro' : 'Cambiar a tema claro'}
               className="flex items-center gap-1.5 bg-[#191b2a] hover:bg-[#222538] border border-[#2b2f46] text-slate-300 hover:text-white px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer shrink-0"
             >
               {themeMode === 'light' ? (
                 <>
                   <Moon aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
-                  <span>Modo oscuro</span>
+                  <span>Oscuro</span>
                 </>
               ) : (
                 <>
                   <Sun aria-hidden="true" className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                  <span>Fondo claro (Daltonismo)</span>
+                  <span>Claro</span>
                 </>
               )}
             </button>

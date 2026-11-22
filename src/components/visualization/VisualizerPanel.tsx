@@ -140,19 +140,14 @@ export const VisualizerPanel: React.FC<VisualizerPanelProps> = ({
           <button
             type="button"
             onClick={onToggleFullscreen}
-            aria-pressed={isFullscreen}
-            className="min-h-[26px] inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-[#1c1e2e] hover:bg-[#25283d] border border-[#2b2e46] text-[11px] font-medium text-slate-300 hover:text-white transition-colors cursor-pointer"
+            aria-label={isFullscreen ? 'Restaurar vista' : 'Maximizar panel'}
+            className="min-w-[26px] min-h-[26px] inline-flex items-center justify-center p-1 rounded-md text-slate-400 hover:text-white hover:bg-[#25283d] transition-colors cursor-pointer"
+            title={isFullscreen ? 'Restaurar vista' : 'Maximizar panel'}
           >
             {isFullscreen ? (
-              <>
-                <Minimize2 aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
-                <span>Mostrar paneles</span>
-              </>
+              <Minimize2 aria-hidden="true" className="w-3.5 h-3.5" />
             ) : (
-              <>
-                <Maximize2 aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
-                <span>Modo enfoque</span>
-              </>
+              <Maximize2 aria-hidden="true" className="w-3.5 h-3.5" />
             )}
           </button>
         </div>

@@ -144,17 +144,18 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                 type="button"
                 onClick={onToggleThemeMode}
                 aria-pressed={themeMode === 'light'}
+                title={themeMode === 'light' ? 'Cambiar a tema oscuro' : 'Cambiar a tema claro'}
                 className="min-h-9 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141726] hover:bg-[#1c2035] border border-[#282d46] hover:border-[#3c4469] text-xs font-medium text-slate-200 transition-colors cursor-pointer"
               >
                 {themeMode === 'light' ? (
                   <>
                     <Moon aria-hidden="true" className="w-3.5 h-3.5 shrink-0" />
-                    <span>Modo oscuro</span>
+                    <span>Oscuro</span>
                   </>
                 ) : (
                   <>
                     <Sun aria-hidden="true" className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                    <span>Fondo claro (Daltonismo)</span>
+                    <span>Claro</span>
                   </>
                 )}
               </button>

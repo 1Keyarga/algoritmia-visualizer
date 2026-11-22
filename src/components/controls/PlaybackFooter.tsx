@@ -96,49 +96,30 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
               <span>Punto de control en paso {effectiveMax + 1}</span>
             </div>
           ) : (
-            <div
-              aria-label="Atajos de teclado disponibles"
-              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#161826] border border-[#26293e] text-[10px] text-slate-300"
-            >
-              <span className="font-semibold text-slate-400">Atajos:</span>
-              <span className="inline-flex items-center gap-1">
-                <kbd className="px-1.5 py-0.2 rounded bg-[#22253a] border border-[#343956] font-mono text-[10px] text-indigo-200">
-                  Espacio
-                </kbd>
-                <span>Play/Pausa</span>
-              </span>
-              <span className="text-slate-600">·</span>
-              <span className="inline-flex items-center gap-1">
-                <kbd className="px-1 py-0.2 rounded bg-[#22253a] border border-[#343956] font-mono text-[10px] text-indigo-200">
-                  ←/→
-                </kbd>
-                <span>Paso</span>
-              </span>
-              <span className="text-slate-600">·</span>
-              <span className="inline-flex items-center gap-1">
-                <kbd className="px-1 py-0.2 rounded bg-[#22253a] border border-[#343956] font-mono text-[10px] text-indigo-200">
-                  Home/End
-                </kbd>
-                <span>Extremos</span>
-              </span>
-              <span className="text-slate-600">·</span>
-              <span className="inline-flex items-center gap-1">
-                <kbd className="px-1 py-0.2 rounded bg-[#22253a] border border-[#343956] font-mono text-[10px] text-indigo-200">
-                  R
-                </kbd>
-                <span>Reset</span>
-              </span>
+            <div className="hidden lg:flex items-center gap-1.5 text-[10px] text-slate-400">
+              <kbd className="px-1.5 py-0.5 rounded bg-[#1c1d29] border border-[#2b2e42] font-mono text-slate-300">
+                Espacio
+              </kbd>
+              <span>Play</span>
+              <kbd className="px-1.5 py-0.5 rounded bg-[#1c1d29] border border-[#2b2e42] font-mono text-slate-300">
+                ← →
+              </kbd>
+              <span>Paso</span>
+              <kbd className="px-1.5 py-0.5 rounded bg-[#1c1d29] border border-[#2b2e42] font-mono text-slate-300">
+                R
+              </kbd>
+              <span>Reset</span>
             </div>
           )}
         </div>
 
         {/* Controles multimedia */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           {/* Ir al inicio */}
           <button
             onClick={onGoToStart}
             disabled={disabled || currentStepIndex === 0}
-            aria-label="Ir al inicio (Atajo Home)"
+            aria-label="Ir al inicio"
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed"
             title="Ir al inicio (Home)"
           >
@@ -149,20 +130,19 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
           <button
             onClick={onPrevStep}
             disabled={disabled || currentStepIndex === 0}
-            aria-label="Paso anterior (Atajo Flecha Izquierda)"
-            className="px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed flex items-center gap-1"
-            title="Paso anterior (Flecha Izquierda)"
+            aria-label="Paso anterior"
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed"
+            title="Paso anterior (←)"
           >
             <ChevronLeft aria-hidden="true" className="w-5 h-5" />
-            <kbd className="hidden sm:inline text-[10px] font-mono text-slate-400">←</kbd>
           </button>
 
           {/* Botón Reproducir / Pausar */}
           <button
             onClick={onTogglePlay}
             disabled={disabled || totalSteps === 0}
-            aria-label={isPlaying ? 'Pausar (Atajo Espacio)' : 'Reproducir (Atajo Espacio)'}
-            className="h-10 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:cursor-not-allowed"
+            aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
+            className="w-10 h-10 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-30 disabled:hover:bg-indigo-600 text-white flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed"
             title={isPlaying ? 'Pausar (Espacio)' : 'Reproducir (Espacio)'}
           >
             {isPlaying && !disabled ? (
@@ -170,18 +150,16 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
             ) : (
               <Play aria-hidden="true" className="w-4 h-4 fill-white ml-0.5" />
             )}
-            <kbd className="hidden md:inline text-[10px] font-mono opacity-90">Espacio</kbd>
           </button>
 
           {/* Paso siguiente */}
           <button
             onClick={onNextStep}
             disabled={disabled || currentStepIndex >= effectiveMax || isAtCheckpointLimit}
-            aria-label="Paso siguiente (Atajo Flecha Derecha)"
-            className="px-2 py-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed flex items-center gap-1"
-            title="Paso siguiente (Flecha Derecha)"
+            aria-label="Paso siguiente"
+            className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed"
+            title="Paso siguiente (→)"
           >
-            <kbd className="hidden sm:inline text-[10px] font-mono text-slate-400">→</kbd>
             <ChevronRight aria-hidden="true" className="w-5 h-5" />
           </button>
 
@@ -189,9 +167,9 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
           <button
             onClick={onGoToEnd}
             disabled={disabled || currentStepIndex >= effectiveMax || isAtCheckpointLimit}
-            aria-label="Ir al final permitido (Atajo End)"
+            aria-label="Ir al final"
             className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-[#202234] disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-400 transition-colors cursor-pointer disabled:cursor-not-allowed"
-            title="Ir al final permitido (End)"
+            title="Ir al final (End)"
           >
             <SkipForward aria-hidden="true" className="w-4 h-4" />
           </button>
@@ -220,13 +198,10 @@ export const PlaybackFooter: React.FC<PlaybackFooterProps> = ({
             onClick={onReset}
             disabled={disabled}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1c1d29] hover:bg-[#25283d] disabled:opacity-40 disabled:cursor-not-allowed border border-[#2b2e42] text-slate-300 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
-            title="Reiniciar ejecución (R)"
+            title="Reiniciar (R)"
           >
             <RotateCcw aria-hidden="true" className="w-3.5 h-3.5" />
             <span>Reset</span>
-            <kbd className="hidden sm:inline px-1 py-0.2 rounded bg-[#25283d] border border-[#343956] text-[10px] font-mono text-slate-300">
-              R
-            </kbd>
           </button>
         </div>
       </div>

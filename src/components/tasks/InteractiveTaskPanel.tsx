@@ -503,7 +503,6 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
               (acc, t) => acc + getTaskStarCount(t.id, completedTaskIds, taskOutcomes),
               0
             );
-            const maxLevelStars = levelTasks.length * 3;
             const allSolved = solvedCount === levelTasks.length && levelTasks.length > 0;
 
             return (
@@ -536,7 +535,6 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
                       ? 'text-indigo-200'
                       : 'text-slate-500'
                   }`}
-                  title={`Estrellas del nivel ${lvl}: ${levelStars} de ${maxLevelStars}`}
                 >
                   ★{levelStars}
                 </span>
@@ -547,45 +545,6 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
             );
           })}
         </div>
-
-        {/* Barra de reconocimiento de estrellas del nivel activo (H7) */}
-        {(() => {
-          const activeLevelTasks = GUIDED_TASKS_REPOSITORY.filter(
-            t => t.difficulty === levelFilter
-          );
-          const earnedLevelStars = activeLevelTasks.reduce(
-            (acc, t) => acc + getTaskStarCount(t.id, completedTaskIds, taskOutcomes),
-            0
-          );
-          const maxLevelStars = activeLevelTasks.length * 3;
-          const levelMedalStars =
-            maxLevelStars > 0 && earnedLevelStars >= Math.ceil(maxLevelStars * 0.8)
-              ? 3
-              : maxLevelStars > 0 && earnedLevelStars >= Math.ceil(maxLevelStars * 0.45)
-              ? 2
-              : earnedLevelStars >= 1
-              ? 1
-              : 0;
-
-          return (
-            <div className="flex items-center justify-between gap-2 px-2.5 py-1 rounded-md bg-[#111320] border border-[#24283e] text-[10px]">
-              <div className="flex items-center gap-1.5">
-                <span className="text-amber-300 font-mono tracking-wider text-[11px]">
-                  {formatStarBadge(levelMedalStars)}
-                </span>
-                <span className="text-slate-300 font-medium">
-                  Nivel {levelFilter}:{' '}
-                  <strong className="text-amber-300 font-mono">
-                    {earnedLevelStars}/{maxLevelStars} ★
-                  </strong>
-                </span>
-              </div>
-              <span className="text-slate-400 font-mono">
-                ★★★ 1.er · ★★☆ 2.° · ★☆☆ 3.er
-              </span>
-            </div>
-          );
-        })()}
 
         <div className="flex items-center gap-1.5 min-w-0 relative" ref={dropdownRef}>
           <button
@@ -750,7 +709,6 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
                       ? 'text-amber-300 font-bold'
                       : 'text-slate-500'
                   }`}
-                  title="Reconocimiento por intentos: ★★★ (1.er intento), ★★☆ (2.° intento), ★☆☆ (3.er intento)"
                 >
                   {formatStarBadge(
                     getTaskStarCount(currentTask.id, completedTaskIds, taskOutcomes)
@@ -780,11 +738,6 @@ const InteractiveTaskBody: React.FC<InteractiveTaskBodyProps> = ({
             <h3 className="text-[13px] font-bold text-slate-100 leading-snug">
               {currentTask.title}
             </h3>
-
-            <div className="text-[11px] text-slate-400 leading-snug">
-              <span className="font-medium text-indigo-300">{currentTask.competence}:</span>{' '}
-              <span>{currentTask.descriptor}</span>
-            </div>
 
             <p className="text-xs text-slate-300 leading-relaxed select-text">
               {renderCleanPrompt(currentTask.prompt)}
