@@ -405,8 +405,8 @@ describe('Tareas accesibles sin cuenta, ocultamiento CSV y sincronización al co
     });
     await flushEffects();
 
-    expect(container.textContent).toContain('tiempo límite: 5 min');
-    expect(container.textContent).toContain('tiempo límite: 8 min');
+    expect(container.textContent).toContain('5 min');
+    expect(container.textContent).toContain('8 min');
 
     // Al abrir Pretest con un intento que ya superó los 5 minutos (ej. hace 301s) y solo 1 pregunta respondida
     const expiredSession: ParticipantSession = {
@@ -479,12 +479,12 @@ describe('Tareas accesibles sin cuenta, ocultamiento CSV y sincronización al co
     });
     await flushEffects();
 
-    // Ir a la Pregunta 2 y marcar "No la sé / Dejar en blanco (0 puntos)"
+    // Ir a la Pregunta 2 y marcar "Dejar en blanco"
     const q2Btn = findButtonByText(container, '2');
     await act(async () => {
       q2Btn!.click();
     });
-    const skipBtn = findButtonByText(container, 'No la sé / Dejar en blanco (0 puntos)');
+    const skipBtn = findButtonByText(container, 'Dejar en blanco');
     expect(skipBtn).toBeDefined();
     await act(async () => {
       skipBtn!.click();

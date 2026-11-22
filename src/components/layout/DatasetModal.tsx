@@ -63,7 +63,7 @@ const DatasetModalContent: React.FC<Omit<DatasetModalProps, 'isOpen'>> = ({
         <div className="p-5 space-y-4">
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Valores del arreglo (separados por coma o espacio):
+              Valores del arreglo:
             </label>
             <textarea
               rows={3}
@@ -104,14 +104,14 @@ const DatasetModalContent: React.FC<Omit<DatasetModalProps, 'isOpen'>> = ({
                 onClick={() => setPreset('reversed')}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-[#1e2133] hover:bg-[#262a40] text-slate-200 border border-[#323650] rounded-md transition-colors cursor-pointer"
               >
-                <TrendingDown className="w-3.5 h-3.5 text-amber-400" /> Orden inverso (Peor caso)
+                <TrendingDown className="w-3.5 h-3.5 text-amber-400" /> Orden inverso
               </button>
               <button
                 type="button"
                 onClick={() => setPreset('nearly_sorted')}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium bg-[#1e2133] hover:bg-[#262a40] text-slate-200 border border-[#323650] rounded-md transition-colors cursor-pointer"
               >
-                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> Casi ordenado (Mejor caso)
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" /> Casi ordenado
               </button>
             </div>
           </div>

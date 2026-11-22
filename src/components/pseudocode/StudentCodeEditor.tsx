@@ -250,7 +250,7 @@ export const StudentCodeEditor: React.FC<StudentCodeEditorProps> = ({
         </button>
         <div className="flex-1 flex items-center justify-center">
           <span className="text-[11px] font-bold tracking-widest text-indigo-400 group-hover:text-indigo-300 uppercase [writing-mode:vertical-rl] rotate-180">
-            Editor ({activeLanguage === 'c' ? 'C / C++' : 'JavaScript'})
+            Editor
           </span>
         </div>
       </div>

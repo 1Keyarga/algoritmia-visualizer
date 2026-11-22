@@ -175,7 +175,7 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                 }`}
               />
               <span>
-                {activeParticipantId ? `Evaluación (${activeParticipantId})` : 'Evaluación'}
+                {activeParticipantId ? activeParticipantId : 'Evaluación'}
               </span>
             </button>
           </div>
@@ -376,7 +376,7 @@ export const HomeHub: React.FC<HomeHubProps> = ({
                 </header>
 
                 <p className="text-xs text-slate-300 leading-relaxed">
-                  21 ejercicios por niveles (Básico, Intermedio y Avanzado) para predecir pasos y programar en C.
+                  21 ejercicios por niveles para predecir pasos y completar código.
                 </p>
               </div>
 

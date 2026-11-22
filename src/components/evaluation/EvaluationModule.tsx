@@ -491,10 +491,10 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
 
             <div className="bg-[#10121d] border border-[#22263a] rounded-xl p-3.5 space-y-2">
               <div className="text-xs font-semibold text-slate-200">
-                Consentimiento informado (Ley N.° 29733)
+                Consentimiento informado
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                Los puntajes del Pretest y Postest se almacenan asociados únicamente a tu código seudonimizado (<code className="font-mono text-slate-300">P-XXXXXX</code>) con fines exclusivamente académicos de investigación universitaria. No se almacena tu nombre, correo ni código original.
+                Los puntajes del Pretest y Postest se asocian únicamente a tu código anónimo con fines académicos de investigación. No se almacena tu nombre, correo ni código original.
               </p>
               <label className="flex items-start gap-2.5 pt-1 cursor-pointer">
                 <input
@@ -772,7 +772,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                       >
                         —
                       </span>
-                      <span>No la sé / Dejar en blanco (0 puntos)</span>
+                      <span>Dejar en blanco</span>
                     </button>
                   </div>
                 </div>
@@ -855,10 +855,10 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               Volver al resumen
             </button>
             <span className="text-xs font-bold text-white">
-              Pretest — Evaluación Diagnóstica Inicial (sin visualizador)
+              Pretest
             </span>
             <span className="text-[11px] font-mono text-slate-400">
-              Participante: {session.participantId}
+              {session.participantId}
             </span>
           </div>
 
@@ -963,7 +963,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                   >
                     —
                   </span>
-                  <span>No la sé / Dejar en blanco (0 puntos)</span>
+                  <span>Dejar en blanco</span>
                 </button>
               </div>
             </div>
@@ -1111,20 +1111,20 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
         {/* Panel de progreso del participante y registro de intentos */}
         <div className="bg-[#151724] border border-[#24283e] rounded-xl p-5 space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
+            <div className="flex items-center gap-2.5">
               <h3 className="text-xs font-bold text-slate-100">
-                Progreso en tareas guiadas ({effectiveCompletedCount}/{totalRepoTasks} completadas · {progressPercentage}%)
+                Progreso en tareas
               </h3>
-              <p className="text-[11px] text-slate-400">
-                Avance por niveles de dificultad y registro de intentos en la sesión
-              </p>
+              <span className="text-[11px] font-mono text-slate-400">
+                {effectiveCompletedCount}/{totalRepoTasks} · {progressPercentage}%
+              </span>
             </div>
             <button
               type="button"
               onClick={onGoToGuidedTasks}
               className="px-3 py-1.5 rounded-lg bg-[#181b2c] hover:bg-[#22263d] border border-[#2b304d] text-xs font-medium text-indigo-300 transition-colors cursor-pointer"
             >
-              Ir a Tareas Guiadas
+              Ir a tareas
             </button>
           </div>
 
@@ -1158,19 +1158,19 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
             <div className="bg-[#10121d] border border-[#23273e] rounded-lg px-3 py-2 flex items-center justify-between">
-              <span className="text-[11px] text-slate-300">1.er intento (★★★)</span>
+              <span className="text-[11px] text-slate-300">1.er intento</span>
               <span className="text-xs font-mono font-bold text-emerald-400">{firstAttemptCount}</span>
             </div>
             <div className="bg-[#10121d] border border-[#23273e] rounded-lg px-3 py-2 flex items-center justify-between">
-              <span className="text-[11px] text-slate-300">2.° intento (★★☆)</span>
+              <span className="text-[11px] text-slate-300">2.° intento</span>
               <span className="text-xs font-mono font-bold text-indigo-300">{secondAttemptCount}</span>
             </div>
             <div className="bg-[#10121d] border border-[#23273e] rounded-lg px-3 py-2 flex items-center justify-between">
-              <span className="text-[11px] text-slate-300">3.er intento (★☆☆)</span>
+              <span className="text-[11px] text-slate-300">3.er intento</span>
               <span className="text-xs font-mono font-bold text-amber-300">{thirdAttemptCount}</span>
             </div>
             <div className="bg-[#10121d] border border-[#23273e] rounded-lg px-3 py-2 flex items-center justify-between">
-              <span className="text-[11px] text-slate-300">No logrado (☆☆☆)</span>
+              <span className="text-[11px] text-slate-300">No logrado</span>
               <span className="text-xs font-mono font-bold text-rose-400">{failedAttemptCount}</span>
             </div>
           </div>
@@ -1183,7 +1183,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          {/* Etapa 1: Pretest (sin visualizador) */}
+          {/* Etapa 1: Pretest */}
           <div className="bg-[#151724] border border-[#24283e] rounded-xl p-5 flex flex-col justify-between space-y-4">
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
@@ -1196,7 +1196,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                     }`}
                   />
                   <span className="text-xs font-bold text-slate-100">
-                    1. Pretest (sin visualizador)
+                    1. Pretest
                   </span>
                 </div>
                 {preDone && (
@@ -1207,7 +1207,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               </div>
 
               <p className="text-xs text-slate-400 leading-relaxed">
-                9 preguntas iniciales de opción múltiple antes de usar el visualizador (tiempo límite: 5 min).
+                9 preguntas de opción múltiple · 5 min.
               </p>
 
               {preDone && (
@@ -1235,7 +1235,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
             </button>
           </div>
 
-          {/* Etapa 2: Postest con Visualizador sincronizado al costado */}
+          {/* Etapa 2: Postest */}
           <div className="bg-[#151724] border border-[#24283e] rounded-xl p-5 flex flex-col justify-between space-y-4">
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
@@ -1250,7 +1250,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                     }`}
                   />
                   <span className="text-xs font-bold text-slate-100">
-                    2. Postest (con visualizador)
+                    2. Postest
                   </span>
                 </div>
                 {posDone && (
@@ -1261,7 +1261,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
               </div>
 
               <p className="text-xs text-slate-400 leading-relaxed">
-                9 preguntas con el visualizador a la derecha para probar cada caso mientras respondes (tiempo límite: 8 min).
+                9 preguntas de opción múltiple · 8 min.
               </p>
 
               {posDone && (
@@ -1306,7 +1306,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="space-y-1">
                 <h3 className="text-xs font-bold text-slate-100">
-                  Evaluación completada ({session.participantId})
+                  Evaluación completada
                 </h3>
                 <p className="text-xs text-slate-400">
                   Pretest y Postest registrados correctamente.
