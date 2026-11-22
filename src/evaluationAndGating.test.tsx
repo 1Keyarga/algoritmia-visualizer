@@ -375,7 +375,8 @@ describe('Tareas accesibles sin cuenta, ocultamiento CSV y sincronización al co
     await flushEffects();
 
     expect(container.querySelector('a[href="https://forms.gle/7ZqCniCRg3ijqBiA6"]')).toBeNull();
-    expect(container.textContent).toContain('Cuestionario de percepción y motivación (R3.4)');
+    expect(container.textContent).toContain('Cuestionario de percepción y motivación');
+    expect(container.textContent).not.toContain('Abrir cuestionario IMI');
     expect(container.textContent).toContain('VITE_IMI_FORM_URL');
   });
 

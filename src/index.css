@@ -149,149 +149,57 @@
 }
 
 /*
- * Modo accesible de Fondo Blanco Cálido / Gris Muy Claro para personas con daltonismo
- * (Observación A5 de validación técnica — Mg. Roger Lazo Mallqui)
+ * Tema Claro Cálido / Gris Muy Claro (cubre el 100 % de paneles, Memoria, Explicación y Código)
  */
 :root:has(> head > meta[name="color-scheme"][content="light"]),
 :root[data-theme="light"] {
-  /* Fondos principales blanco cálido y gris muy claro */
+  /* Fondos base en gris cálido muy claro */
   & :is(
-    .bg-\[\#0c0e14\],
-    .bg-\[\#0c0e18\],
-    .bg-\[\#0d0e16\],
-    .bg-\[\#0d0e17\],
-    .bg-\[\#0d0f18\],
-    .bg-\[\#0e1019\],
-    .bg-\[\#0f1019\],
-    .bg-\[\#101119\],
-    .bg-\[\#10121c\],
-    .bg-\[\#10121d\],
-    .bg-\[\#111217\],
-    .bg-\[\#11121a\],
-    .bg-\[\#11121b\],
-    .bg-\[\#11121d\],
-    .bg-\[\#11131e\],
-    .bg-\[\#111320\],
-    .bg-\[\#111424\],
-    .bg-\[\#12131a\],
-    .bg-\[\#12131b\],
-    .bg-\[\#121420\],
-    .bg-\[\#121524\],
-    .bg-\[\#121525\]
+    [class*="bg-[#0"],
+    [class*="bg-[#10"],
+    [class*="bg-[#11"],
+    [class*="bg-[#12"]
   ) {
-    background-color: #f4f1e8 !important;
+    background-color: #f3f0e6 !important;
   }
 
-  /* Paneles, tarjetas y contenedores en blanco cálido */
+  /* Paneles principales, Memoria, Explicación del paso y tarjetas en blanco cálido */
   & :is(
-    .bg-\[\#13141d\],
-    .bg-\[\#13141e\],
-    .bg-\[\#131620\],
-    .bg-\[\#141520\],
-    .bg-\[\#141726\],
-    .bg-\[\#151622\],
-    .bg-\[\#151624\],
-    .bg-\[\#151724\],
-    .bg-\[\#161722\],
-    .bg-\[\#161826\],
-    .bg-\[\#171926\],
-    .bg-\[\#171928\],
-    .bg-\[\#171929\],
-    .bg-\[\#181a28\],
-    .bg-\[\#181b2c\],
-    .bg-\[\#181c30\]
+    [class*="bg-[#13"],
+    [class*="bg-[#14"],
+    [class*="bg-[#15"],
+    [class*="bg-[#16"],
+    [class*="bg-[#17"],
+    [class*="bg-[#18"]
   ) {
     background-color: #fbfaf6 !important;
   }
 
-  /* Controles secundarios y botones en gris cálido muy claro */
+  /* Celdas del arreglo en Memoria, variables locales y controles secundarios en gris cálido suave */
   & :is(
-    .bg-\[\#191b2a\],
-    .bg-\[\#191c2e\],
-    .bg-\[\#191e34\],
-    .bg-\[\#1a1c27\],
-    .bg-\[\#1a1c29\],
-    .bg-\[\#1a1e2c\],
-    .bg-\[\#1a1e33\],
-    .bg-\[\#1a2436\],
-    .bg-\[\#1b1d2e\],
-    .bg-\[\#1b1e30\],
-    .bg-\[\#1c1d29\],
-    .bg-\[\#1c1d2c\],
-    .bg-\[\#1c1e2e\],
-    .bg-\[\#1c1f32\],
-    .bg-\[\#1d2033\],
-    .bg-\[\#1f2236\],
-    .bg-\[\#222538\],
-    .bg-\[\#232741\],
-    .bg-\[\#25283a\]
+    [class*="bg-[#19"],
+    [class*="bg-[#1a"],
+    [class*="bg-[#1b"],
+    [class*="bg-[#1c"],
+    [class*="bg-[#1d"],
+    [class*="bg-[#1e"],
+    [class*="bg-[#1f"],
+    [class*="bg-[#2"]
   ) {
-    background-color: #e8e3d7 !important;
+    background-color: #eae5d9 !important;
   }
 
-  /* Bordes cálidos de alto contraste */
+  /* Todos los bordes oscuros pasan a borde cálido definido */
   & :is(
-    .border-\[\#1c1d29\],
-    .border-\[\#1c2032\],
-    .border-\[\#1e2338\],
-    .border-\[\#1f2233\],
-    .border-\[\#21253a\],
-    .border-\[\#222532\],
-    .border-\[\#222538\],
-    .border-\[\#22253a\],
-    .border-\[\#22263a\],
-    .border-\[\#22263c\],
-    .border-\[\#222842\],
-    .border-\[\#232532\],
-    .border-\[\#232533\],
-    .border-\[\#232534\],
-    .border-\[\#232638\],
-    .border-\[\#23263a\],
-    .border-\[\#23263b\],
-    .border-\[\#23273d\],
-    .border-\[\#232842\],
-    .border-\[\#24283d\],
-    .border-\[\#24283e\],
-    .border-\[\#242942\],
-    .border-\[\#252838\],
-    .border-\[\#25283d\],
-    .border-\[\#25283e\],
-    .border-\[\#26293e\],
-    .border-\[\#262940\],
-    .border-\[\#262a40\],
-    .border-\[\#262a42\],
-    .border-\[\#27293a\],
-    .border-\[\#272c48\],
-    .border-\[\#282c42\],
-    .border-\[\#282c44\],
-    .border-\[\#282c46\],
-    .border-\[\#282d46\],
-    .border-\[\#292d46\],
-    .border-\[\#2a304d\],
-    .border-\[\#2b2d42\],
-    .border-\[\#2b2e42\],
-    .border-\[\#2b2e44\],
-    .border-\[\#2b2e46\],
-    .border-\[\#2b2f46\],
-    .border-\[\#2b304d\],
-    .border-\[\#2b314d\],
-    .border-\[\#2c3048\],
-    .border-\[\#2c304c\],
-    .border-\[\#2c3252\],
-    .border-\[\#2c3352\],
-    .border-\[\#2c3354\],
-    .border-\[\#2d314d\],
-    .border-\[\#2d3250\],
-    .border-\[\#2e3452\],
-    .border-\[\#313654\],
-    .border-\[\#323756\],
-    .border-\[\#343958\],
-    .border-\[\#353954\]
+    [class*="border-[#1"],
+    [class*="border-[#2"],
+    [class*="border-[#3"],
+    [class*="border-[#4"]
   ) {
     border-color: #cfc8b8 !important;
   }
 
-  /* Tipografía de alto contraste sobre fondo claro cálido */
+  /* Tipografía principal y secundaria de alto contraste */
   & :is(.text-white, .text-slate-100) {
     color: #18181b !important;
   }
@@ -304,6 +212,7 @@
     color: #52525b !important;
   }
 
+  /* Colores semánticos y de sintaxis de código con contraste fuerte sobre fondo claro */
   & :is(.text-indigo-100, .text-indigo-200, .text-indigo-300, .text-indigo-400) {
     color: #3730a3 !important;
   }
@@ -320,6 +229,26 @@
     color: #9f1239 !important;
   }
 
+  & :is(.text-cyan-300, .text-cyan-400) {
+    color: #0e7490 !important;
+  }
+
+  & :is(.text-sky-100, .text-sky-200, .text-sky-300, .text-sky-400, .text-blue-300) {
+    color: #0369a1 !important;
+  }
+
+  & :is(.text-purple-200, .text-purple-300, .text-purple-400, .text-violet-400, .text-fuchsia-400) {
+    color: #6d28d9 !important;
+  }
+
+  & :is(.text-pink-400) {
+    color: #be185d !important;
+  }
+
+  & :is(.text-orange-300) {
+    color: #c2410c !important;
+  }
+
   /* Mantener texto blanco dentro de botones primarios sólidos */
   & :is(.bg-indigo-600, .bg-emerald-600, .bg-amber-600, .bg-indigo-500) {
     color: #ffffff !important;
@@ -329,34 +258,63 @@
   }
 
   /* Resaltado de línea activa y bloques de estado en modo claro cálido */
-  & .bg-indigo-950\/80 {
+  & :is(.bg-indigo-950\/80, .bg-indigo-950\/60) {
     background-color: #e0e7ff !important;
   }
-  & .bg-emerald-950\/35,
-  & .bg-emerald-950\/60 {
+  & :is(.bg-emerald-950\/35, .bg-emerald-950\/40, .bg-emerald-950\/60, .bg-emerald-950\/80, .bg-emerald-900\/80) {
     background-color: #d1fae5 !important;
   }
-  & .bg-rose-950\/35,
-  & .bg-rose-950\/40,
-  & .bg-rose-950\/60 {
+  & :is(.bg-purple-950\/60) {
+    background-color: #f3e8ff !important;
+  }
+  & :is(.bg-rose-950\/35, .bg-rose-950\/40, .bg-rose-950\/60) {
     background-color: #ffe4e6 !important;
   }
-  & .bg-amber-950\/40,
-  & .bg-amber-950\/50 {
+  & :is(.bg-amber-950\/40, .bg-amber-950\/50, .bg-amber-900\/80) {
     background-color: #fef3c7 !important;
   }
 
-  /* Contraste de etiquetas y cuadrícula SVG en lienzo D3 sobre fondo blanco cálido */
-  & svg text.val-label {
+  /* Contraste de etiquetas, nodos y cuadrícula SVG en D3, Búsqueda y Árbol de Recursión */
+  & svg :is(text.val-label, text[fill="#e2e8f0"], text[fill="#cbd5e1"]) {
     fill: #18181b !important;
   }
-  & svg text.x-label {
-    fill: #334155 !important;
+  & svg :is(text.x-label, text[fill="#a7f3d0"]) {
+    fill: #065f46 !important;
+  }
+  & svg text[fill="#fde68a"] {
+    fill: #92400e !important;
   }
   & svg .y-axis .tick text {
     fill: #52525b !important;
   }
   & svg .y-axis .tick line {
     stroke: #cfc8b8 !important;
+  }
+  & svg :is(
+    [fill="#151724"],
+    [fill="#1e2036"],
+    [fill="#1b1e34"],
+    [fill="#131521"],
+    [fill="#161a2b"],
+    [fill="#171b2d"],
+    [fill="#141829"],
+    [fill="#0e111d"]
+  ) {
+    fill: #fbfaf6 !important;
+  }
+  & svg :is([fill="#11131e"], [fill="#10121c"], [fill="#181c2e"]) {
+    fill: #e8e3d7 !important;
+  }
+  & svg :is([fill="#11221e"], [fill="#0b2920"], [fill="#0a2b21"]) {
+    fill: #d1fae5 !important;
+  }
+  & svg :is([fill="#282010"], [fill="#2b2211"]) {
+    fill: #fef3c7 !important;
+  }
+  & svg [fill="#1d162b"] {
+    fill: #f3e8ff !important;
+  }
+  & svg pattern path[stroke="#171b2c"] {
+    stroke: #e2ddd1 !important;
   }
 }

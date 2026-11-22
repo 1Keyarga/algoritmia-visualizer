@@ -1216,13 +1216,13 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
             <div className="bg-[#10121d] border border-[#25283d] rounded-lg p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="space-y-1">
                 <p className="text-xs font-semibold text-slate-200">
-                  Cuestionario de percepción y motivación (R3.4)
+                  Cuestionario de percepción y motivación
                 </p>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
                   {resolvedImiFormUrl ? (
                     <>
                       Como paso final tras completar el Postest, responde el cuestionario breve
-                      externo en Google Forms usando tu código seudonimizado:{' '}
+                      en Google Forms usando tu código:{' '}
                       <a
                         href={resolvedImiFormUrl}
                         target="_blank"
@@ -1233,7 +1233,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                       </a>
                     </>
                   ) : (
-                    'Como paso final tras completar el Postest, el enlace al cuestionario IMI en Google Forms se habilitará aquí al iniciar la sesión de campo (variable VITE_IMI_FORM_URL).'
+                    'Como paso final tras completar el Postest, el enlace al cuestionario en Google Forms se habilitará aquí (VITE_IMI_FORM_URL).'
                   )}
                 </p>
               </div>
@@ -1244,7 +1244,7 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
                   rel="noopener noreferrer"
                   className="inline-flex items-center justify-center gap-1.5 shrink-0 min-h-[34px] px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition-colors"
                 >
-                  <span>Abrir cuestionario IMI</span>
+                  <span>Abrir cuestionario</span>
                   <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
                 </a>
               )}
