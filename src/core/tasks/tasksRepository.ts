@@ -337,7 +337,7 @@ int main() {
     difficulty: 'Avanzado',
     title: 'Comparar Bubble Sort y Selection Sort: comparaciones, intercambios y escritura en memoria',
     prompt:
-      'Compara el peor caso de Bubble Sort Clásico y Selection Sort para un arreglo de tamaño n = 5 (toma como referencia n = 5, p. ej. un arreglo invertido). Calcula e ingresa las cotas teóricas de comparaciones e intercambios en el peor caso para cada algoritmo.',
+      'Compara las cotas teóricas del peor caso de Bubble Sort Clásico y Selection Sort para un arreglo de tamaño n = 5. Calcula e ingresa en orden: (1) comparaciones en Bubble Sort, (2) máximo de intercambios en Bubble Sort, (3) comparaciones en Selection Sort y (4) cota máxima de intercambios posibles en Selection Sort (n - 1, independientemente de si el arreglo está invertido).',
     codeSnippet:
       '// Análisis comparativo en el peor caso para tamaño n = 5\nint arr[] = {6, 3, 8, 1, 5}; // referencia de n = 5 elementos\nint n = 5;',
     expectedCriteria:
@@ -566,7 +566,7 @@ int main() {
     difficulty: 'Intermedio',
     title: "Completar e interpretar una variante 'lower bound' de búsqueda binaria",
     prompt:
-      "Completa la condición faltante de esta variante 'lower bound' en C/C++ que halla el primer índice i tal que arr[i] >= target (o la posición de inserción ordenada si no existe).",
+      "Sobre el arreglo ordenado con duplicados int arr[] = {2, 5, 16, 23, 23, 23, 38, 45, 56, 72} y buscando target = 23, completa la condición faltante de esta variante 'lower bound' en C/C++ que halla el primer índice i tal que arr[i] >= target (o la posición de inserción ordenada si no existe).",
     codeSnippet: `int lowerBound(int arr[], int n, int target) {
   int low = 0, high = n;
   while (low < high) {
@@ -667,7 +667,7 @@ int main() {
     targetAlgorithmId: 'binary-search',
     presetDataset: [9, 2, 7, 1, 5],
     presetSearchTarget: 1,
-    bloom: 'Evaluar',
+    bloom: 'Analizar',
     competence: 'Pensar lógicamente',
     indicator: 'Encuentra la relación entre objetos reales o abstractos',
     descriptor: 'Establece la secuencia lógica de las instrucciones',
@@ -816,9 +816,9 @@ int main() {
     targetAlgorithmId: 'merge-sort',
     presetDataset: [6, 2, 7, 4, 9],
     bloom: 'Analizar',
-    competence: 'Pensar iterativamente',
-    indicator: 'Identifica un ciclo repetitivo',
-    descriptor: 'Identifica las instrucciones que se repiten',
+    competence: 'Abstracción',
+    indicator: 'Identifica estructuras necesarias para el proceso',
+    descriptor: 'Selecciona las instrucciones necesarias para solucionar el problema',
     abstraction: 'Básico',
     interactionType: 'Análisis de árbol de recursión',
     difficulty: 'Avanzado',
@@ -970,7 +970,7 @@ int main() {
     algorithm: 'Quick Sort',
     targetAlgorithmId: 'quick-sort',
     presetDataset: [8, 4, 7, 2, 9, 3],
-    bloom: 'Crear',
+    bloom: 'Aplicar',
     competence: 'Diseñar algoritmos',
     indicator: 'Crea una secuencia ordenada de instrucciones',
     descriptor: 'Selecciona la instrucción secuencial inmediata requerida en un paso específico del procedimiento',
