@@ -25,6 +25,10 @@ import {
   type PostestVisualizerScenario,
   type TaskProgressState,
 } from '../../core/evaluation/evaluationRepository';
+import {
+  GUIDED_TASKS_REPOSITORY,
+  getTaskStarCount,
+} from '../../core/tasks/tasksRepository';
 import type { TaskAttemptCategory } from '../tasks/InteractiveTaskPanel';
 import type { AlgorithmMetadata, SupportedLanguage } from '../../types/algorithm';
 import type { Step } from '../../types/trace';
@@ -1025,6 +1029,50 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
   const preDone = !!(session.pretest || session.remotePretestCompletedAt);
   const posDone = !!(session.postest || session.remotePostestCompletedAt);
 
+  const totalRepoTasks = GUIDED_TASKS_REPOSITORY.length;
+  const completedTaskIdsList = Object.entries(taskOutcomes)
+    .filter(([, outcome]) => outcome && outcome !== 'failed')
+    .map(([id]) => id);
+  const effectiveCompletedCount = Math.max(completedTasksCount, completedTaskIdsList.length);
+  const progressPercentage =
+    totalRepoTasks > 0 ? Math.round((effectiveCompletedCount / totalRepoTasks) * 100) : 0;
+
+  const firstAttemptCount = Object.values(taskOutcomes).filter(o => o === 'first_attempt').length;
+  const secondAttemptCount = Object.values(taskOutcomes).filter(o => o === 'second_attempt').length;
+  const thirdAttemptCount = Object.values(taskOutcomes).filter(
+    o => o === 'multiple_attempts'
+  ).length;
+  const failedAttemptCount = Object.values(taskOutcomes).filter(o => o === 'failed').length;
+
+  const levelSummaries = (['Básico', 'Intermedio', 'Avanzado'] as const).map((lvl, idx) => {
+    const levelTasks = GUIDED_TASKS_REPOSITORY.filter(t => t.difficulty === lvl);
+    const solved = levelTasks.filter(
+      t => taskOutcomes[t.id] && taskOutcomes[t.id] !== 'failed'
+    ).length;
+    const stars = levelTasks.reduce(
+      (acc, t) => acc + getTaskStarCount(t.id, completedTaskIdsList, taskOutcomes),
+      0
+    );
+    return {
+      levelNumber: idx + 1,
+      label: lvl,
+      solved,
+      total: levelTasks.length,
+      stars,
+      maxStars: levelTasks.length * 3,
+    };
+  });
+
+  const totalStarsEarned = levelSummaries.reduce((acc, l) => acc + l.stars, 0);
+  const currentUserLevel =
+    levelSummaries[2].solved > 0 ||
+    (levelSummaries[0].solved === levelSummaries[0].total &&
+      levelSummaries[1].solved === levelSummaries[1].total)
+      ? 3
+      : levelSummaries[1].solved > 0 || levelSummaries[0].solved === levelSummaries[0].total
+      ? 2
+      : 1;
+
   return (
     <div className="flex-1 min-h-0 overflow-y-auto bg-[#0f1019] p-6 select-none custom-scrollbar">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -1032,12 +1080,18 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
           <div className="flex items-center gap-3">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm font-bold text-white font-mono">
                   {session.participantId}
                 </span>
                 <span className="text-[11px] text-emerald-300 bg-emerald-500/12 border border-emerald-500/30 px-2 py-0.5 rounded-full">
                   Sesión activa
+                </span>
+                <span className="text-[11px] font-semibold text-indigo-200 bg-indigo-500/15 border border-indigo-500/30 px-2.5 py-0.5 rounded-full font-mono">
+                  Nivel {currentUserLevel} · {progressPercentage}%
+                </span>
+                <span className="text-[11px] font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded-full font-mono">
+                  ★ {totalStarsEarned}
                 </span>
               </div>
             </div>
@@ -1051,6 +1105,74 @@ export const EvaluationModule: React.FC<EvaluationModuleProps> = ({
             >
               Cerrar sesión
             </button>
+          </div>
+        </div>
+
+        {/* Panel de progreso del participante y registro de intentos */}
+        <div className="bg-[#151724] border border-[#24283e] rounded-xl p-5 space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="text-xs font-bold text-slate-100">
+                Progreso en tareas guiadas ({effectiveCompletedCount}/{totalRepoTasks} completadas · {progressPercentage}%)
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Avance por niveles de dificultad y registro de intentos en la sesión
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onGoToGuidedTasks}
+              className="px-3 py-1.5 rounded-lg bg-[#181b2c] hover:bg-[#22263d] border border-[#2b304d] text-xs font-medium text-indigo-300 transition-colors cursor-pointer"
+            >
+              Ir a Tareas Guiadas
+            </button>
+          </div>
+
+          <div className="w-full h-2 bg-[#10121d] rounded-full overflow-hidden border border-[#22263a]">
+            <div
+              className="h-full bg-indigo-500 transition-all duration-300"
+              style={{ width: `${progressPercentage}%` }}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {levelSummaries.map(lvl => (
+              <div
+                key={lvl.label}
+                className="bg-[#10121d] border border-[#23273e] rounded-lg p-3 flex items-center justify-between"
+              >
+                <div>
+                  <span className="text-[11px] font-semibold text-slate-200 block">
+                    Nivel {lvl.levelNumber} · {lvl.label}
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    {lvl.solved}/{lvl.total} tareas
+                  </span>
+                </div>
+                <span className="text-xs font-mono font-semibold text-amber-300">
+                  ★ {lvl.stars}/{lvl.maxStars}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+            <div className="bg-[#10121d] border border-[#23273e] rounded-lg px-3 py-2 flex items-center justify-between">
+              <span className="text-[11px] text-slate-300">1.er intento (★★★)</span>
+              <span className="text-xs font-mono font-bold text-emerald-400">{firstAttemptCount}</span>
+            </div>
+            <div className="bg-[#10121d] border border-[#23273e] rounded-lg px-3 py-2 flex items-center justify-between">
+              <span className="text-[11px] text-slate-300">2.° intento (★★☆)</span>
+              <span className="text-xs font-mono font-bold text-indigo-300">{secondAttemptCount}</span>
+            </div>
+            <div className="bg-[#10121d] border border-[#23273e] rounded-lg px-3 py-2 flex items-center justify-between">
+              <span className="text-[11px] text-slate-300">3.er intento (★☆☆)</span>
+              <span className="text-xs font-mono font-bold text-amber-300">{thirdAttemptCount}</span>
+            </div>
+            <div className="bg-[#10121d] border border-[#23273e] rounded-lg px-3 py-2 flex items-center justify-between">
+              <span className="text-[11px] text-slate-300">No logrado (☆☆☆)</span>
+              <span className="text-xs font-mono font-bold text-rose-400">{failedAttemptCount}</span>
+            </div>
           </div>
         </div>
 
