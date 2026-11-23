@@ -22,12 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local documents, spreadsheets and environment files
 *.docx
-SRS_Visualizador_Algoritmos_IEEE29148_v2.1.docx
-Fichas_Validacion_Juicio_Expertos_Software_QA.docx
-Fichas_Validacion_Juicio_Expertos_Software_QA.docx
-SRS_Visualizador_Algoritmos_IEEE29148_v2.1.docx
-SRS_Visualizador_Algoritmos_IEEE29148_v2.1.docx
-SRS_Visualizador_Algoritmos_IEEE29148_v2.1.docx
-Ficha_Validacion_Docente_Algoritmos_Firmada.pdf
-Ficha_Validacion_Psicologo_Firmada.pdf
+*.pdf
+*.xlsx
+*.csv
+.env
+.env.*
